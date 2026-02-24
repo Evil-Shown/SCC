@@ -1,0 +1,447 @@
+{
+  "info": {
+    "name": "Smart Campus Companion - Complete API",
+    "description": "Complete API collection for SCC Backend including Auth, Notes, and Kuppi endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "BASE_URL",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "ACCESS_TOKEN",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "NOTE_ID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "KUPPI_ID",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set(\"ACCESS_TOKEN\", jsonData.data.accessToken);",
+                  "    console.log(\"✅ Token saved:\", jsonData.data.accessToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Alice Student\",\n  \"email\": \"alice@campus.edu\",\n  \"password\": \"password123\",\n  \"role\": \"student\",\n  \"studentId\": \"S2024001\",\n  \"department\": \"Computer Science\",\n  \"year\": 2\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/auth/register",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set(\"ACCESS_TOKEN\", jsonData.data.accessToken);",
+                  "    console.log(\"✅ Token saved:\", jsonData.data.accessToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"alice@campus.edu\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/auth/login",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/api/auth/me",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "auth", "me"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notes",
+      "item": [
+        {
+          "name": "Create Note",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set(\"NOTE_ID\", jsonData.data._id);",
+                  "    console.log(\"✅ Note ID saved:\", jsonData.data._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS_TOKEN}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Data Structures - Trees and Graphs\",\n  \"description\": \"Complete notes covering binary trees, BST, AVL trees, graph traversal algorithms (BFS, DFS), and shortest path algorithms\",\n  \"onedriveLink\": \"https://onedrive.live.com/view.aspx?resid=123\",\n  \"tags\": [\"data-structures\", \"trees\", \"graphs\", \"algorithms\"]\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/notes",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "notes"]
+            }
+          }
+        },
+        {
+          "name": "Get All Notes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/api/notes?page=1&limit=10",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "notes"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search Notes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/api/notes/search?q=trees",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "notes", "search"],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "trees"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "React to Note (Like)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS_TOKEN}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"noteId\": \"{{NOTE_ID}}\",\n  \"type\": \"like\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/notes/react",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "notes", "react"]
+            }
+          }
+        },
+        {
+          "name": "Comment on Note",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS_TOKEN}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"noteId\": \"{{NOTE_ID}}\",\n  \"commentText\": \"Great notes! Very helpful for exam preparation. Thanks for sharing!\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/notes/comment",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "notes", "comment"]
+            }
+          }
+        },
+        {
+          "name": "Get Note Comments",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/api/notes/{{NOTE_ID}}/comments",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "notes", "{{NOTE_ID}}", "comments"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Kuppi",
+      "item": [
+        {
+          "name": "Create Kuppi Post",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set(\"KUPPI_ID\", jsonData.data._id);",
+                  "    console.log(\"✅ Kuppi ID saved:\", jsonData.data._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS_TOKEN}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Database Management Systems Kuppi\",\n  \"description\": \"Final exam revision covering SQL queries, normalization, transactions, and indexing strategies\",\n  \"eventDate\": \"2026-03-20T14:00:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/kuppi",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "kuppi"]
+            }
+          }
+        },
+        {
+          "name": "Get All Kuppi Posts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/api/kuppi?page=1&limit=10",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "kuppi"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Apply to Kuppi",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS_TOKEN}}",
+                "description": "Use different user token!"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"postId\": \"{{KUPPI_ID}}\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/kuppi/apply",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "kuppi", "apply"]
+            }
+          }
+        },
+        {
+          "name": "Add Meeting Link",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS_TOKEN}}",
+                "description": "Use kuppi owner token!"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"meetingLink\": \"https://meet.google.com/abc-defg-hij\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/kuppi/{{KUPPI_ID}}",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "kuppi", "{{KUPPI_ID}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Kuppi Applicants",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS_TOKEN}}",
+                "description": "Owner only!"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/api/kuppi/applicants/{{KUPPI_ID}}",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "kuppi", "applicants", "{{KUPPI_ID}}"]
+            }
+          }
+        },
+        {
+          "name": "Export Applicants to Excel",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ACCESS_TOKEN}}",
+                "description": "Owner only!"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/api/kuppi/export/{{KUPPI_ID}}",
+              "host": ["{{BASE_URL}}"],
+              "path": ["api", "kuppi", "export", "{{KUPPI_ID}}"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
