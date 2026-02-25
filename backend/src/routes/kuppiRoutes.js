@@ -6,7 +6,9 @@ import {
   applyToKuppi,
   getKuppiApplicants,
   exportKuppiApplicants,
-  getKuppiPosts
+  getKuppiPosts,
+  getMyKuppiLogs,
+  deleteKuppiPost
 } from "../controllers/kuppiController.js";
 import { protect } from "../middlewares/auth.js";
 
@@ -18,9 +20,13 @@ router.put("/kuppi/:postId", protect, updateKuppiPost);
 
 router.get("/kuppi", protect, getKuppiPosts);
 
+router.get("/kuppi/my/logs", protect, getMyKuppiLogs);
+
 router.post("/kuppi/apply", protect, applyToKuppi);
 
 router.patch("/kuppi/:postId/link", protect, addMeetingLink);
+
+router.delete("/kuppi/:postId", protect, deleteKuppiPost);
 
 router.get("/kuppi/applicants/:postId", protect, getKuppiApplicants);
 

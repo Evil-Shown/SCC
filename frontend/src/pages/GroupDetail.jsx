@@ -31,6 +31,7 @@ import {
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
 import EmptyState from "../components/EmptyState";
+import { confirmAction, notifyError, notifySuccess } from "../utils/toast";
 
 const GroupDetail = () => {
   const { groupId } = useParams();
@@ -140,9 +141,10 @@ const GroupDetail = () => {
         fileInputRef.current.value = "";
       }
       loadFiles();
+      notifySuccess("File uploaded successfully");
     } catch (error) {
       console.error("Error uploading file:", error);
-      alert("Failed to upload file");
+      notifyError("Failed to upload file");
     } finally {
       setUploading(false);
     }
@@ -161,37 +163,54 @@ const GroupDetail = () => {
       document.body.removeChild(a);
     } catch (error) {
       console.error("Error downloading file:", error);
-      alert("Failed to download file");
+      notifyError("Failed to download file");
     }
   };
 
   const handleDeleteFile = async (fileId) => {
-    if (!window.confirm("Are you sure you want to delete this file?")) return;
+    const confirmed = await confirmAction("Are you sure you want to delete this file?", {
+      confirmText: "Delete",
+    });
+    if (!confirmed) return;
 
     try {
       await deleteFileService(fileId);
       loadFiles();
+      notifySuccess("File deleted successfully");
     } catch (error) {
       console.error("Error deleting file:", error);
-      alert("Failed to delete file");
+      notifyError("Failed to delete file");
     }
   };
 
   const handleLeaveGroup = async () => {
-    if (!window.confirm("Are you sure you want to leave this group?")) return;
+    const confirmed = await confirmAction("Are you sure you want to leave this group?", {
+      confirmText: "Leave group",
+    });
+    if (!confirmed) return;
 
     const result = await dispatch(leaveGroupAction(groupId));
     if (leaveGroupAction.fulfilled.match(result)) {
+      notifySuccess("You left the group");
       navigate("/groups");
+    } else {
+      notifyError(result.payload || "Failed to leave group");
     }
   };
 
   const handleDeleteGroup = async () => {
-    if (!window.confirm("Are you sure you want to delete this group? This action cannot be undone.")) return;
+    const confirmed = await confirmAction(
+      "Are you sure you want to delete this group? This action cannot be undone.",
+      { confirmText: "Delete group" }
+    );
+    if (!confirmed) return;
 
     const result = await dispatch(deleteGroupAction(groupId));
     if (deleteGroupAction.fulfilled.match(result)) {
+      notifySuccess("Group deleted successfully");
       navigate("/groups");
+    } else {
+      notifyError(result.payload || "Failed to delete group");
     }
   };
 

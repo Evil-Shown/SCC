@@ -7,7 +7,22 @@ import { generateAccessToken, generateRefreshToken, verifyToken } from "../utils
  */
 export const register = async (req, res) => {
   try {
-    const { name, email, password, role, studentId, department, year, phone, bio } = req.body;
+    const {
+      name,
+      email,
+      password,
+      role,
+      studentId,
+      department,
+      year,
+      phone,
+      bio,
+      location,
+      website,
+      github,
+      twitter,
+      linkedin
+    } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -43,6 +58,11 @@ export const register = async (req, res) => {
     // Add optional fields if provided
     if (phone) userData.phone = phone;
     if (bio) userData.bio = bio;
+    if (location) userData.location = location;
+    if (website) userData.website = website;
+    if (github) userData.github = github;
+    if (twitter) userData.twitter = twitter;
+    if (linkedin) userData.linkedin = linkedin;
 
     const user = new User(userData);
     await user.save();
@@ -257,16 +277,36 @@ export const getMe = async (req, res) => {
  */
 export const updateProfile = async (req, res) => {
   try {
-    const { name, department, year, phone, bio, profilePicture, preferences } = req.body;
+    const {
+      name,
+      department,
+      year,
+      phone,
+      bio,
+      profilePicture,
+      preferences,
+      location,
+      website,
+      github,
+      twitter,
+      linkedin
+    } = req.body;
 
     const updateData = {};
-    if (name) updateData.name = name;
-    if (department) updateData.department = department;
-    if (year) updateData.year = year;
-    if (phone) updateData.phone = phone;
-    if (bio) updateData.bio = bio;
-    if (profilePicture) updateData.profilePicture = profilePicture;
-    if (preferences) updateData.preferences = preferences;
+    const hasField = (key) => Object.prototype.hasOwnProperty.call(req.body, key);
+
+    if (hasField("name")) updateData.name = (name || "").trim();
+    if (hasField("department")) updateData.department = (department || "").trim();
+    if (hasField("year")) updateData.year = year;
+    if (hasField("phone")) updateData.phone = (phone || "").trim();
+    if (hasField("bio")) updateData.bio = (bio || "").trim();
+    if (hasField("profilePicture")) updateData.profilePicture = profilePicture || "";
+    if (hasField("preferences")) updateData.preferences = preferences;
+    if (hasField("location")) updateData.location = (location || "").trim();
+    if (hasField("website")) updateData.website = (website || "").trim();
+    if (hasField("github")) updateData.github = (github || "").trim();
+    if (hasField("twitter")) updateData.twitter = (twitter || "").trim();
+    if (hasField("linkedin")) updateData.linkedin = (linkedin || "").trim();
 
     const user = await User.findByIdAndUpdate(
       req.user._id,

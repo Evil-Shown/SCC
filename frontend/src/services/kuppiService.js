@@ -48,6 +48,16 @@ export const exportApplicants = async (postId) => {
   return { success: true };
 };
 
+export const getMyKuppiLogs = async () => {
+  const response = await api.get("/api/kuppi/my/logs");
+  return response.data;
+};
+
+export const deleteKuppiPost = async (postId) => {
+  const response = await api.delete(`/api/kuppi/${postId}`);
+  return response.data;
+};
+
 export default {
   createKuppiPost,
   getKuppiPosts,
@@ -56,4 +66,6 @@ export default {
   applyToKuppi,
   getKuppiApplicants,
   exportApplicants,
+  getMyKuppiLogs,
+  deleteKuppiPost,
 };

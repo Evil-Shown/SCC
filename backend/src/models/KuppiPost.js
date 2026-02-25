@@ -39,6 +39,20 @@ const kuppiPostSchema = new mongoose.Schema({
     type: String,
     enum: ["pending", "scheduled", "completed", "cancelled"],
     default: "pending"
+  },
+  isArchived: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
+  archivedAt: {
+    type: Date,
+    default: null
+  },
+  archivedReason: {
+    type: String,
+    enum: ["event-expired", "manual"],
+    default: null
   }
 }, {
   timestamps: true

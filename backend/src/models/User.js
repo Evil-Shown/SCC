@@ -49,6 +49,36 @@ const userSchema = new mongoose.Schema({
     trim: true,
     maxlength: 500
   },
+  location: {
+    type: String,
+    trim: true,
+    maxlength: 120,
+    default: ""
+  },
+  website: {
+    type: String,
+    trim: true,
+    maxlength: 300,
+    default: ""
+  },
+  github: {
+    type: String,
+    trim: true,
+    maxlength: 200,
+    default: ""
+  },
+  twitter: {
+    type: String,
+    trim: true,
+    maxlength: 200,
+    default: ""
+  },
+  linkedin: {
+    type: String,
+    trim: true,
+    maxlength: 250,
+    default: ""
+  },
   profilePicture: {
     type: String,
     default: ""

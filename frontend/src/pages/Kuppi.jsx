@@ -31,6 +31,7 @@ import { exportApplicants } from "../services/kuppiService";
 import LoadingSpinner from "../components/LoadingSpinner";
 import EmptyState from "../components/EmptyState";
 import ErrorMessage from "../components/ErrorMessage";
+import { notifyError, notifySuccess } from "../utils/toast";
 import "../styles/Kuppi.css";
 
 const Kuppi = () => {
@@ -46,7 +47,6 @@ const Kuppi = () => {
   const [showApplicantsModal, setShowApplicantsModal] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [activeTab, setActiveTab] = useState("all"); // all | mine
-  const [successMsg, setSuccessMsg] = useState("");
 
   // Create form
   const [formData, setFormData] = useState({
@@ -93,16 +93,19 @@ const Kuppi = () => {
     if (!result.error) {
       setShowCreateModal(false);
       setFormData({ title: "", description: "", subject: "", eventDate: "", meetingLink: "" });
-      showSuccess("Kuppi post created successfully!");
+      notifySuccess("Kuppi post created successfully!");
     } else {
       setFormError(result.payload || "Failed to create post");
+      notifyError(result.payload || "Failed to create post");
     }
   };
 
   const handleApply = async (postId) => {
     const result = await dispatch(applyToKuppiAction(postId));
     if (!result.error) {
-      showSuccess("Applied successfully!");
+      notifySuccess("Applied successfully!");
+    } else {
+      notifyError(result.payload || "Failed to apply");
     }
   };
 
@@ -114,7 +117,9 @@ const Kuppi = () => {
     if (!result.error) {
       setShowLinkModal(null);
       setMeetingLinkInput("");
-      showSuccess("Meeting link added & notifications sent!");
+      notifySuccess("Meeting link added & notifications sent!");
+    } else {
+      notifyError(result.payload || "Failed to add meeting link");
     }
   };
 
@@ -126,15 +131,11 @@ const Kuppi = () => {
   const handleExport = async (postId) => {
     try {
       await exportApplicants(postId);
-      showSuccess("Excel file downloaded!");
+      notifySuccess("Excel file downloaded!");
     } catch (err) {
       console.error("Export failed:", err);
+      notifyError("Failed to export applicants");
     }
-  };
-
-  const showSuccess = (msg) => {
-    setSuccessMsg(msg);
-    setTimeout(() => setSuccessMsg(""), 3000);
   };
 
   const getStatusColor = (status) => {
@@ -163,14 +164,6 @@ const Kuppi = () => {
 
   return (
     <div className="kuppi-page">
-      {/* Success Toast */}
-      {successMsg && (
-        <div className="success-toast fade-in">
-          <CheckCircle size={18} />
-          <span>{successMsg}</span>
-        </div>
-      )}
-
       {/* Header */}
       <header className="kuppi-header">
         <div className="kuppi-header-left">

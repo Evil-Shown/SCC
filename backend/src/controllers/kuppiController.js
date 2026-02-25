@@ -4,6 +4,23 @@ import Notification from "../models/Notification.js";
 import { sendKuppiNotificationEmail } from "../utils/emailService.js";
 import { generateApplicantsExcel } from "../utils/excelExport.js";
 
+const archiveExpiredKuppiPosts = async () => {
+  const now = new Date();
+  await KuppiPost.updateMany(
+    {
+      isArchived: false,
+      eventDate: { $lt: now }
+    },
+    {
+      $set: {
+        isArchived: true,
+        archivedAt: now,
+        archivedReason: "event-expired"
+      }
+    }
+  );
+};
+
 export const createKuppiPost = async (req, res) => {
   try {
     const { title, description, subject, eventDate, meetingLink } = req.body;
@@ -60,6 +77,8 @@ export const createKuppiPost = async (req, res) => {
 
 export const updateKuppiPost = async (req, res) => {
   try {
+    await archiveExpiredKuppiPosts();
+
     const { postId } = req.params;
     const { title, description, subject, eventDate, meetingLink } = req.body;
     const userId = req.user._id;
@@ -69,6 +88,13 @@ export const updateKuppiPost = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Kuppi post not found"
+      });
+    }
+
+    if (kuppiPost.isArchived) {
+      return res.status(400).json({
+        success: false,
+        message: "Archived kuppi posts cannot be updated"
       });
     }
 
@@ -164,6 +190,8 @@ const triggerMeetingLinkNotifications = async (postId, kuppiPost) => {
 
 export const applyToKuppi = async (req, res) => {
   try {
+    await archiveExpiredKuppiPosts();
+
     const { postId } = req.body;
     const applicantId = req.user._id;
     const name = req.user.name;
@@ -181,6 +209,13 @@ export const applyToKuppi = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Kuppi post not found"
+      });
+    }
+
+    if (kuppiPost.isArchived) {
+      return res.status(400).json({
+        success: false,
+        message: "This kuppi session has expired"
       });
     }
 
@@ -241,6 +276,8 @@ export const applyToKuppi = async (req, res) => {
 
 export const getKuppiApplicants = async (req, res) => {
   try {
+    await archiveExpiredKuppiPosts();
+
     const { postId } = req.params;
     const userId = req.user._id;
 
@@ -279,6 +316,8 @@ export const getKuppiApplicants = async (req, res) => {
 
 export const exportKuppiApplicants = async (req, res) => {
   try {
+    await archiveExpiredKuppiPosts();
+
     const { postId } = req.params;
     const userId = req.user._id;
 
@@ -334,6 +373,8 @@ export const exportKuppiApplicants = async (req, res) => {
 
 export const getKuppiPosts = async (req, res) => {
   try {
+    await archiveExpiredKuppiPosts();
+
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
@@ -346,6 +387,9 @@ export const getKuppiPosts = async (req, res) => {
     }
     if (status) {
       filter.status = status;
+    }
+    if (req.query.includeArchived !== "true") {
+      filter.isArchived = false;
     }
 
     const posts = await KuppiPost.find(filter)
@@ -377,6 +421,8 @@ export const getKuppiPosts = async (req, res) => {
 
 export const addMeetingLink = async (req, res) => {
   try {
+    await archiveExpiredKuppiPosts();
+
     const { postId } = req.params;
     const { meetingLink } = req.body;
     const userId = req.user._id;
@@ -388,6 +434,9 @@ export const addMeetingLink = async (req, res) => {
     const kuppiPost = await KuppiPost.findById(postId);
     if (!kuppiPost) {
       return res.status(404).json({ success: false, message: "Kuppi post not found" });
+    }
+    if (kuppiPost.isArchived) {
+      return res.status(400).json({ success: false, message: "This kuppi session has expired" });
     }
     if (kuppiPost.ownerId.toString() !== userId.toString()) {
       return res.status(403).json({ success: false, message: "You are not authorized to update this kuppi post" });
@@ -413,6 +462,65 @@ export const addMeetingLink = async (req, res) => {
   }
 };
 
+export const getMyKuppiLogs = async (req, res) => {
+  try {
+    await archiveExpiredKuppiPosts();
+
+    const userId = req.user._id;
+    const logs = await KuppiPost.find({ ownerId: userId })
+      .populate("ownerId", "name email profilePicture department")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      data: logs
+    });
+  } catch (error) {
+    console.error("Error fetching kuppi logs:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch kuppi logs"
+    });
+  }
+};
+
+export const deleteKuppiPost = async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const userId = req.user._id;
+
+    const kuppiPost = await KuppiPost.findById(postId);
+    if (!kuppiPost) {
+      return res.status(404).json({
+        success: false,
+        message: "Kuppi post not found"
+      });
+    }
+
+    if (kuppiPost.ownerId.toString() !== userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to delete this kuppi post"
+      });
+    }
+
+    await KuppiApplicant.deleteMany({ postId });
+    await Notification.deleteMany({ relatedId: postId, relatedModel: "KuppiPost" });
+    await KuppiPost.findByIdAndDelete(postId);
+
+    res.status(200).json({
+      success: true,
+      message: "Kuppi log deleted successfully"
+    });
+  } catch (error) {
+    console.error("Error deleting kuppi post:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to delete kuppi post"
+    });
+  }
+};
+
 export default {
   createKuppiPost,
   updateKuppiPost,
@@ -420,5 +528,7 @@ export default {
   applyToKuppi,
   getKuppiApplicants,
   exportKuppiApplicants,
-  getKuppiPosts
+  getKuppiPosts,
+  getMyKuppiLogs,
+  deleteKuppiPost
 };

@@ -7,6 +7,7 @@ import http from "http";
 import { Server } from "socket.io";
 import multer from "multer";
 import connectDB from "./config/db.js";
+import KuppiPost from "./models/KuppiPost.js";
 
 // Import routes
 import authRoutes from "./routes/authRoutes.js";
@@ -126,6 +127,34 @@ app.set("io", io);
 const startServer = async () => {
   try {
     await connectDB();
+
+    const archiveExpiredKuppiPostsJob = async () => {
+      try {
+        const now = new Date();
+        const result = await KuppiPost.updateMany(
+          {
+            isArchived: false,
+            eventDate: { $lt: now }
+          },
+          {
+            $set: {
+              isArchived: true,
+              archivedAt: now,
+              archivedReason: "event-expired"
+            }
+          }
+        );
+
+        if (result.modifiedCount > 0) {
+          console.log(`Archived ${result.modifiedCount} expired kuppi posts`);
+        }
+      } catch (error) {
+        console.error("Kuppi expiry job error:", error.message);
+      }
+    };
+
+    await archiveExpiredKuppiPostsJob();
+    setInterval(archiveExpiredKuppiPostsJob, 60 * 1000);
 
     const PORT = process.env.PORT || 5000;
     server
