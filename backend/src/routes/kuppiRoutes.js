@@ -2,6 +2,7 @@ import express from "express";
 import { 
   createKuppiPost,
   updateKuppiPost,
+  addMeetingLink,
   applyToKuppi,
   getKuppiApplicants,
   exportKuppiApplicants,
@@ -18,6 +19,8 @@ router.put("/kuppi/:postId", protect, updateKuppiPost);
 router.get("/kuppi", protect, getKuppiPosts);
 
 router.post("/kuppi/apply", protect, applyToKuppi);
+
+router.patch("/kuppi/:postId/link", protect, addMeetingLink);
 
 router.get("/kuppi/applicants/:postId", protect, getKuppiApplicants);
 

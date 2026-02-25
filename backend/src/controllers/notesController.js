@@ -6,7 +6,7 @@ import { sendNoteCommentEmail } from "../utils/emailService.js";
 
 export const createNote = async (req, res) => {
   try {
-    const { title, description, onedriveLink, tags } = req.body;
+    const { title, description, onedriveLink, tags, subject, year } = req.body;
     const userId = req.user._id;
 
     if (!title || !description) {
@@ -21,7 +21,9 @@ export const createNote = async (req, res) => {
       title,
       description,
       onedriveLink: onedriveLink || "",
-      tags: tags || []
+      tags: tags || [],
+      subject: subject || "",
+      year: year || null
     });
 
     const populatedNote = await Note.findById(note._id)
@@ -51,6 +53,8 @@ export const getNotes = async (req, res) => {
     const skip = (page - 1) * limit;
     const tag = req.query.tag;
     const userId = req.query.userId;
+    const subject = req.query.subject;
+    const year = req.query.year;
 
     let filter = {};
     if (tag) {
@@ -58,6 +62,12 @@ export const getNotes = async (req, res) => {
     }
     if (userId) {
       filter.userId = userId;
+    }
+    if (subject) {
+      filter.subject = subject;
+    }
+    if (year) {
+      filter.year = Number(year);
     }
 
     const notes = await Note.find(filter)
@@ -101,25 +111,26 @@ export const searchNotes = async (req, res) => {
       });
     }
 
-    const notes = await Note.find({
+    const subject = req.query.subject;
+    const year = req.query.year;
+
+    const searchFilter = {
       $or: [
         { title: { $regex: searchQuery, $options: "i" } },
         { description: { $regex: searchQuery, $options: "i" } },
         { tags: { $in: [new RegExp(searchQuery, "i")] } }
       ]
-    })
+    };
+    if (subject) searchFilter.subject = subject;
+    if (year) searchFilter.year = Number(year);
+
+    const notes = await Note.find(searchFilter)
       .populate("userId", "name email profilePicture department year")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
-    const total = await Note.countDocuments({
-      $or: [
-        { title: { $regex: searchQuery, $options: "i" } },
-        { description: { $regex: searchQuery, $options: "i" } },
-        { tags: { $in: [new RegExp(searchQuery, "i")] } }
-      ]
-    });
+    const total = await Note.countDocuments(searchFilter);
 
     res.status(200).json({
       success: true,
@@ -172,17 +183,17 @@ export const reactToNote = async (req, res) => {
 
     if (existingReaction) {
       const oldType = existingReaction.type;
-      
+
       if (oldType === type) {
         await Reaction.deleteOne({ _id: existingReaction._id });
-        
+
         if (type === "like") {
           note.reactionsCount.likes = Math.max(0, note.reactionsCount.likes - 1);
         } else {
           note.reactionsCount.dislikes = Math.max(0, note.reactionsCount.dislikes - 1);
         }
         await note.save();
-        
+
         return res.status(200).json({
           success: true,
           message: "Reaction removed",
@@ -195,7 +206,7 @@ export const reactToNote = async (req, res) => {
       } else {
         existingReaction.type = type;
         await existingReaction.save();
-        
+
         if (type === "like") {
           note.reactionsCount.likes += 1;
           note.reactionsCount.dislikes = Math.max(0, note.reactionsCount.dislikes - 1);
@@ -204,7 +215,7 @@ export const reactToNote = async (req, res) => {
           note.reactionsCount.likes = Math.max(0, note.reactionsCount.likes - 1);
         }
         await note.save();
-        
+
         return res.status(200).json({
           success: true,
           message: "Reaction updated",

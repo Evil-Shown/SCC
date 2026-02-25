@@ -6,7 +6,7 @@ import { generateApplicantsExcel } from "../utils/excelExport.js";
 
 export const createKuppiPost = async (req, res) => {
   try {
-    const { title, description, eventDate, meetingLink } = req.body;
+    const { title, description, subject, eventDate, meetingLink } = req.body;
     const ownerId = req.user._id;
 
     if (!title || !description || !eventDate) {
@@ -28,6 +28,7 @@ export const createKuppiPost = async (req, res) => {
       ownerId,
       title,
       description,
+      subject: subject || "",
       eventDate: eventDateObj,
       meetingLink: meetingLink || "",
       status: meetingLink ? "scheduled" : "pending"
@@ -60,7 +61,7 @@ export const createKuppiPost = async (req, res) => {
 export const updateKuppiPost = async (req, res) => {
   try {
     const { postId } = req.params;
-    const { title, description, eventDate, meetingLink } = req.body;
+    const { title, description, subject, eventDate, meetingLink } = req.body;
     const userId = req.user._id;
 
     const kuppiPost = await KuppiPost.findById(postId);
@@ -82,6 +83,7 @@ export const updateKuppiPost = async (req, res) => {
 
     if (title) kuppiPost.title = title;
     if (description) kuppiPost.description = description;
+    if (subject !== undefined) kuppiPost.subject = subject;
     if (eventDate) {
       const eventDateObj = new Date(eventDate);
       if (eventDateObj < new Date()) {
@@ -373,9 +375,48 @@ export const getKuppiPosts = async (req, res) => {
   }
 };
 
+export const addMeetingLink = async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const { meetingLink } = req.body;
+    const userId = req.user._id;
+
+    if (!meetingLink) {
+      return res.status(400).json({ success: false, message: "Meeting link is required" });
+    }
+
+    const kuppiPost = await KuppiPost.findById(postId);
+    if (!kuppiPost) {
+      return res.status(404).json({ success: false, message: "Kuppi post not found" });
+    }
+    if (kuppiPost.ownerId.toString() !== userId.toString()) {
+      return res.status(403).json({ success: false, message: "You are not authorized to update this kuppi post" });
+    }
+
+    kuppiPost.meetingLink = meetingLink;
+    kuppiPost.status = "scheduled";
+    await kuppiPost.save();
+
+    await triggerMeetingLinkNotifications(postId, kuppiPost);
+
+    const populatedPost = await KuppiPost.findById(postId)
+      .populate("ownerId", "name email profilePicture department");
+
+    res.status(200).json({
+      success: true,
+      message: "Meeting link updated and notifications sent",
+      data: populatedPost
+    });
+  } catch (error) {
+    console.error("Error adding meeting link:", error);
+    res.status(500).json({ success: false, message: error.message || "Failed to add meeting link" });
+  }
+};
+
 export default {
   createKuppiPost,
   updateKuppiPost,
+  addMeetingLink,
   applyToKuppi,
   getKuppiApplicants,
   exportKuppiApplicants,

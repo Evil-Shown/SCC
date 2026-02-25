@@ -8,6 +8,10 @@ import AuthPage from "./pages/AuthPage";
 import Dashboard from "./pages/Dashboard";
 import Groups from "./pages/Groups";
 import GroupDetail from "./pages/GroupDetail";
+import Notes from "./pages/Notes";
+import NoteDetail from "./pages/NoteDetail";
+import Kuppi from "./pages/Kuppi";
+import Notifications from "./pages/Notifications";
 
 // Components
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -46,6 +50,38 @@ function App() {
               element={
                 <ProtectedRoute>
                   <GroupDetail />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/notes"
+              element={
+                <ProtectedRoute>
+                  <Notes />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/notes/:noteId"
+              element={
+                <ProtectedRoute>
+                  <NoteDetail />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/kuppi"
+              element={
+                <ProtectedRoute>
+                  <Kuppi />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/notifications"
+              element={
+                <ProtectedRoute>
+                  <Notifications />
                 </ProtectedRoute>
               }
             />

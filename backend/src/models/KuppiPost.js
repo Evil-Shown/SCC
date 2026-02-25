@@ -17,6 +17,11 @@ const kuppiPostSchema = new mongoose.Schema({
     required: [true, "Description is required"],
     trim: true
   },
+  subject: {
+    type: String,
+    trim: true,
+    default: ""
+  },
   eventDate: {
     type: Date,
     required: [true, "Event date is required"]

@@ -27,6 +27,17 @@ const noteSchema = new mongoose.Schema({
     trim: true,
     lowercase: true
   }],
+  subject: {
+    type: String,
+    trim: true,
+    default: ""
+  },
+  year: {
+    type: Number,
+    min: [1, "Year must be at least 1"],
+    max: [6, "Year cannot exceed 6"],
+    default: null
+  },
   createdAt: {
     type: Date,
     default: Date.now
