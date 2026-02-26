@@ -40,6 +40,45 @@ const userSchema = new mongoose.Schema({
     min: 1,
     max: 5
   },
+  phone: {
+    type: String,
+    trim: true
+  },
+  bio: {
+    type: String,
+    trim: true,
+    maxlength: 500
+  },
+  location: {
+    type: String,
+    trim: true,
+    maxlength: 120,
+    default: ""
+  },
+  website: {
+    type: String,
+    trim: true,
+    maxlength: 300,
+    default: ""
+  },
+  github: {
+    type: String,
+    trim: true,
+    maxlength: 200,
+    default: ""
+  },
+  twitter: {
+    type: String,
+    trim: true,
+    maxlength: 200,
+    default: ""
+  },
+  linkedin: {
+    type: String,
+    trim: true,
+    maxlength: 250,
+    default: ""
+  },
   profilePicture: {
     type: String,
     default: ""
@@ -88,17 +127,13 @@ const userSchema = new mongoose.Schema({
 });
 
 // Hash password before saving
-userSchema.pre("save", async function(next) {
-  // Only hash if password is modified
-  if (!this.isModified("password")) return next();
-  
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (error) {
-    next(error);
+userSchema.pre("save", async function() {
+  if (!this.isModified("password")) {
+    return;
   }
+
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
 });
 
 // Method to compare password

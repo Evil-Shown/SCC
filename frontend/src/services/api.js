@@ -37,23 +37,36 @@ api.interceptors.response.use(
       try {
         const refreshToken = localStorage.getItem("refreshToken");
         if (refreshToken) {
+          // Use direct axios call to avoid interceptor loop
           const response = await axios.post(`${API_URL}/api/auth/refresh`, {
             refreshToken
           });
 
-          const { accessToken } = response.data.data;
-          localStorage.setItem("accessToken", accessToken);
+          // Backend returns { success, message, data: { accessToken } }
+          if (response.data.success && response.data.data?.accessToken) {
+            const { accessToken } = response.data.data;
+            localStorage.setItem("accessToken", accessToken);
 
-          // Retry original request with new token
-          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-          return api(originalRequest);
+            // Retry original request with new token
+            originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+            return api(originalRequest);
+          } else {
+            throw new Error("Invalid refresh token response");
+          }
         }
       } catch (refreshError) {
         // Refresh token failed, logout user
+        console.error("Token refresh failed:", refreshError);
         localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken");
         localStorage.removeItem("user");
-        window.location.href = "/login";
+        
+        // Only redirect if not already on auth page
+        if (!window.location.pathname.includes('/login') && 
+            !window.location.pathname.includes('/register')) {
+          window.location.href = "/login";
+        }
+        
         return Promise.reject(refreshError);
       }
     }

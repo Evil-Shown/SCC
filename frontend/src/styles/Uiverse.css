@@ -1,0 +1,1476 @@
+/* ═══════════════════════════════════════════════════════════
+   UIVERSE-INSPIRED ELEMENTS
+   Premium animated UI components for a cooler experience
+   ═══════════════════════════════════════════════════════════ */
+
+/* ===========================
+   GLOBAL ICON SIZE ENHANCEMENT
+   Makes all lucide-react SVG icons slightly bigger
+   =========================== */
+
+.lucide,
+svg.lucide,
+[data-lucide] {
+  width: 1.08em;
+  height: 1.08em;
+}
+
+/* Bigger bump for nav / header icons */
+.db-nav__link svg,
+.db-nav__right svg,
+.notification-bell-wrapper svg,
+.uiverse-bell-btn svg,
+.db-brand__mark svg {
+  width: 1.12em;
+  height: 1.12em;
+}
+
+/* Even bigger for hero/stat/card featured icons */
+.db-card-p__icon svg,
+.db-card-row__icon svg,
+.db-stat__icon svg,
+.profile-stat-icon svg,
+.feat-icon svg {
+  width: 1.16em;
+  height: 1.16em;
+}
+
+/* Badge icons stay smaller but still bumped */
+.db-badge svg,
+.db-chip svg {
+  width: 1.04em;
+  height: 1.04em;
+}
+
+/* ===========================
+   1. ANIMATED GRADIENT BORDER CARDS
+   Cards with rotating gradient borders
+   =========================== */
+
+.uiverse-card {
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.uiverse-card::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 22px;
+  background: conic-gradient(
+    from var(--card-angle, 0deg),
+    transparent 0%,
+    var(--accent-green, #10b981) 10%,
+    var(--accent-cyan, #2dd4bf) 20%,
+    transparent 30%,
+    transparent 100%
+  );
+  animation: uiverse-card-rotate 4s linear infinite;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  z-index: -1;
+}
+
+.uiverse-card:hover::before {
+  opacity: 1;
+}
+
+.uiverse-card::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border-radius: 18px;
+  background: inherit;
+  z-index: -1;
+}
+
+@property --card-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes uiverse-card-rotate {
+  to {
+    --card-angle: 360deg;
+  }
+}
+
+/* Fallback for browsers that don't support @property */
+@supports not (background: conic-gradient(from 0deg, red, blue)) {
+  .uiverse-card::before {
+    background: linear-gradient(135deg, var(--accent-green, #10b981), var(--accent-cyan, #2dd4bf));
+    animation: uiverse-border-pulse 2s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes uiverse-border-pulse {
+  from { opacity: 0.3; }
+  to { opacity: 0.7; }
+}
+
+/* ===========================
+   2. NEON GLOW BUTTONS
+   Cyberpunk-style buttons with glow
+   =========================== */
+
+.btn-uiverse {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 28px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: #fff;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  letter-spacing: 0.02em;
+}
+
+.btn-uiverse::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.25),
+    transparent
+  );
+  transition: left 0.5s ease;
+}
+
+.btn-uiverse:hover::before {
+  left: 100%;
+}
+
+.btn-uiverse:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.5),
+              0 0 40px rgba(16, 185, 129, 0.2),
+              0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.btn-uiverse:active {
+  transform: translateY(-1px);
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.4),
+              0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+/* Neon outline button variant */
+.btn-uiverse-outline {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 28px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: #10b981;
+  background: transparent;
+  border: 2px solid #10b981;
+  border-radius: 12px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  letter-spacing: 0.02em;
+}
+
+.btn-uiverse-outline::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(45, 212, 191, 0.1));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.btn-uiverse-outline:hover {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(135deg, #10b981, #059669);
+  transform: translateY(-3px);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.5),
+              0 0 40px rgba(16, 185, 129, 0.2),
+              0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.btn-uiverse-outline:hover::before {
+  opacity: 1;
+}
+
+/* Cyberpunk button with animated border */
+.btn-cyber {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 32px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-family: inherit;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  cursor: pointer;
+  text-decoration: none;
+  clip-path: polygon(
+    0 0, calc(100% - 14px) 0, 100% 14px,
+    100% 100%, 14px 100%, 0 calc(100% - 14px)
+  );
+  transition: all 0.3s ease;
+}
+
+.btn-cyber::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  right: 2px;
+  bottom: 2px;
+  background: rgba(10, 12, 20, 0.9);
+  clip-path: polygon(
+    0 0, calc(100% - 12px) 0, 100% 12px,
+    100% 100%, 12px 100%, 0 calc(100% - 12px)
+  );
+  z-index: -1;
+  transition: background 0.3s ease;
+}
+
+.btn-cyber:hover {
+  color: #fff;
+  background: rgba(16, 185, 129, 0.3);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.4),
+              inset 0 0 20px rgba(16, 185, 129, 0.1);
+  text-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+}
+
+.btn-cyber:hover::before {
+  background: rgba(16, 185, 129, 0.15);
+}
+
+/* Glitch button */
+.btn-glitch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 32px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-family: inherit;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #fff;
+  background: linear-gradient(135deg, #10b981 0%, #059669 50%, #10b981 100%);
+  background-size: 200% 200%;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  text-decoration: none;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.btn-glitch:hover {
+  animation: uiverse-glitch-bg 0.5s ease;
+  box-shadow: 0 0 30px rgba(16, 185, 129, 0.6),
+              0 0 60px rgba(16, 185, 129, 0.2);
+  transform: translateY(-2px);
+}
+
+.btn-glitch::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  opacity: 0;
+}
+
+.btn-glitch:hover::after {
+  animation: uiverse-glitch-text 0.4s ease;
+}
+
+@keyframes uiverse-glitch-bg {
+  0% { background-position: 0% 50%; }
+  25% { background-position: 100% 50%; transform: translateX(2px) translateY(-2px); }
+  50% { background-position: 0% 50%; transform: translateX(-2px) translateY(2px); }
+  75% { background-position: 100% 50%; transform: translateX(1px) translateY(-1px); }
+  100% { background-position: 0% 50%; transform: translateX(0) translateY(-2px); }
+}
+
+@keyframes uiverse-glitch-text {
+  0% { opacity: 0; transform: translateX(0); }
+  20% { opacity: 0.5; transform: translateX(-3px); clip-path: inset(20% 0 60% 0); }
+  40% { opacity: 0.5; transform: translateX(3px); clip-path: inset(60% 0 10% 0); }
+  60% { opacity: 0.5; transform: translateX(-2px); clip-path: inset(40% 0 30% 0); }
+  80% { opacity: 0; transform: translateX(2px); clip-path: inset(10% 0 70% 0); }
+  100% { opacity: 0; transform: translateX(0); }
+}
+
+/* ===========================
+   3. ORBITAL LOADING SPINNER
+   =========================== */
+
+.uiverse-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 40px;
+}
+
+.uiverse-spinner {
+  position: relative;
+  width: 56px;
+  height: 56px;
+}
+
+.uiverse-spinner.spinner-sm {
+  width: 28px;
+  height: 28px;
+}
+
+.uiverse-spinner.spinner-lg {
+  width: 80px;
+  height: 80px;
+}
+
+.uiverse-spinner .orbit {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid transparent;
+}
+
+.uiverse-spinner .orbit:nth-child(1) {
+  border-top-color: #10b981;
+  animation: uiverse-orbit-spin 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+}
+
+.uiverse-spinner .orbit:nth-child(2) {
+  inset: 6px;
+  border-right-color: #2dd4bf;
+  animation: uiverse-orbit-spin 1.6s cubic-bezier(0.5, 0, 0.5, 1) infinite reverse;
+}
+
+.uiverse-spinner .orbit:nth-child(3) {
+  inset: 12px;
+  border-bottom-color: #a78bfa;
+  animation: uiverse-orbit-spin 2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+}
+
+.uiverse-spinner.spinner-sm .orbit:nth-child(2) { inset: 3px; }
+.uiverse-spinner.spinner-sm .orbit:nth-child(3) { inset: 6px; }
+.uiverse-spinner.spinner-lg .orbit:nth-child(2) { inset: 8px; }
+.uiverse-spinner.spinner-lg .orbit:nth-child(3) { inset: 16px; }
+
+/* Dot at the center */
+.uiverse-spinner::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  background: #10b981;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.7),
+              0 0 20px rgba(16, 185, 129, 0.3);
+  animation: uiverse-core-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes uiverse-orbit-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes uiverse-core-pulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  50% { transform: translate(-50%, -50%) scale(1.5); opacity: 0.6; }
+}
+
+.uiverse-loader-text {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-muted, #94a3b8);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  animation: uiverse-text-fade 2s ease-in-out infinite;
+}
+
+@keyframes uiverse-text-fade {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* ===========================
+   4. ANIMATED THEME TOGGLE (DAY/NIGHT)
+   =========================== */
+
+.uiverse-toggle {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 1200;
+  width: 70px;
+  height: 34px;
+  border-radius: 200px;
+  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  padding: 0;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.uiverse-toggle[data-theme="light"] {
+  background: linear-gradient(180deg, #60a5fa 0%, #38bdf8 100%);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+/* Stars (dark mode) */
+.toggle-stars {
+  position: absolute;
+  inset: 0;
+  transition: opacity 0.5s ease;
+}
+
+.uiverse-toggle[data-theme="light"] .toggle-stars {
+  opacity: 0;
+}
+
+.toggle-star {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: #fff;
+  border-radius: 50%;
+  animation: uiverse-twinkle 3s ease-in-out infinite;
+}
+
+.toggle-star:nth-child(1) { top: 6px; left: 42px; animation-delay: 0s; }
+.toggle-star:nth-child(2) { top: 14px; left: 50px; animation-delay: 0.5s; }
+.toggle-star:nth-child(3) { top: 22px; left: 46px; animation-delay: 1s; }
+.toggle-star:nth-child(4) { top: 8px; left: 56px; animation-delay: 1.5s; }
+.toggle-star:nth-child(5) { top: 18px; left: 38px; animation-delay: 0.8s; }
+
+@keyframes uiverse-twinkle {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.5); }
+}
+
+/* Clouds (light mode) */
+.toggle-clouds {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.uiverse-toggle[data-theme="light"] .toggle-clouds {
+  opacity: 1;
+}
+
+.toggle-cloud {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 100px;
+  animation: uiverse-cloud-drift 6s ease-in-out infinite;
+}
+
+.toggle-cloud:nth-child(1) {
+  width: 14px; height: 5px;
+  top: 8px; left: 8px;
+  animation-delay: 0s;
+}
+.toggle-cloud:nth-child(2) {
+  width: 10px; height: 4px;
+  top: 20px; left: 14px;
+  animation-delay: 2s;
+}
+.toggle-cloud:nth-child(3) {
+  width: 12px; height: 4px;
+  top: 14px; left: 4px;
+  animation-delay: 4s;
+}
+
+@keyframes uiverse-cloud-drift {
+  0%, 100% { transform: translateX(0); opacity: 0.6; }
+  50% { transform: translateX(4px); opacity: 0.9; }
+}
+
+/* The celestial body (sun/moon) */
+.toggle-celestial {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  top: 2px;
+  left: 2px;
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.4),
+              inset -3px -3px 6px rgba(0, 0, 0, 0.1);
+  transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.uiverse-toggle[data-theme="light"] .toggle-celestial {
+  left: calc(100% - 28px);
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.6),
+              0 0 24px rgba(251, 191, 36, 0.3);
+}
+
+/* Moon craters */
+.moon-crater {
+  position: absolute;
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 50%;
+  transition: opacity 0.5s ease;
+}
+
+.moon-crater:nth-child(1) { width: 5px; height: 5px; top: 6px; left: 7px; }
+.moon-crater:nth-child(2) { width: 3px; height: 3px; top: 14px; left: 12px; }
+.moon-crater:nth-child(3) { width: 4px; height: 4px; top: 10px; left: 4px; }
+
+.uiverse-toggle[data-theme="light"] .moon-crater {
+  opacity: 0;
+}
+
+/* Sun rays */
+.sun-rays {
+  position: absolute;
+  inset: -4px;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.uiverse-toggle[data-theme="light"] .sun-rays {
+  opacity: 1;
+  animation: uiverse-sun-rotate 10s linear infinite;
+}
+
+@keyframes uiverse-sun-rotate {
+  to { transform: rotate(360deg); }
+}
+
+.sun-ray {
+  position: absolute;
+  width: 2px;
+  height: 6px;
+  background: #fbbf24;
+  border-radius: 2px;
+  top: 50%;
+  left: 50%;
+}
+
+.sun-ray:nth-child(1) { transform: translate(-50%, -50%) rotate(0deg) translateY(-16px); }
+.sun-ray:nth-child(2) { transform: translate(-50%, -50%) rotate(45deg) translateY(-16px); }
+.sun-ray:nth-child(3) { transform: translate(-50%, -50%) rotate(90deg) translateY(-16px); }
+.sun-ray:nth-child(4) { transform: translate(-50%, -50%) rotate(135deg) translateY(-16px); }
+.sun-ray:nth-child(5) { transform: translate(-50%, -50%) rotate(180deg) translateY(-16px); }
+.sun-ray:nth-child(6) { transform: translate(-50%, -50%) rotate(225deg) translateY(-16px); }
+.sun-ray:nth-child(7) { transform: translate(-50%, -50%) rotate(270deg) translateY(-16px); }
+.sun-ray:nth-child(8) { transform: translate(-50%, -50%) rotate(315deg) translateY(-16px); }
+
+/* ===========================
+   5. ANIMATED NOTIFICATION BELL
+   =========================== */
+
+.uiverse-bell-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: var(--text-secondary, #e2e8f0);
+}
+
+.uiverse-bell-btn:hover {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #10b981;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.uiverse-bell-btn:hover svg {
+  animation: uiverse-bell-ring 0.6s ease;
+}
+
+@keyframes uiverse-bell-ring {
+  0% { transform: rotate(0); }
+  15% { transform: rotate(14deg); }
+  30% { transform: rotate(-12deg); }
+  45% { transform: rotate(10deg); }
+  60% { transform: rotate(-8deg); }
+  75% { transform: rotate(4deg); }
+  100% { transform: rotate(0); }
+}
+
+/* Animated badge with pulse */
+.uiverse-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  border-radius: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  border: 2px solid var(--bg-dark, #0a0c14);
+  animation: uiverse-badge-pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.uiverse-badge::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 100px;
+  border: 2px solid rgba(239, 68, 68, 0.4);
+  animation: uiverse-badge-pulse 2s ease-in-out infinite;
+}
+
+@keyframes uiverse-badge-pop {
+  0% { transform: scale(0); }
+  60% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+@keyframes uiverse-badge-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 0; }
+}
+
+/* ===========================
+   6. ANIMATED EMPTY STATE
+   =========================== */
+
+.uiverse-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 30px;
+  text-align: center;
+  animation: uiverse-fade-up 0.6s ease-out;
+}
+
+.uiverse-empty-icon-wrap {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+/* Floating rings around icon */
+.uiverse-empty-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid rgba(16, 185, 129, 0.15);
+}
+
+.uiverse-empty-ring:nth-child(1) {
+  inset: 0;
+  animation: uiverse-ring-float 3s ease-in-out infinite;
+}
+
+.uiverse-empty-ring:nth-child(2) {
+  inset: -10px;
+  border-color: rgba(45, 212, 191, 0.1);
+  animation: uiverse-ring-float 3s ease-in-out infinite 0.5s;
+}
+
+.uiverse-empty-ring:nth-child(3) {
+  inset: -20px;
+  border-color: rgba(167, 139, 250, 0.08);
+  animation: uiverse-ring-float 3s ease-in-out infinite 1s;
+}
+
+@keyframes uiverse-ring-float {
+  0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.5; }
+  50% { transform: scale(1.05) rotate(5deg); opacity: 1; }
+}
+
+.uiverse-empty-emoji {
+  font-size: 3rem;
+  animation: uiverse-icon-bob 2.5s ease-in-out infinite;
+  filter: drop-shadow(0 4px 12px rgba(16, 185, 129, 0.2));
+}
+
+@keyframes uiverse-icon-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.uiverse-empty-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text-primary, #ffffff);
+  margin-bottom: 8px;
+}
+
+.uiverse-empty-desc {
+  font-size: 0.95rem;
+  color: var(--text-muted, #94a3b8);
+  max-width: 380px;
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+
+/* Floating particles around empty state */
+.uiverse-empty-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.uiverse-particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.4);
+}
+
+.uiverse-particle:nth-child(1) {
+  top: 10%; left: 15%;
+  animation: uiverse-particle-float 4s ease-in-out infinite;
+}
+.uiverse-particle:nth-child(2) {
+  top: 70%; left: 80%;
+  animation: uiverse-particle-float 4s ease-in-out infinite 1s;
+  background: rgba(45, 212, 191, 0.4);
+}
+.uiverse-particle:nth-child(3) {
+  top: 30%; left: 85%;
+  animation: uiverse-particle-float 4s ease-in-out infinite 2s;
+  background: rgba(167, 139, 250, 0.4);
+}
+.uiverse-particle:nth-child(4) {
+  top: 80%; left: 20%;
+  animation: uiverse-particle-float 4s ease-in-out infinite 3s;
+}
+
+@keyframes uiverse-particle-float {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.3; }
+  25% { transform: translate(10px, -15px) scale(1.5); opacity: 0.8; }
+  50% { transform: translate(-5px, -25px) scale(1); opacity: 0.5; }
+  75% { transform: translate(15px, -10px) scale(1.3); opacity: 0.7; }
+}
+
+@keyframes uiverse-fade-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===========================
+   7. GLOWING FORM INPUTS
+   =========================== */
+
+.uiverse-input-wrap {
+  position: relative;
+  margin-bottom: 20px;
+}
+
+.uiverse-input {
+  width: 100%;
+  padding: 14px 16px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  color: var(--text-primary, #fff);
+  background: rgba(255, 255, 255, 0.03);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.uiverse-input:focus {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.03);
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1),
+              0 0 20px rgba(16, 185, 129, 0.05);
+}
+
+.uiverse-input-label {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.95rem;
+  color: var(--text-muted, #94a3b8);
+  pointer-events: none;
+  transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+  background: transparent;
+  padding: 0 4px;
+}
+
+.uiverse-input:focus ~ .uiverse-input-label,
+.uiverse-input:not(:placeholder-shown) ~ .uiverse-input-label {
+  top: -1px;
+  transform: translateY(-50%) scale(0.85);
+  color: #10b981;
+  background: var(--bg-surface, #121624);
+}
+
+/* Animated underline variant */
+.uiverse-input-line {
+  width: 100%;
+  padding: 12px 4px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  color: var(--text-primary, #fff);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.15);
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.uiverse-input-line:focus {
+  border-bottom-color: #10b981;
+}
+
+.uiverse-input-underline {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #10b981, #2dd4bf);
+  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  transform: translateX(-50%);
+}
+
+.uiverse-input-line:focus ~ .uiverse-input-underline {
+  width: 100%;
+}
+
+/* ===========================
+   8. ANIMATED TOOLTIP
+   =========================== */
+
+.uiverse-tooltip {
+  position: relative;
+  display: inline-flex;
+}
+
+.uiverse-tooltip::before {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%) translateY(5px);
+  padding: 8px 14px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #fff;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(5, 150, 105, 0.95));
+  border-radius: 10px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
+  z-index: 1000;
+}
+
+.uiverse-tooltip::after {
+  content: "";
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%) translateY(5px);
+  border: 5px solid transparent;
+  border-top-color: rgba(16, 185, 129, 0.95);
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  z-index: 1000;
+}
+
+.uiverse-tooltip:hover::before,
+.uiverse-tooltip:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ===========================
+   9. NEON SEPARATOR / DIVIDER
+   =========================== */
+
+.uiverse-divider {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(16, 185, 129, 0.3) 20%,
+    rgba(16, 185, 129, 0.6) 50%,
+    rgba(16, 185, 129, 0.3) 80%,
+    transparent 100%
+  );
+  margin: 32px 0;
+  position: relative;
+}
+
+.uiverse-divider::after {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: 0;
+  width: 30%;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #10b981, transparent);
+  border-radius: 10px;
+  animation: uiverse-divider-scan 3s ease-in-out infinite;
+}
+
+@keyframes uiverse-divider-scan {
+  0% { left: -30%; }
+  100% { left: 100%; }
+}
+
+/* ===========================
+   10. GLOWING STATUS BADGES
+   =========================== */
+
+.uiverse-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: 100px;
+  border: 1px solid;
+}
+
+.uiverse-status-online {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.uiverse-status-online::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+  animation: uiverse-status-glow 2s ease-in-out infinite;
+}
+
+.uiverse-status-busy {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.uiverse-status-busy::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #f59e0b;
+  box-shadow: 0 0 8px #f59e0b;
+  animation: uiverse-status-glow 2s ease-in-out infinite;
+}
+
+.uiverse-status-offline {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.uiverse-status-offline::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ef4444;
+}
+
+@keyframes uiverse-status-glow {
+  0%, 100% { box-shadow: 0 0 4px currentColor; }
+  50% { box-shadow: 0 0 12px currentColor, 0 0 20px currentColor; }
+}
+
+/* ===========================
+   11. ANIMATED TABS
+   =========================== */
+
+.uiverse-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  position: relative;
+}
+
+.uiverse-tab {
+  position: relative;
+  padding: 10px 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--text-muted, #94a3b8);
+  background: transparent;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 1;
+}
+
+.uiverse-tab:hover:not(.active) {
+  color: var(--text-secondary, #e2e8f0);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.uiverse-tab.active {
+  color: #fff;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(45, 212, 191, 0.15));
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.15),
+              inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* ===========================
+   12. SCROLL INDICATOR
+   =========================== */
+
+.uiverse-scroll-indicator {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 0%;
+  height: 3px;
+  background: linear-gradient(90deg, #10b981, #2dd4bf, #a78bfa);
+  z-index: 9999;
+  transition: width 0.1s linear;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+}
+
+/* ===========================
+   13. CARD SHINE EFFECT
+   Applied to .feat-card, dashboard cards etc
+   =========================== */
+
+.card-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.card-shine::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    to bottom right,
+    transparent 40%,
+    rgba(16, 185, 129, 0.03) 45%,
+    rgba(16, 185, 129, 0.08) 50%,
+    rgba(16, 185, 129, 0.03) 55%,
+    transparent 60%
+  );
+  transform: rotate(45deg) translateY(100%);
+  transition: transform 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.card-shine:hover::before {
+  transform: rotate(45deg) translateY(-100%);
+}
+
+/* ===========================
+   14. TYPING INDICATOR (for chat)
+   =========================== */
+
+.uiverse-typing {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 20px;
+}
+
+.uiverse-typing-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  animation: uiverse-typing-bounce 1.4s ease-in-out infinite;
+}
+
+.uiverse-typing-dot:nth-child(1) { animation-delay: 0s; }
+.uiverse-typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.uiverse-typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes uiverse-typing-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-8px); opacity: 1; }
+}
+
+/* ===========================
+   15. GLASSMORPHISM CARD
+   =========================== */
+
+.uiverse-glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2),
+              inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* ===========================
+   16. HOVER GLOW EFFECT (apply to any element)
+   =========================== */
+
+.hover-glow {
+  transition: all 0.3s ease;
+}
+
+.hover-glow:hover {
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.25),
+              0 0 40px rgba(16, 185, 129, 0.1);
+}
+
+/* ===========================
+   17. ANIMATED PROGRESS BAR
+   =========================== */
+
+.uiverse-progress {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 100px;
+  overflow: hidden;
+  position: relative;
+}
+
+.uiverse-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #2dd4bf);
+  border-radius: 100px;
+  position: relative;
+  transition: width 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.uiverse-progress-bar::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 30px;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3));
+  animation: uiverse-progress-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes uiverse-progress-shimmer {
+  0% { opacity: 0; }
+  50% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ===========================
+   18. ANIMATED CHECKBOX / TOGGLE SWITCH
+   =========================== */
+
+.uiverse-switch {
+  position: relative;
+  width: 48px;
+  height: 26px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 100px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+}
+
+.uiverse-switch.active {
+  background: linear-gradient(135deg, #10b981, #059669);
+  border-color: transparent;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+}
+
+.uiverse-switch-knob {
+  width: 20px;
+  height: 20px;
+  background: #fff;
+  border-radius: 50%;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.uiverse-switch.active .uiverse-switch-knob {
+  transform: translateX(22px);
+}
+
+/* ===========================
+   19. NEON TEXT EFFECTS
+   =========================== */
+
+.neon-text {
+  text-shadow: 0 0 7px rgba(16, 185, 129, 0.7),
+               0 0 10px rgba(16, 185, 129, 0.5),
+               0 0 21px rgba(16, 185, 129, 0.3),
+               0 0 42px rgba(16, 185, 129, 0.2);
+}
+
+.neon-text-cyan {
+  text-shadow: 0 0 7px rgba(45, 212, 191, 0.7),
+               0 0 10px rgba(45, 212, 191, 0.5),
+               0 0 21px rgba(45, 212, 191, 0.3);
+}
+
+.neon-text-purple {
+  text-shadow: 0 0 7px rgba(167, 139, 250, 0.7),
+               0 0 10px rgba(167, 139, 250, 0.5),
+               0 0 21px rgba(167, 139, 250, 0.3);
+}
+
+/* Glitch text effect */
+.glitch-text {
+  position: relative;
+  display: inline-block;
+}
+
+.glitch-text::before,
+.glitch-text::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.glitch-text::before {
+  color: #2dd4bf;
+  animation: uiverse-glitch-1 2s infinite linear alternate-reverse;
+  clip-path: polygon(0 0, 100% 0, 100% 45%, 0 45%);
+  transform: translateX(-2px);
+}
+
+.glitch-text::after {
+  color: #a78bfa;
+  animation: uiverse-glitch-2 2s infinite linear alternate-reverse;
+  clip-path: polygon(0 55%, 100% 55%, 100% 100%, 0 100%);
+  transform: translateX(2px);
+}
+
+@keyframes uiverse-glitch-1 {
+  0% { clip-path: polygon(0 0, 100% 0, 100% 45%, 0 45%); transform: translateX(-2px); }
+  20% { clip-path: polygon(0 15%, 100% 15%, 100% 60%, 0 60%); transform: translateX(2px); }
+  40% { clip-path: polygon(0 5%, 100% 5%, 100% 40%, 0 40%); transform: translateX(-1px); }
+  60% { clip-path: polygon(0 30%, 100% 30%, 100% 75%, 0 75%); transform: translateX(1px); }
+  80% { clip-path: polygon(0 10%, 100% 10%, 100% 55%, 0 55%); transform: translateX(-2px); }
+  100% { clip-path: polygon(0 0, 100% 0, 100% 45%, 0 45%); transform: translateX(2px); }
+}
+
+@keyframes uiverse-glitch-2 {
+  0% { clip-path: polygon(0 55%, 100% 55%, 100% 100%, 0 100%); transform: translateX(2px); }
+  20% { clip-path: polygon(0 40%, 100% 40%, 100% 85%, 0 85%); transform: translateX(-2px); }
+  40% { clip-path: polygon(0 60%, 100% 60%, 100% 95%, 0 95%); transform: translateX(1px); }
+  60% { clip-path: polygon(0 25%, 100% 25%, 100% 70%, 0 70%); transform: translateX(-1px); }
+  80% { clip-path: polygon(0 45%, 100% 45%, 100% 90%, 0 90%); transform: translateX(2px); }
+  100% { clip-path: polygon(0 55%, 100% 55%, 100% 100%, 0 100%); transform: translateX(-2px); }
+}
+
+/* ===========================
+   20. LIGHT MODE OVERRIDES
+   =========================== */
+
+html[data-theme="light"] .uiverse-toggle {
+  background: linear-gradient(180deg, #60a5fa 0%, #38bdf8 100%);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+html[data-theme="light"] .uiverse-bell-btn {
+  background: rgba(15, 23, 42, 0.05);
+  border-color: rgba(15, 23, 42, 0.12);
+  color: #475569;
+}
+
+html[data-theme="light"] .uiverse-bell-btn:hover {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.25);
+  color: #059669;
+}
+
+html[data-theme="light"] .uiverse-badge {
+  border-color: #fff;
+}
+
+html[data-theme="light"] .uiverse-input {
+  color: #0f172a;
+  background: rgba(15, 23, 42, 0.03);
+  border-color: rgba(15, 23, 42, 0.15);
+}
+
+html[data-theme="light"] .uiverse-input:focus {
+  background: rgba(16, 185, 129, 0.02);
+}
+
+html[data-theme="light"] .uiverse-input:focus ~ .uiverse-input-label,
+html[data-theme="light"] .uiverse-input:not(:placeholder-shown) ~ .uiverse-input-label {
+  background: #fff;
+}
+
+html[data-theme="light"] .uiverse-glass {
+  background: rgba(255, 255, 255, 0.7);
+  border-color: rgba(15, 23, 42, 0.1);
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.08),
+              inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+html[data-theme="light"] .uiverse-tabs {
+  background: rgba(15, 23, 42, 0.03);
+  border-color: rgba(15, 23, 42, 0.08);
+}
+
+html[data-theme="light"] .uiverse-tab.active {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(45, 212, 191, 0.1));
+  color: #059669;
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+html[data-theme="light"] .uiverse-empty-title {
+  color: #0f172a;
+}
+
+html[data-theme="light"] .uiverse-empty-desc {
+  color: #64748b;
+}
+
+html[data-theme="light"] .uiverse-divider {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(16, 185, 129, 0.2) 20%,
+    rgba(16, 185, 129, 0.4) 50%,
+    rgba(16, 185, 129, 0.2) 80%,
+    transparent 100%
+  );
+}
+
+html[data-theme="light"] .uiverse-status-online {
+  background: rgba(16, 185, 129, 0.08);
+}
+html[data-theme="light"] .uiverse-status-busy {
+  background: rgba(245, 158, 11, 0.08);
+}
+html[data-theme="light"] .uiverse-status-offline {
+  background: rgba(239, 68, 68, 0.08);
+}
+
+html[data-theme="light"] .neon-text {
+  text-shadow: none;
+  color: #059669;
+}
+html[data-theme="light"] .neon-text-cyan {
+  text-shadow: none;
+  color: #0891b2;
+}
+html[data-theme="light"] .neon-text-purple {
+  text-shadow: none;
+  color: #7c3aed;
+}
+
+html[data-theme="light"] .uiverse-loader-text {
+  color: #64748b;
+}
+
+html[data-theme="light"] .uiverse-progress {
+  background: rgba(15, 23, 42, 0.06);
+}
+
+html[data-theme="light"] .uiverse-switch {
+  background: rgba(15, 23, 42, 0.1);
+  border-color: rgba(15, 23, 42, 0.15);
+}
+
+html[data-theme="light"] .uiverse-typing {
+  background: rgba(15, 23, 42, 0.05);
+}
+
+html[data-theme="light"] .btn-cyber {
+  background: rgba(16, 185, 129, 0.05);
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+html[data-theme="light"] .btn-cyber::before {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+html[data-theme="light"] .btn-cyber:hover {
+  background: rgba(16, 185, 129, 0.15);
+}
