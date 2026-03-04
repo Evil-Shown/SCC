@@ -7,9 +7,9 @@
 
 /* ── Design Tokens ─────────────────────────────────── */
 :root {
-  --abyss:        #010810;
-  --abyss-mid:    #020f1c;
-  --abyss-lift:   #041828;
+  --abyss:        #08121f;
+  --abyss-mid:    #0c1a28;
+  --abyss-lift:   #112234;
   --bio:          #2a9d8f;
   --bio-dim:      rgba(42,157,143,.1);
   --bio-glow:     rgba(42,157,143,.16);
@@ -20,9 +20,9 @@
   --aqua:         #7dd3fc;
   --aqua-dim:     rgba(125,211,252,.08);
   --deep-blue:    #0033aa;
-  --surface-1:    rgba(15,23,42,.64);
-  --surface-2:    rgba(30,41,59,.72);
-  --surface-3:    rgba(51,65,85,.78);
+  --surface-1:    rgba(22,35,62,.64);
+  --surface-2:    rgba(38,54,80,.72);
+  --surface-3:    rgba(58,75,100,.78);
   --border:       rgba(148,163,184,.2);
   --border-lit:   rgba(148,163,184,.36);
   --border-hot:   rgba(148,163,184,.5);
@@ -54,6 +54,23 @@
 .db-root a { color: inherit; text-decoration: none; }
 
 /* ── Canvas & Overlays ─────────────────────────────── */
+/* Lightweight CSS gradient background — replaces heavy WebGL */
+.db-bg-gradient {
+  position: fixed; inset: 0;
+  z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 60% 50% at 20% 30%, rgba(42,157,143,.08) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 40% at 80% 70%, rgba(59,130,246,.06) 0%, transparent 70%),
+    linear-gradient(180deg, #08121f 0%, #0c1a28 50%, #112234 100%);
+}
+
+html[data-theme="light"] .db-bg-gradient {
+  background:
+    radial-gradient(ellipse 60% 50% at 20% 30%, rgba(42,157,143,.04) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 40% at 80% 70%, rgba(59,130,246,.03) 0%, transparent 70%),
+    linear-gradient(180deg, #f0f4f8 0%, #e8ecf2 50%, #dfe6ee 100%);
+}
+
 .db-canvas-wrap {
   position: fixed; inset: 0;
   z-index: 0; pointer-events: none;
@@ -63,7 +80,7 @@
 .db-overlay-vignette {
   position: fixed; inset: 0; z-index: 1; pointer-events: none;
   background: radial-gradient(ellipse 85% 85% at 50% 50%,
-    transparent 20%, rgba(1,8,16,.8) 100%);
+    transparent 20%, rgba(8,18,31,.5) 100%);
 }
 
 /* Scanlines — hidden for clean look */

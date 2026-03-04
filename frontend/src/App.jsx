@@ -16,6 +16,9 @@ import Notes from "./pages/Notes";
 import NoteDetail from "./pages/NoteDetail";
 import Kuppi from "./pages/Kuppi";
 import Notifications from "./pages/Notifications";
+import CommunityPage from "./pages/CommunityPage";
+import ResourcesPage from "./pages/ResourcesPage";
+import TutorsPage from "./pages/TutorsPage";
 
 // Components
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -123,6 +126,9 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              <Route path="/community" element={<CommunityPage />} />
+              <Route path="/resources" element={<ResourcesPage />} />
+              <Route path="/tutors" element={<TutorsPage />} />
             </Routes>
           </div>
         </Router>

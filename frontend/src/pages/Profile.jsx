@@ -1,16 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { logout, fetchUserProfile, updateUserProfile } from "../features/auth/authSlice";
 import {
-  Brain, BookMarked, Users, Calendar, GraduationCap, LogOut,
+  BookMarked, Users, Calendar, GraduationCap, LogOut,
   Settings, User as UserIcon, Home as HomeIcon, Video, Activity,
   Shield, LayoutDashboard, Mail, MapPin, Github, Twitter, Linkedin,
   Edit3, Clock, Globe, Trash2, CheckCircle2, Archive, Sparkles, X,
-  ChevronRight, Dot,
+  ChevronRight,
 } from "lucide-react";
 import NotificationBell from "../components/NotificationBell";
-import { useProfileAuroraBackground } from "../hooks/useProfileAuroraBackground";
 import "../styles/Dashboard.css";
 import "../styles/Notifications.css";
 import "../styles/Profile.css";
@@ -21,19 +20,7 @@ const TABS = ["overview", "activity", "settings"];
 
 /* ── Animated number counter ─────────────────────────────────────────── */
 const Counter = ({ value }) => {
-  const [display, setDisplay] = useState(0);
-  useEffect(() => {
-    if (value === 0) return;
-    let current = 0;
-    const step = Math.max(1, Math.floor(value / 30));
-    const timer = setInterval(() => {
-      current = Math.min(current + step, value);
-      setDisplay(current);
-      if (current >= value) clearInterval(timer);
-    }, 30);
-    return () => clearInterval(timer);
-  }, [value]);
-  return <span>{display}</span>;
+  return <span>{value}</span>;
 };
 
 const Profile = () => {
@@ -41,10 +28,6 @@ const Profile = () => {
   const dispatch   = useDispatch();
   const navigate   = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-
-  const canvasWrapRef = useRef(null);
-  const [canvasReady, setCanvasReady] = useState(false);
-  useProfileAuroraBackground(canvasWrapRef, canvasReady);
 
   const [activeTab, setActiveTab]         = useState("overview");
   const [isEditOpen, setIsEditOpen]       = useState(false);
@@ -156,8 +139,6 @@ const Profile = () => {
 
   const fmtUrl = (v) => (!v ? "" : v.startsWith("http") ? v : `https://${v}`);
 
-  const setCanvasRef = (node) => { canvasWrapRef.current = node; setCanvasReady(Boolean(node)); };
-
   if (!user || isLoading) {
     return (
       <div className="pr-root">
@@ -171,8 +152,8 @@ const Profile = () => {
 
   return (
     <div className="pr-root">
-      {/* Canvas background */}
-      <div className="pr-canvas" ref={setCanvasRef} />
+      {/* Lightweight CSS background */}
+      <div className="pr-canvas" />
 
       {/* ── SIDEBAR ────────────────────────────────────────────────────── */}
       <nav className="pr-nav">
@@ -225,7 +206,6 @@ const Profile = () => {
               {user.profilePicture
                 ? <img src={user.profilePicture} alt={user.name} />
                 : <span>{user.name?.charAt(0).toUpperCase()}</span>}
-              <div className="pr-avatar__ring" />
             </div>
 
             <div className="pr-hero__text">
@@ -304,11 +284,6 @@ const Profile = () => {
                   <div className="pr-fact"><Video size={13} />{summary.total} total sessions</div>
                   <div className="pr-fact"><Activity size={13} />{summary.active} currently active</div>
                   <div className="pr-fact"><Calendar size={13} />Member since {new Date(user.createdAt || Date.now()).getFullYear()}</div>
-                </div>
-                <div className="pr-focus-tags">
-                  <span className="pr-tag"><Brain size={12} />Smart Learning</span>
-                  <span className="pr-tag"><Users size={12} />Collaboration</span>
-                  <span className="pr-tag"><BookMarked size={12} />Knowledge Sharing</span>
                 </div>
               </div>
 

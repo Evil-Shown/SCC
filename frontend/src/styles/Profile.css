@@ -56,6 +56,10 @@
   position: fixed;
   inset: 0;
   z-index: 0;
+  background:
+    radial-gradient(ellipse 50% 40% at 15% 25%, rgba(45,212,191,.04) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 35% at 85% 75%, rgba(129,140,248,.04) 0%, transparent 70%),
+    linear-gradient(180deg, #0a1120 0%, #0d1526 50%, #0f192e 100%);
 }
 
 /* ── SPLASH ──────────────────────────────────────────────────────── */
@@ -229,14 +233,14 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 2.5rem;
+  gap: 2rem;
   background: var(--pr-surface);
   border: 1px solid var(--pr-border);
-  border-radius: var(--pr-radius-lg);
-  padding: 2.5rem 3rem;
-  margin-bottom: 1.75rem;
+  border-radius: var(--pr-radius);
+  padding: 2rem 2.5rem;
+  margin-bottom: 1.5rem;
   backdrop-filter: blur(16px);
-  animation: fadeUp 0.5s ease both;
+  animation: fadeUp 0.4s ease both;
   box-shadow: var(--pr-shadow);
 }
 
@@ -257,8 +261,8 @@
 .pr-avatar {
   position: relative;
   flex-shrink: 0;
-  width: 100px;
-  height: 100px;
+  width: 88px;
+  height: 88px;
   border-radius: 50%;
   overflow: hidden;
   background: var(--pr-raised);
@@ -267,23 +271,13 @@
   justify-content: center;
   font-family: var(--pr-font);
   font-weight: 600;
-  font-size: 2.5rem;
+  font-size: 2.2rem;
   color: var(--pr-teal);
+  border: 2px solid var(--pr-border-hi);
+  box-shadow: 0 0 0 4px var(--pr-teal-soft);
 }
 
 .pr-avatar img { width: 100%; height: 100%; object-fit: cover; }
-
-.pr-avatar__ring {
-  position: absolute;
-  inset: -3px;
-  border-radius: 50%;
-  background: conic-gradient(var(--pr-teal) 0deg, var(--pr-amber) 120deg, var(--pr-indigo) 240deg, var(--pr-teal) 360deg);
-  z-index: -1;
-  animation: ringRotate 6s linear infinite;
-  opacity: 0.8;
-}
-
-@keyframes ringRotate { to { transform: rotate(360deg); } }
 
 /* Identity text */
 .pr-hero__text { flex: 1; min-width: 0; }
@@ -298,12 +292,12 @@
 }
 
 .pr-hero__name {
-  font-size: 2.25rem;
+  font-size: 1.85rem;
   font-weight: 700;
   color: var(--pr-text);
   line-height: 1.15;
-  margin-bottom: 0.65rem;
-  letter-spacing: -0.02em;
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.01em;
 }
 
 .pr-hero__bio {
@@ -323,14 +317,14 @@
 .pr-chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  font-size: 0.85rem;
+  gap: 0.35rem;
+  font-size: 0.8rem;
   font-family: var(--pr-mono);
   color: var(--pr-text-2);
   background: var(--pr-raised);
   border: 1px solid var(--pr-border);
-  padding: 0.4rem 0.85rem;
-  border-radius: 20px;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
   white-space: nowrap;
 }
 
@@ -389,19 +383,19 @@
 .pr-stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 1.25rem;
-  margin-bottom: 1.75rem;
-  animation: fadeUp 0.5s ease 0.1s both;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  animation: fadeUp 0.4s ease 0.1s both;
 }
 
 .pr-stat {
   background: var(--pr-surface);
   border: 1px solid var(--pr-border);
   border-radius: var(--pr-radius);
-  padding: 1.5rem 1.5rem 1.25rem;
+  padding: 1.25rem;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.3rem;
   backdrop-filter: blur(16px);
   transition: border-color 0.2s, box-shadow 0.2s;
   box-shadow: var(--pr-shadow);
@@ -419,11 +413,11 @@
 .pr-stat--indigo .pr-stat__icon { color: var(--pr-indigo); }
 
 .pr-stat__val {
-  font-size: 2.5rem;
+  font-size: 2rem;
   font-weight: 700;
   line-height: 1;
   color: var(--pr-text);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
 }
 
 .pr-stat__lbl {
@@ -1028,4 +1022,12 @@
   .pr-hero__id { flex-direction: column; align-items: flex-start; }
   .pr-hero__name { font-size: 1.75rem; }
   .pr-topbar { font-size: 0.85rem; }
+}
+
+/* ── LIGHT MODE ──────────────────────────────────────────────────── */
+html[data-theme="light"] .pr-canvas {
+  background:
+    radial-gradient(ellipse 50% 40% at 15% 25%, rgba(45,212,191,.03) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 35% at 85% 75%, rgba(129,140,248,.03) 0%, transparent 70%),
+    linear-gradient(180deg, #f5f7fa 0%, #eef2f7 50%, #e8ecf2 100%);
 }

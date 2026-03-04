@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate, Link } from "react-router-dom";
 import { logout } from "../features/auth/authSlice";
+import { useTheme } from "../context/ThemeContext";
 import {
   Brain, BookMarked, Users, Calendar, Share2, GraduationCap,
   LogOut, ArrowRight, Home as HomeIcon,
   Video, Target, TrendingUp, Plus,
   Sparkles, ChevronRight, BookOpen, Activity,
-  Shield, LayoutDashboard, Waves, Zap, Radio,
+  LayoutDashboard, Waves, Zap,
 } from "lucide-react";
 import NotificationBell from "../components/NotificationBell";
 import * as THREE from "three";
@@ -16,20 +17,11 @@ import "../styles/Notifications.css";
 import { confirmAction } from "../utils/toast";
 
 /* ═══════════════════════════════════════════════════════════
-   DEEP OCEAN BIOLUMINESCENT — Three.js Background
-
-   Layers:
-   1. Dark abyss void floor (deep blue-black plane)
-   2. Volumetric god-rays (additive cone geometry from above)
-   3. Caustic light ripples on the seabed (animated UV displacement)
-   4. Bioluminescent plankton clouds (point particles, pulsing)
-   5. Jellyfish entities (instanced meshes rising upward)
-   6. Floating bioluminescent strands (line segments)
-   7. Depth haze layers (additive planes)
+   DEEP OCEAN BIOLUMINESCENT — Three.js Background (dark mode only)
 ═══════════════════════════════════════════════════════════ */
-function useOceanBackground(wrapRef, canvasReady) {
+function useOceanBackground(wrapRef, canvasReady, isDark) {
   useEffect(() => {
-    if (!canvasReady || !wrapRef.current) return;
+    if (!isDark || !canvasReady || !wrapRef.current) return;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -48,7 +40,6 @@ function useOceanBackground(wrapRef, canvasReady) {
 
     /* ── 1. ABYSS FLOOR ──────────────────────────────── */
     const floorGeo = new THREE.PlaneGeometry(300, 300, 40, 40);
-    // Slight undulation in vertices
     const fPos = floorGeo.attributes.position;
     for (let i = 0; i < fPos.count; i++) {
       const x = fPos.getX(i), z = fPos.getZ(i);
@@ -68,19 +59,12 @@ function useOceanBackground(wrapRef, canvasReady) {
     for (let r = 0; r < RAY_COUNT; r++) {
       const rayGeo = new THREE.CylinderGeometry(0.05, 3 + Math.random() * 4, 60, 6, 1, true);
       const rayMat = new THREE.MeshBasicMaterial({
-        color: 0x7dd3fc,
-        transparent: true,
+        color: 0x7dd3fc, transparent: true,
         opacity: 0.035 + Math.random() * 0.035,
-        side: THREE.DoubleSide,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
+        side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false,
       });
       const ray = new THREE.Mesh(rayGeo, rayMat);
-      ray.position.set(
-        (Math.random() - 0.5) * 60,
-        10,
-        (Math.random() - 0.5) * 30 - 10
-      );
+      ray.position.set((Math.random() - 0.5) * 60, 10, (Math.random() - 0.5) * 30 - 10);
       ray.rotation.z = (Math.random() - 0.5) * 0.15;
       ray.rotation.x = (Math.random() - 0.5) * 0.1;
       raysGroup.add(ray);
@@ -111,7 +95,7 @@ function useOceanBackground(wrapRef, canvasReady) {
     const plankGeo = new THREE.BufferGeometry();
     const pPos = new Float32Array(PLANKTON * 3);
     const pCol = new Float32Array(PLANKTON * 3);
-    const pPhase = new Float32Array(PLANKTON);  // per-particle phase offset
+    const pPhase = new Float32Array(PLANKTON);
     const cc = new THREE.Color();
 
     for (let i = 0; i < PLANKTON; i++) {
@@ -119,7 +103,6 @@ function useOceanBackground(wrapRef, canvasReady) {
       pPos[i*3+1] = -18 + Math.random() * 45;
       pPos[i*3+2] = (Math.random() - 0.5) * 80;
       pPhase[i]   = Math.random() * Math.PI * 2;
-      // Mix of teal and cyan
       const isTeal = Math.random() > 0.4;
       cc.setHSL(isTeal ? 0.47 : 0.58, 1, 0.55 + Math.random() * 0.25);
       pCol[i*3]=cc.r; pCol[i*3+1]=cc.g; pCol[i*3+2]=cc.b;
@@ -136,26 +119,22 @@ function useOceanBackground(wrapRef, canvasReady) {
     const plankton = new THREE.Points(plankGeo, plankMat);
     scene.add(plankton);
 
-    /* ── 5. JELLYFISH — instanced spheres ────────────── */
-    // Each jellyfish = a dim glowing sphere + bell shape
+    /* ── 5. JELLYFISH ────────────────────────────────── */
     const jellyCount = 18;
     const jellyData = [];
 
     for (let j = 0; j < jellyCount; j++) {
       const grp = new THREE.Group();
-      const hue = Math.random() > 0.5 ? 0.47 : 0.6; // teal or blue
+      const hue = Math.random() > 0.5 ? 0.47 : 0.6;
       const col = new THREE.Color().setHSL(hue, 1, 0.55);
 
-      // Bell body
       const bellGeo = new THREE.SphereGeometry(0.6 + Math.random() * 0.4, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2);
       const bellMat = new THREE.MeshBasicMaterial({
         color: col, transparent: true, opacity: 0.15 + Math.random() * 0.12,
         blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
       });
-      const bell = new THREE.Mesh(bellGeo, bellMat);
-      grp.add(bell);
+      grp.add(new THREE.Mesh(bellGeo, bellMat));
 
-      // Glow core
       const glowGeo = new THREE.SphereGeometry(0.25, 8, 8);
       const glowMat = new THREE.MeshBasicMaterial({
         color: col, transparent: true, opacity: 0.6,
@@ -163,7 +142,6 @@ function useOceanBackground(wrapRef, canvasReady) {
       });
       grp.add(new THREE.Mesh(glowGeo, glowMat));
 
-      // Trailing tentacles (lines)
       for (let t = 0; t < 5; t++) {
         const len = 2 + Math.random() * 4;
         const ang = (t / 5) * Math.PI * 2 + Math.random() * 0.4;
@@ -185,9 +163,7 @@ function useOceanBackground(wrapRef, canvasReady) {
       }
 
       grp.position.set(
-        (Math.random() - 0.5) * 80,
-        -18 + Math.random() * 40,
-        (Math.random() - 0.5) * 60
+        (Math.random() - 0.5) * 80, -18 + Math.random() * 40, (Math.random() - 0.5) * 60
       );
       grp.userData = {
         speed: 0.008 + Math.random() * 0.012,
@@ -200,7 +176,7 @@ function useOceanBackground(wrapRef, canvasReady) {
       jellyData.push(grp);
     }
 
-    /* ── 6. BIOLUMINESCENT STRANDS (floating tendrils) ─ */
+    /* ── 6. BIOLUMINESCENT STRANDS ───────────────────── */
     const strandGroup = new THREE.Group();
     for (let s = 0; s < 20; s++) {
       const pts = [];
@@ -225,7 +201,7 @@ function useOceanBackground(wrapRef, canvasReady) {
     }
     scene.add(strandGroup);
 
-    /* ── 7. DEPTH HAZE LAYERS ─────────────────────────── */
+    /* ── 7. DEPTH HAZE LAYERS ────────────────────────── */
     const hazeColors = [0x1e3a5f, 0x1f4f54, 0x173b5f];
     hazeColors.forEach((col, hi) => {
       const geo = new THREE.PlaneGeometry(200, 100);
@@ -247,13 +223,11 @@ function useOceanBackground(wrapRef, canvasReady) {
       frame++;
       const t = frame * 0.001;
 
-      /* Camera — gentle drift, looking slightly up into water column */
       camera.position.x = Math.sin(t * 0.15) * 10;
       camera.position.z = 55 + Math.sin(t * 0.09) * 8;
       camera.position.y = 8 + Math.sin(t * 0.2) * 3;
       camera.lookAt(0, 2, 0);
 
-      /* Plankton — drift upward, loop, pulse brightness */
       for (let i = 0; i < PLANKTON; i++) {
         plankPos.array[i*3]   += Math.sin(t * 1.2 + pPhase[i]) * 0.004;
         plankPos.array[i*3+1] += 0.006 + Math.sin(pPhase[i] * 3) * 0.003;
@@ -267,18 +241,14 @@ function useOceanBackground(wrapRef, canvasReady) {
       plankPos.needsUpdate = true;
       plankMat.opacity = 0.55 + Math.sin(t * 2.5) * 0.15;
 
-      /* Jellyfish — rise, pulse, sway */
-      jellyData.forEach((jelly, ji) => {
+      jellyData.forEach((jelly) => {
         const d = jelly.userData;
         jelly.position.y += d.speed;
         jelly.position.x += Math.sin(t * d.pulseSpeed + d.phase) * d.drift;
         jelly.rotation.y += 0.002;
-        // Bell pulse (scale y)
         jelly.children[0].scale.y = 0.85 + Math.sin(t * d.pulseSpeed * 2 + d.phase) * 0.15;
-        // Glow pulse
         d.glowMat.opacity = 0.4 + Math.sin(t * d.pulseSpeed * 1.5 + d.phase) * 0.3;
         d.bellMat.opacity = 0.1 + Math.sin(t * d.pulseSpeed + d.phase) * 0.08;
-        // Reset when they float too high
         if (jelly.position.y > 28) {
           jelly.position.y = -18;
           jelly.position.x = (Math.random() - 0.5) * 80;
@@ -286,20 +256,17 @@ function useOceanBackground(wrapRef, canvasReady) {
         }
       });
 
-      /* God rays — slow oscillation + opacity flicker */
       raysGroup.children.forEach((ray, ri) => {
         ray.material.opacity = 0.02 + Math.sin(t * 0.8 + ri * 0.9) * 0.018;
         ray.position.x += Math.sin(t * 0.3 + ri) * 0.008;
       });
 
-      /* Caustic ripples — scale + opacity pulse */
       causticGroup.children.forEach((c, ci) => {
         const sc = 0.9 + Math.sin(t * 2 + ci * 0.7) * 0.2;
         c.scale.set(sc, sc, 1);
         c.material.opacity = 0.02 + Math.sin(t * 2.5 + ci) * 0.04;
       });
 
-      /* Strands — gentle sway */
       strandGroup.children.forEach((strand, si) => {
         strand.rotation.z = Math.sin(t * 0.5 + si * 0.3) * 0.05;
         strand.material.opacity = 0.15 + Math.sin(t * 1.5 + si) * 0.1;
@@ -324,7 +291,7 @@ function useOceanBackground(wrapRef, canvasReady) {
       if (wrapRef.current?.contains(renderer.domElement))
         wrapRef.current.removeChild(renderer.domElement);
     };
-  }, [canvasReady]);
+  }, [canvasReady, isDark]);
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -332,19 +299,20 @@ function useOceanBackground(wrapRef, canvasReady) {
 ═══════════════════════════════════════════════════════════ */
 export default function Dashboard() {
   const { user, isAuthenticated } = useSelector(s => s.auth);
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const wrapRef = useRef(null);
   const [canvasReady, setCanvasReady] = useState(false);
   const [now, setNow] = useState(new Date());
 
-  // Callback ref to detect when canvas div mounts
   const canvasRefCallback = (node) => {
     wrapRef.current = node;
     if (node) setCanvasReady(true);
   };
 
-  useOceanBackground(wrapRef, canvasReady);
+  useOceanBackground(wrapRef, canvasReady, isDark);
 
   useEffect(() => { if (!isAuthenticated) navigate("/login"); }, [isAuthenticated, navigate]);
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 30000); return () => clearInterval(t); }, []);
@@ -440,16 +408,15 @@ export default function Dashboard() {
 
   return (
     <div className="db-root dashboard-page">
-      {/* Canvas */}
-      <div className="db-canvas-wrap" ref={canvasRefCallback} />
-      <div className="db-overlay-vignette" />
-      <div className="db-overlay-scan" />
-
-      {/* HUD corner brackets */}
-      <div className="db-hud-br db-hud-br--tl" />
-      <div className="db-hud-br db-hud-br--tr" />
-      <div className="db-hud-br db-hud-br--bl" />
-      <div className="db-hud-br db-hud-br--br" />
+      {/* Dark mode: Three.js ocean canvas | Light mode: CSS gradient */}
+      {isDark ? (
+        <>
+          <div className="db-canvas-wrap" ref={canvasRefCallback} />
+          <div className="db-overlay-vignette" />
+        </>
+      ) : (
+        <div className="db-bg-gradient" />
+      )}
 
       <div className="db-layout">
 
@@ -496,12 +463,7 @@ export default function Dashboard() {
               <p className="db-hero__sub">
                 All your study tools are centralized here. Track your progress, access resources, and move quickly through your day.
               </p>
-              <div className="db-hero__badges">
-                <span className="db-badge"><GraduationCap size={10} />{user.role}</span>
-                {user.department && <span className="db-badge"><Radio size={10} />{user.department}</span>}
-                {user.year && <span className="db-badge"><Activity size={10} />Year {user.year}</span>}
-                {user.studentId && <span className="db-badge"><Shield size={10} />{user.studentId}</span>}
-              </div>
+
               <div className="db-shortcuts">
                 {shortcuts.map((item) => (
                   <button key={item.path} className="db-shortcut-btn" onClick={() => navigate(item.path)}>

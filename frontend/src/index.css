@@ -160,9 +160,9 @@ html[data-theme="dark"] {
   --color-text-secondary: #cbd5e1;
   --color-text-tertiary: #94a3b8;
   --color-text-inverse: #ffffff;
-  --color-bg-primary: #0f172a;
-  --color-bg-secondary: #020617;
-  --color-bg-tertiary: #1e293b;
+  --color-bg-primary: #111e35;
+  --color-bg-secondary: #0a1427;
+  --color-bg-tertiary: #1e2f45;
   --color-border: #334155;
   --color-border-focus: #7c3aed;
 
