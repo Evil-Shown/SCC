@@ -6,17 +6,25 @@ import User from "../models/User.js";
  */
 export const authenticate = async (req, res, next) => {
   try {
-    // Get token from Authorization header
+    // Get token from Authorization header (primary)
     const authHeader = req.headers.authorization;
-    
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+
+    // Fallback for flows where header may be stripped by browser/proxy
+    // (e.g. OAuth bootstrap redirect requests).
+    const queryToken =
+      typeof req.query?.token === "string" ? req.query.token : null;
+
+    const token =
+      authHeader && authHeader.startsWith("Bearer ")
+        ? authHeader.split(" ")[1]
+        : queryToken;
+
+    if (!token) {
       return res.status(401).json({ 
         success: false,
         message: "No token provided. Authorization denied." 
       });
     }
-
-    const token = authHeader.split(" ")[1];
 
     // Verify token
     const decoded = verifyToken(token);

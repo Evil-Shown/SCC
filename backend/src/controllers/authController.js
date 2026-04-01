@@ -24,13 +24,24 @@ export const register = async (req, res) => {
       linkedin
     } = req.body;
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
+    // Check if user already exists with email
+    const existingEmail = await User.findOne({ email });
+    if (existingEmail) {
       return res.status(400).json({ 
         success: false,
         message: "User with this email already exists" 
       });
+    }
+
+    // Check if phone already registered (if provided)
+    if (phone) {
+      const existingPhone = await User.findOne({ phone });
+      if (existingPhone) {
+        return res.status(400).json({ 
+          success: false,
+          message: "Phone number already registered to another account." 
+        });
+      }
     }
 
     // Check if studentId already exists (if provided)
@@ -344,6 +355,39 @@ export const updateProfile = async (req, res) => {
       success: false,
       message: "Error updating profile",
       error: error.message 
+    });
+  }
+};
+
+/**
+ * Delete user account
+ * DELETE /api/auth/account
+ */
+export const deleteAccount = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // TODO: Cascade deletions if necessary (e.g., delete user's posts, notes, etc.)
+    // For now, only deleting the user record
+    const user = await User.findByIdAndDelete(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Account deleted successfully"
+    });
+  } catch (error) {
+    console.error("Delete account error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error deleting account",
+      error: error.message
     });
   }
 };

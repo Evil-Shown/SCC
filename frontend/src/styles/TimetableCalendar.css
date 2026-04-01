@@ -1,0 +1,272 @@
+.ttcal {
+  width: 100%;
+}
+
+.ttcal__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1.5rem;
+  margin-bottom: 2.5rem;
+  flex-wrap: wrap;
+}
+
+.ttcal__title {
+  font-size: 1.75rem;
+  font-weight: 900;
+  color: var(--tt-text-primary);
+  font-family: 'Outfit', sans-serif;
+  letter-spacing: -0.02em;
+}
+
+.ttcal__subtitle {
+  font-size: 1rem;
+  color: var(--tt-text-secondary);
+  margin-top: 6px;
+  font-weight: 500;
+}
+
+.ttcal__controls {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.ttcal__grid {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  grid-template-rows: auto 1fr;
+  gap: 0;
+  border: 1px solid var(--tt-border);
+  border-radius: var(--tt-radius-lg);
+  overflow: hidden;
+  background: var(--tt-bg-deep);
+  box-shadow: var(--tt-shadow);
+}
+
+.ttcal__corner {
+  grid-column: 1 / 2;
+  grid-row: 1 / 2;
+  background: rgba(255, 255, 255, 0.03);
+  border-right: 1px solid var(--tt-border);
+  border-bottom: 1px solid var(--tt-border);
+}
+
+.ttcal__days {
+  grid-column: 2 / 3;
+  grid-row: 1 / 2;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid var(--tt-border);
+}
+
+.ttcal__dayHead {
+  padding: 1.25rem;
+  border-right: 1px solid var(--tt-border);
+  text-align: center;
+  transition: var(--tt-transition);
+}
+
+.ttcal__dayHead:hover { background: rgba(0, 255, 163, 0.03); }
+
+.ttcal__dayHead:last-child { border-right: none; }
+
+.ttcal__dayName {
+  font-size: 0.85rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--tt-accent);
+}
+
+.ttcal__dayDate {
+  font-size: 1rem;
+  color: var(--tt-text-secondary);
+  margin-top: 6px;
+  font-weight: 600;
+}
+
+.ttcal__times {
+  grid-column: 1 / 2;
+  grid-row: 2 / 3;
+  background: rgba(255, 255, 255, 0.01);
+  border-right: 1px solid var(--tt-border);
+}
+
+.ttcal__time {
+  height: 64px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 12px 14px 0 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--tt-text-muted);
+  border-bottom: 1px solid rgba(0, 255, 163, 0.05);
+}
+
+.ttcal__body {
+  grid-column: 2 / 3;
+  grid-row: 2 / 3;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  position: relative;
+}
+
+.ttcal__col {
+  position: relative;
+  min-height: calc(64px * 17);
+  border-right: 1px solid var(--tt-border);
+  background: linear-gradient(180deg, rgba(0, 255, 163, 0.03), transparent 40%);
+}
+
+.ttcal__col:last-child { border-right: none; }
+
+.ttcal__hourLine {
+  height: 64px;
+  border-bottom: 1px solid rgba(0, 255, 163, 0.05);
+}
+
+.ttcal__event {
+  position: absolute;
+  z-index: 5;
+  border-radius: 14px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  backdrop-filter: blur(12px);
+  cursor: pointer;
+  transition: var(--tt-transition);
+}
+
+.ttcal__event > * {
+  position: relative;
+  z-index: 1;
+}
+
+.ttcal__event::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 100%);
+  pointer-events: none;
+}
+
+.ttcal__event:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), 0 0 20px var(--tt-accent-glow);
+  border-color: var(--tt-accent);
+  z-index: 10;
+}
+
+.ttcal__eventTitle {
+  font-size: 0.85rem;
+  font-weight: 900;
+  color: white;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  margin-bottom: 6px;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+
+.ttcal__eventMeta {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+.ttcal__modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(1, 4, 3, 0.9);
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 24px;
+}
+
+.ttcal__modal {
+  width: 100%;
+  max-width: 520px;
+  background: var(--tt-noir);
+  border: 1px solid var(--tt-border);
+  border-radius: 28px;
+  box-shadow: 0 50px 120px rgba(0, 0, 0, 0.9);
+  color: var(--tt-text-primary);
+  overflow: hidden;
+  animation: ttFadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ttcal__modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 2rem;
+  border-bottom: 1px solid var(--tt-border);
+  background: linear-gradient(135deg, var(--tt-slab-surface), var(--tt-noir));
+}
+
+.ttcal__modalTitle {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 900;
+  font-size: 1.5rem;
+  letter-spacing: -0.02em;
+}
+
+.ttcal__modalClose {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  border: 1px solid var(--tt-border);
+  background: rgba(255, 255, 255, 0.05);
+  color: white;
+  cursor: pointer;
+  font-size: 1.75rem;
+  line-height: 1;
+  transition: var(--tt-transition);
+}
+
+.ttcal__modalClose:hover { background: var(--tt-danger); border-color: transparent; scale: 1.1; }
+
+.ttcal__modalBody {
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.ttcal__modalLine {
+  font-size: 1.1rem;
+  color: var(--tt-text-secondary);
+}
+
+.ttcal__modalLine strong {
+  color: var(--tt-accent);
+  margin-right: 0.75rem;
+}
+
+/* Event color variants (Forest Lumière Theme) */
+.ttcal__event--lecture { background: linear-gradient(135deg, var(--tt-accent), #047857); }
+.ttcal__event--tutorial { background: linear-gradient(135deg, #059669, #064e3b); }
+.ttcal__event--lab { background: linear-gradient(135deg, #10b981, #065f46); }
+.ttcal__event--study { background: linear-gradient(135deg, #00ffa3, var(--tt-noir)); border-left: 5px solid #ffffff; }
+
+/* Responsive */
+@media (max-width: 900px) {
+  .ttcal__grid { grid-template-columns: 80px 1fr; }
+  .ttcal__days, .ttcal__body { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .ttcal__days, .ttcal__body { grid-template-columns: 1fr; }
+  .ttcal__corner { display: none; }
+  .ttcal__grid { grid-template-columns: 70px 1fr; }
+}
+

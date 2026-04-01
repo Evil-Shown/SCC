@@ -1,362 +1,228 @@
-import { useEffect, useRef, useState } from "react";
+// Dashboard.jsx
+import { useEffect, useState, useRef } from "react";
+import axios from "axios";
 import { useSelector, useDispatch } from "react-redux";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { logout } from "../features/auth/authSlice";
+import { useTheme } from "../context/ThemeContext";
 import {
   Brain, BookMarked, Users, Calendar, Share2, GraduationCap,
   LogOut, ArrowRight, Home as HomeIcon,
   Video, Target, TrendingUp, Plus,
   Sparkles, ChevronRight, BookOpen, Activity,
-  Shield, LayoutDashboard, Waves, Zap, Radio,
+  LayoutDashboard, Zap, Clock, Award,
 } from "lucide-react";
 import NotificationBell from "../components/NotificationBell";
-import * as THREE from "three";
-import "../styles/Dashboard.css";
-import "../styles/Notifications.css";
 import { confirmAction } from "../utils/toast";
+import "../styles/Dashboard.css";
 
-/* ═══════════════════════════════════════════════════════════
-   DEEP OCEAN BIOLUMINESCENT — Three.js Background
+export default function Dashboard() {
+  const { user, isAuthenticated } = useSelector((s) => s.auth);
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+  const dispatch = useDispatch();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [ringOffset, setRingOffset] = useState(0);
+  const canvasRef = useRef(null);
+  const [stats, setStats] = useState([]);
+  const [todayClasses, setTodayClasses] = useState([]);
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [upcomingEvent, setUpcomingEvent] = useState(null);
+  const [animatedStats, setAnimatedStats] = useState([0, 0]);
 
-   Layers:
-   1. Dark abyss void floor (deep blue-black plane)
-   2. Volumetric god-rays (additive cone geometry from above)
-   3. Caustic light ripples on the seabed (animated UV displacement)
-   4. Bioluminescent plankton clouds (point particles, pulsing)
-   5. Jellyfish entities (instanced meshes rising upward)
-   6. Floating bioluminescent strands (line segments)
-   7. Depth haze layers (additive planes)
-═══════════════════════════════════════════════════════════ */
-function useOceanBackground(wrapRef, canvasReady) {
+  // Real-time progress ring effect
   useEffect(() => {
-    if (!canvasReady || !wrapRef.current) return;
+    const updateRing = () => {
+      const now = new Date();
+      const minutes = now.getMinutes();
+      const seconds = now.getSeconds();
+      const totalSeconds = minutes * 60 + seconds;
+      const circumference = 2 * Math.PI * 48;
+      const offset = circumference * (1 - totalSeconds / 3600);
+      setRingOffset(offset);
+    };
+    updateRing();
+    const interval = setInterval(updateRing, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 0.9;
-    wrapRef.current.appendChild(renderer.domElement);
+  useEffect(() => {
+    if (!isAuthenticated) navigate("/");
+  }, [isAuthenticated, navigate]);
 
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0a2134);
-    scene.fog = new THREE.FogExp2(0x0d2940, 0.0165);
-
-    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 400);
-    camera.position.set(0, 8, 55);
-    camera.lookAt(0, 0, 0);
-
-    /* ── 1. ABYSS FLOOR ──────────────────────────────── */
-    const floorGeo = new THREE.PlaneGeometry(300, 300, 40, 40);
-    // Slight undulation in vertices
-    const fPos = floorGeo.attributes.position;
-    for (let i = 0; i < fPos.count; i++) {
-      const x = fPos.getX(i), z = fPos.getZ(i);
-      fPos.setY(i, Math.sin(x * 0.08) * 0.8 + Math.cos(z * 0.06) * 0.6);
+  // Initialize navigation indicator position
+  useEffect(() => {
+    const activeLink = document.querySelector('.dashboard-nav__link.active');
+    if (activeLink) {
+      const rect = activeLink.getBoundingClientRect();
+      const parentRect = activeLink.parentElement.getBoundingClientRect();
+      // setIndicatorStyle({
+      //   left: rect.left - parentRect.left,
+      //   width: rect.width,
+      //   opacity: 1
+      // });
     }
-    fPos.needsUpdate = true;
-    floorGeo.computeVertexNormals();
-    const floorMat = new THREE.MeshBasicMaterial({ color: 0x102d42 });
-    const floor = new THREE.Mesh(floorGeo, floorMat);
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.y = -18;
-    scene.add(floor);
+  }, [location]);
 
-    /* ── 2. GOD RAYS from above ──────────────────────── */
-    const raysGroup = new THREE.Group();
-    const RAY_COUNT = 7;
-    for (let r = 0; r < RAY_COUNT; r++) {
-      const rayGeo = new THREE.CylinderGeometry(0.05, 3 + Math.random() * 4, 60, 6, 1, true);
-      const rayMat = new THREE.MeshBasicMaterial({
-        color: 0x7dd3fc,
-        transparent: true,
-        opacity: 0.035 + Math.random() * 0.035,
-        side: THREE.DoubleSide,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
+  // Task 7: Canvas particle system
+  useEffect(() => {
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.className = 'dashboard-particles-canvas';
+    document.body.appendChild(canvas);
+    canvasRef.current = canvas;
+
+    const ctx = canvas.getContext('2d');
+    let animationId;
+
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    const accentColors = [
+      'rgba(16, 185, 129, 0.15)',   // Emerald
+      'rgba(59, 130, 246, 0.15)',   // Azure
+      'rgba(168, 85, 247, 0.15)',   // Amethyst
+      'rgba(245, 158, 11, 0.15)',   // Amber
+    ];
+
+    const particles = [];
+    for (let i = 0; i < 30; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        radius: 1 + Math.random(),
+        dx: (Math.random() - 0.5) * 0.4,
+        dy: (Math.random() - 0.5) * 0.4,
+        color: accentColors[Math.floor(Math.random() * accentColors.length)],
       });
-      const ray = new THREE.Mesh(rayGeo, rayMat);
-      ray.position.set(
-        (Math.random() - 0.5) * 60,
-        10,
-        (Math.random() - 0.5) * 30 - 10
-      );
-      ray.rotation.z = (Math.random() - 0.5) * 0.15;
-      ray.rotation.x = (Math.random() - 0.5) * 0.1;
-      raysGroup.add(ray);
     }
-    scene.add(raysGroup);
-
-    /* ── 3. CAUSTIC RIPPLE PATCHES on floor ──────────── */
-    const causticGroup = new THREE.Group();
-    causticGroup.position.y = -17.5;
-    for (let c = 0; c < 12; c++) {
-      const size = 4 + Math.random() * 10;
-      const geo = new THREE.PlaneGeometry(size, size, 1, 1);
-      const col = Math.random() > 0.5 ? 0x7dd3fc : 0x60a5fa;
-      const mat = new THREE.MeshBasicMaterial({
-        color: col, transparent: true,
-        opacity: 0.055 + Math.random() * 0.06,
-        blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
-      });
-      const m = new THREE.Mesh(geo, mat);
-      m.rotation.x = -Math.PI / 2;
-      m.position.set((Math.random() - 0.5) * 80, 0, (Math.random() - 0.5) * 60);
-      causticGroup.add(m);
-    }
-    scene.add(causticGroup);
-
-    /* ── 4. BIOLUMINESCENT PLANKTON ─────────────────── */
-    const PLANKTON = 4500;
-    const plankGeo = new THREE.BufferGeometry();
-    const pPos = new Float32Array(PLANKTON * 3);
-    const pCol = new Float32Array(PLANKTON * 3);
-    const pPhase = new Float32Array(PLANKTON);  // per-particle phase offset
-    const cc = new THREE.Color();
-
-    for (let i = 0; i < PLANKTON; i++) {
-      pPos[i*3]   = (Math.random() - 0.5) * 100;
-      pPos[i*3+1] = -18 + Math.random() * 45;
-      pPos[i*3+2] = (Math.random() - 0.5) * 80;
-      pPhase[i]   = Math.random() * Math.PI * 2;
-      // Mix of teal and cyan
-      const isTeal = Math.random() > 0.4;
-      cc.setHSL(isTeal ? 0.47 : 0.58, 1, 0.55 + Math.random() * 0.25);
-      pCol[i*3]=cc.r; pCol[i*3+1]=cc.g; pCol[i*3+2]=cc.b;
-    }
-
-    plankGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
-    plankGeo.setAttribute('color',    new THREE.BufferAttribute(pCol, 3));
-    const plankMat = new THREE.PointsMaterial({
-      size: 0.18, vertexColors: true,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false, transparent: true, opacity: 0.7,
-      sizeAttenuation: true,
-    });
-    const plankton = new THREE.Points(plankGeo, plankMat);
-    scene.add(plankton);
-
-    /* ── 5. JELLYFISH — instanced spheres ────────────── */
-    // Each jellyfish = a dim glowing sphere + bell shape
-    const jellyCount = 18;
-    const jellyData = [];
-
-    for (let j = 0; j < jellyCount; j++) {
-      const grp = new THREE.Group();
-      const hue = Math.random() > 0.5 ? 0.47 : 0.6; // teal or blue
-      const col = new THREE.Color().setHSL(hue, 1, 0.55);
-
-      // Bell body
-      const bellGeo = new THREE.SphereGeometry(0.6 + Math.random() * 0.4, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2);
-      const bellMat = new THREE.MeshBasicMaterial({
-        color: col, transparent: true, opacity: 0.15 + Math.random() * 0.12,
-        blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
-      });
-      const bell = new THREE.Mesh(bellGeo, bellMat);
-      grp.add(bell);
-
-      // Glow core
-      const glowGeo = new THREE.SphereGeometry(0.25, 8, 8);
-      const glowMat = new THREE.MeshBasicMaterial({
-        color: col, transparent: true, opacity: 0.6,
-        blending: THREE.AdditiveBlending, depthWrite: false,
-      });
-      grp.add(new THREE.Mesh(glowGeo, glowMat));
-
-      // Trailing tentacles (lines)
-      for (let t = 0; t < 5; t++) {
-        const len = 2 + Math.random() * 4;
-        const ang = (t / 5) * Math.PI * 2 + Math.random() * 0.4;
-        const pts = [];
-        for (let s = 0; s <= 8; s++) {
-          const progress = s / 8;
-          pts.push(new THREE.Vector3(
-            Math.cos(ang) * 0.3 * (1 - progress) + Math.sin(progress * Math.PI * 2) * 0.1,
-            -len * progress,
-            Math.sin(ang) * 0.3 * (1 - progress)
-          ));
-        }
-        const tGeo = new THREE.BufferGeometry().setFromPoints(pts);
-        const tMat = new THREE.LineBasicMaterial({
-          color: col, transparent: true, opacity: 0.3,
-          blending: THREE.AdditiveBlending, depthWrite: false,
-        });
-        grp.add(new THREE.Line(tGeo, tMat));
-      }
-
-      grp.position.set(
-        (Math.random() - 0.5) * 80,
-        -18 + Math.random() * 40,
-        (Math.random() - 0.5) * 60
-      );
-      grp.userData = {
-        speed: 0.008 + Math.random() * 0.012,
-        drift: (Math.random() - 0.5) * 0.006,
-        phase: Math.random() * Math.PI * 2,
-        pulseSpeed: 1.5 + Math.random() * 2,
-        bellMat, glowMat,
-      };
-      scene.add(grp);
-      jellyData.push(grp);
-    }
-
-    /* ── 6. BIOLUMINESCENT STRANDS (floating tendrils) ─ */
-    const strandGroup = new THREE.Group();
-    for (let s = 0; s < 20; s++) {
-      const pts = [];
-      const origin = new THREE.Vector3(
-        (Math.random() - 0.5) * 80, -18 + Math.random() * 30, (Math.random() - 0.5) * 60
-      );
-      const segments = 12 + Math.floor(Math.random() * 8);
-      for (let p = 0; p < segments; p++) {
-        pts.push(new THREE.Vector3(
-          origin.x + Math.sin(p * 0.5) * 1.5,
-          origin.y + p * 0.8,
-          origin.z + Math.cos(p * 0.4) * 1.2
-        ));
-      }
-      const sGeo = new THREE.BufferGeometry().setFromPoints(pts);
-      const col = new THREE.Color().setHSL(Math.random() > 0.5 ? 0.47 : 0.55, 1, 0.5);
-      const sMat = new THREE.LineBasicMaterial({
-        color: col, transparent: true, opacity: 0.2 + Math.random() * 0.2,
-        blending: THREE.AdditiveBlending, depthWrite: false,
-      });
-      strandGroup.add(new THREE.Line(sGeo, sMat));
-    }
-    scene.add(strandGroup);
-
-    /* ── 7. DEPTH HAZE LAYERS ─────────────────────────── */
-    const hazeColors = [0x1e3a5f, 0x1f4f54, 0x173b5f];
-    hazeColors.forEach((col, hi) => {
-      const geo = new THREE.PlaneGeometry(200, 100);
-      const mat = new THREE.MeshBasicMaterial({
-        color: col, transparent: true, opacity: 0.12 - hi * 0.03,
-        blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
-      });
-      const m = new THREE.Mesh(geo, mat);
-      m.rotation.x = -Math.PI * 0.05 * (hi + 1);
-      m.position.set(0, -8 + hi * 5, -20 - hi * 8);
-      scene.add(m);
-    });
-
-    /* ── ANIMATION LOOP ──────────────────────────────── */
-    let frame = 0, animId;
-    const plankPos = plankton.geometry.attributes.position;
 
     const animate = () => {
-      frame++;
-      const t = frame * 0.001;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      /* Camera — gentle drift, looking slightly up into water column */
-      camera.position.x = Math.sin(t * 0.15) * 10;
-      camera.position.z = 55 + Math.sin(t * 0.09) * 8;
-      camera.position.y = 8 + Math.sin(t * 0.2) * 3;
-      camera.lookAt(0, 2, 0);
+      particles.forEach(p => {
+        p.x += p.dx;
+        p.y += p.dy;
 
-      /* Plankton — drift upward, loop, pulse brightness */
-      for (let i = 0; i < PLANKTON; i++) {
-        plankPos.array[i*3]   += Math.sin(t * 1.2 + pPhase[i]) * 0.004;
-        plankPos.array[i*3+1] += 0.006 + Math.sin(pPhase[i] * 3) * 0.003;
-        plankPos.array[i*3+2] += Math.cos(t * 0.9 + pPhase[i]) * 0.004;
-        if (plankPos.array[i*3+1] > 28) {
-          plankPos.array[i*3+1] = -18;
-          plankPos.array[i*3]   = (Math.random() - 0.5) * 100;
-          plankPos.array[i*3+2] = (Math.random() - 0.5) * 80;
-        }
-      }
-      plankPos.needsUpdate = true;
-      plankMat.opacity = 0.55 + Math.sin(t * 2.5) * 0.15;
+        if (p.x < 0 || p.x > canvas.width) p.dx *= -1;
+        if (p.y < 0 || p.y > canvas.height) p.dy *= -1;
 
-      /* Jellyfish — rise, pulse, sway */
-      jellyData.forEach((jelly, ji) => {
-        const d = jelly.userData;
-        jelly.position.y += d.speed;
-        jelly.position.x += Math.sin(t * d.pulseSpeed + d.phase) * d.drift;
-        jelly.rotation.y += 0.002;
-        // Bell pulse (scale y)
-        jelly.children[0].scale.y = 0.85 + Math.sin(t * d.pulseSpeed * 2 + d.phase) * 0.15;
-        // Glow pulse
-        d.glowMat.opacity = 0.4 + Math.sin(t * d.pulseSpeed * 1.5 + d.phase) * 0.3;
-        d.bellMat.opacity = 0.1 + Math.sin(t * d.pulseSpeed + d.phase) * 0.08;
-        // Reset when they float too high
-        if (jelly.position.y > 28) {
-          jelly.position.y = -18;
-          jelly.position.x = (Math.random() - 0.5) * 80;
-          jelly.position.z = (Math.random() - 0.5) * 60;
-        }
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.fill();
       });
 
-      /* God rays — slow oscillation + opacity flicker */
-      raysGroup.children.forEach((ray, ri) => {
-        ray.material.opacity = 0.02 + Math.sin(t * 0.8 + ri * 0.9) * 0.018;
-        ray.position.x += Math.sin(t * 0.3 + ri) * 0.008;
-      });
-
-      /* Caustic ripples — scale + opacity pulse */
-      causticGroup.children.forEach((c, ci) => {
-        const sc = 0.9 + Math.sin(t * 2 + ci * 0.7) * 0.2;
-        c.scale.set(sc, sc, 1);
-        c.material.opacity = 0.02 + Math.sin(t * 2.5 + ci) * 0.04;
-      });
-
-      /* Strands — gentle sway */
-      strandGroup.children.forEach((strand, si) => {
-        strand.rotation.z = Math.sin(t * 0.5 + si * 0.3) * 0.05;
-        strand.material.opacity = 0.15 + Math.sin(t * 1.5 + si) * 0.1;
-      });
-
-      renderer.render(scene, camera);
-      animId = requestAnimationFrame(animate);
+      animationId = requestAnimationFrame(animate);
     };
+
     animate();
 
-    const onResize = () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    };
-    window.addEventListener('resize', onResize);
-
     return () => {
-      cancelAnimationFrame(animId);
-      window.removeEventListener('resize', onResize);
-      renderer.dispose();
-      if (wrapRef.current?.contains(renderer.domElement))
-        wrapRef.current.removeChild(renderer.domElement);
+      cancelAnimationFrame(animationId);
+      window.removeEventListener('resize', resize);
+      if (canvas.parentNode) {
+        canvas.parentNode.removeChild(canvas);
+      }
     };
-  }, [canvasReady]);
-}
+  }, []);
 
-/* ═══════════════════════════════════════════════════════════
-   DASHBOARD COMPONENT
-═══════════════════════════════════════════════════════════ */
-export default function Dashboard() {
-  const { user, isAuthenticated } = useSelector(s => s.auth);
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
-  const wrapRef = useRef(null);
-  const [canvasReady, setCanvasReady] = useState(false);
-  const [now, setNow] = useState(new Date());
+  // Fetch dashboard data from backend
+  useEffect(() => {
+    async function fetchDashboardData() {
+      try {
+        // Fetch notes count
+        const notesRes = await axios.get("/api/notes");
+        const notesCount = notesRes.data?.data?.length || 0;
 
-  // Callback ref to detect when canvas div mounts
-  const canvasRefCallback = (node) => {
-    wrapRef.current = node;
-    if (node) setCanvasReady(true);
-  };
+        // Fetch groups count
+        const groupsRes = await axios.get("/api/groups?myGroups=true");
+        const groupsCount = groupsRes.data?.data?.length || 0;
 
-  useOceanBackground(wrapRef, canvasReady);
+        // Fetch all timetable events (not just ongoing)
+        const allTimetableRes = await axios.get("/api/timetable");
+        const allEvents = allTimetableRes.data?.data || [];
 
-  useEffect(() => { if (!isAuthenticated) navigate("/login"); }, [isAuthenticated, navigate]);
-  useEffect(() => { const t = setInterval(() => setNow(new Date()), 30000); return () => clearInterval(t); }, []);
+        // Find today's events
+        const today = new Date();
+        const todayEvents = allEvents.filter(ev => {
+          const evDate = new Date(ev.start);
+          return evDate.toDateString() === today.toDateString();
+        });
+
+        // Find upcoming event (next event after now)
+        const nowTime = new Date();
+        const futureEvents = allEvents.filter(ev => new Date(ev.start) > nowTime);
+        futureEvents.sort((a, b) => new Date(a.start) - new Date(b.start));
+        setUpcomingEvent(futureEvents.length > 0 ? futureEvents[0] : null);
+
+        // Fetch active tasks (for demo, use events count)
+        const tasksCount = todayEvents.length;
+
+        // Optionally, fetch recent activity (notes, groups, kuppi, etc.)
+        const activity = [];
+        if (notesRes.data?.data?.length > 0) {
+          activity.push({ type: "note", text: `Shared a note: ${notesRes.data.data[0].title || "Untitled"}`, time: "Just now" });
+        }
+        if (groupsRes.data?.data?.length > 0) {
+          activity.push({ type: "group", text: `Joined group: ${groupsRes.data.data[0].name || "Unnamed"}`, time: "Today" });
+        }
+
+        setStats([
+          { icon: <BookOpen size={20} />, value: notesCount, label: "Notes Shared", trend: "", color: "#10b981", rgb: "16, 185, 129" },
+          { icon: <Users size={20} />, value: groupsCount, label: "Study Groups", trend: "", color: "#3b82f6", rgb: "59, 130, 246" },
+          { icon: <Calendar size={20} />, value: todayEvents.length, label: "Events Today", trend: "", color: "#8b5cf6", rgb: "139, 92, 246" },
+          { icon: <Target size={20} />, value: tasksCount, label: "Active Tasks", trend: "", color: "#f59e0b", rgb: "245, 158, 11" },
+        ]);
+        setTodayClasses(todayEvents);
+        setRecentActivity(activity);
+      } catch (err) {
+        // fallback to zeros
+        setStats([
+          { icon: <BookOpen size={20} />, value: 0, label: "Notes Shared", trend: "", color: "#10b981", rgb: "16, 185, 129" },
+          { icon: <Users size={20} />, value: 0, label: "Study Groups", trend: "", color: "#3b82f6", rgb: "59, 130, 246" },
+          { icon: <Calendar size={20} />, value: 0, label: "Events Today", trend: "", color: "#8b5cf6", rgb: "139, 92, 246" },
+          { icon: <Target size={20} />, value: 0, label: "Active Tasks", trend: "", color: "#f59e0b", rgb: "245, 158, 11" },
+        ]);
+        setTodayClasses([]);
+        setRecentActivity([]);
+        setUpcomingEvent(null);
+      }
+    }
+    fetchDashboardData();
+  }, []);
+
+  // Upcoming Event component
+  const UpcomingEvent = () => (
+    <div className="upcoming-event">
+      {upcomingEvent ? (
+        <>
+          <div className="upcoming-event-title">{upcomingEvent.title || upcomingEvent.name || "Event"}</div>
+          <div className="upcoming-event-time">
+            {upcomingEvent.start ? new Date(upcomingEvent.start).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ""}
+          </div>
+          {upcomingEvent.location && <div className="upcoming-event-location">{upcomingEvent.location}</div>}
+        </>
+      ) : (
+        <div className="upcoming-event-none">No upcoming events</div>
+      )}
+    </div>
+  );
 
   const handleLogout = async () => {
     const confirmed = await confirmAction("Are you sure you want to log out?", {
       confirmText: "Log out",
     });
     if (!confirmed) return;
-
     dispatch(logout());
-    navigate("/login");
+    navigate("/");
   };
 
   const getGreeting = () => {
@@ -364,283 +230,336 @@ export default function Dashboard() {
     return h < 12 ? "Good Morning" : h < 18 ? "Good Afternoon" : "Good Evening";
   };
 
-  if (!user) return (
-    <div style={{
-      display:'flex', alignItems:'center', justifyContent:'center',
-      height:'100vh', background:'#010810',
-      color:'#00f5c4', fontFamily:'Inter, sans-serif',
-      fontSize:'1rem', letterSpacing:'.05em',
-    }}>
-      Loading...
+  if (!user) {
+    return (
+      <div className="dashboard-loading" data-theme={theme}>
+        Loading...
+      </div>
+    );
+  }
+
+  // Core modules – primary tools
+  const primaryModules = [
+    {
+      icon: <Brain size={28} />,
+      title: "AI Timetable",
+      desc: "Generate adaptive weekly plans, avoid clashes, and sync with deadlines.",
+      color: "#10b981", // Emerald
+      path: "/timetable",
+      badge: "AI Powered",
+    },
+    {
+      icon: <BookMarked size={28} />,
+      title: "Notes & Kuppi",
+      desc: "Organise personal notes, share resources, and run peer sessions.",
+      color: "#3b82f6", // Azure
+      path: "/notes",
+      badge: "Collaborative",
+    },
+    {
+      icon: <Users size={28} />,
+      title: "Study Groups",
+      desc: "Chat, share files, and coordinate tasks with your group members.",
+      color: "#a855f7", // Amethyst
+      path: "/groups",
+      badge: "Active",
+    },
+  ];
+
+  // Secondary tools – compact cards
+  const secondaryModules = [
+    { icon: <Target size={18} />, title: "Exam Mode", desc: "Focused preparation plans", color: "#f97316", path: "/exam-mode" },
+    { icon: <Calendar size={18} />, title: "Calendar", desc: "Events and study deadlines", color: "#06b6d4", path: "/calendar" },
+    { icon: <Share2 size={18} />, title: "File Share", desc: "Fast resource sharing", color: "#10b981", path: "/files" },
+  ];
+
+  // Quick actions
+  const quickActions = [
+    { icon: <Plus size={16} />, label: "New Timetable", path: "/timetable", primary: true },
+    { icon: <Video size={16} />, label: "Create Kuppi", path: "/kuppi" },
+    { icon: <Users size={16} />, label: "New Group", path: "/groups" },
+    { icon: <Share2 size={16} />, label: "Share Notes", path: "/notes" },
+  ];
+
+  // Task 5: TodayClasses static component
+  // Dynamic TodayClasses
+  const TodayClasses = () => (
+    <div className="today-classes">
+      {todayClasses.length === 0 ? (
+        <div className="today-class-row">
+          <span className="today-class-name">No classes today</span>
+        </div>
+      ) : (
+        todayClasses.map((event, idx) => (
+          <div className="today-class-row" key={idx}>
+            <span className={`today-class-dot emerald`}></span>
+            <span className="today-class-name">{event.title || event.name || "Class"}</span>
+            <span className="today-class-time">{event.start ? new Date(event.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}</span>
+          </div>
+        ))
+      )}
     </div>
   );
 
-  /* ── Data ── */
-  const primaryModules = [
-    {
-      icon: <Brain size={20} />, title: "AI Timetable",
-      desc: "Generate practical weekly plans, reduce clashes, and keep your routine aligned with deadlines.",
-      chips: ["AI Powered","Calendar Sync","Adaptive"],
-      color: "#2a9d8f", gradient: "linear-gradient(135deg,#2a9d8f,#1f7a71)",
-      pillColor: "#2a9d8f", pillBg: "rgba(42,157,143,.15)", pillBorder: "rgba(42,157,143,.3)",
-      pill: "Core", path: "/timetable",
-    },
-    {
-      icon: <BookMarked size={20} />, title: "Notes & Kuppi",
-      desc: "Organize personal notes, discover shared content, and run focused peer sessions quickly.",
-      chips: ["OneDrive","Kuppi","Social"],
-      color: "#3b82f6", gradient: "linear-gradient(135deg,#3b82f6,#2563eb)",
-      pillColor: "#3b82f6", pillBg: "rgba(59,130,246,.15)", pillBorder: "rgba(59,130,246,.3)",
-      pill: "Available", path: "/notes",
-    },
-    {
-      icon: <Users size={20} />, title: "Study Groups",
-      desc: "Coordinate tasks in one place with faster communication and cleaner group collaboration.",
-      chips: ["Channels","Polls","Collaboration"],
-      color: "#2a9d8f", gradient: "linear-gradient(135deg,#2a9d8f,#256f66)",
-      pillColor: "#2a9d8f", pillBg: "rgba(42,157,143,.12)", pillBorder: "rgba(42,157,143,.25)",
-      pill: "Available", path: "/groups",
-    },
-  ];
+  // Task 5: RecentActivity static component
+  // Dynamic RecentActivity
+  const RecentActivity = () => (
+    <div className="recent-activity">
+      {recentActivity.length === 0 ? (
+        <div className="activity-row">
+          <span className="activity-text">No recent activity</span>
+        </div>
+      ) : (
+        recentActivity.map((act, idx) => (
+          <div className="activity-row" key={idx}>
+            <span className={`activity-dot ${act.type === "note" ? "azure" : act.type === "group" ? "amethyst" : "amber"}`}></span>
+            <span className="activity-text">{act.text}</span>
+            <span className="activity-time">{act.time}</span>
+          </div>
+        ))
+      )}
+    </div>
+  );
 
-  const secondaryModules = [
-    { icon:<Target size={17}/>, title:"Exam Mode", desc:"Structured exam preparation plans", color:"#2a9d8f", gradient:"linear-gradient(135deg,#2a9d8f,#1f7a71)", pill:"New", path:"/exam-mode" },
-    { icon:<Calendar size={17}/>, title:"Calendar", desc:"Events and study checkpoints", color:"#3b82f6", gradient:"linear-gradient(135deg,#3b82f6,#2563eb)", pill:null, path:"/calendar" },
-    { icon:<Share2 size={17}/>, title:"File Share", desc:"Fast resource sharing with peers", color:"#2a9d8f", gradient:"linear-gradient(135deg,#3ea89a,#2a7d73)", pill:null, path:"/files" },
-  ];
-
-  const stats = [
-    { icon:<BookOpen size={16}/>, val:"24", lbl:"Notes Shared",  trend:"+12% this week", ac:"#00f5c4" },
-    { icon:<Users size={16}/>,    val:"5",  lbl:"Study Groups",  trend:"2 active now",   ac:"#00aaff" },
-    { icon:<Calendar size={16}/>, val:"8",  lbl:"Events Today",  trend:"Next at 2 PM",   ac:"#7fffd4" },
-    { icon:<Target size={16}/>,   val:"12", lbl:"Active Tasks",  trend:"3 due soon",     ac:"#00ccff" },
-  ];
-
-  const quickActions = [
-    { icon:<Plus size={13}/>,       label:"New Timetable", path:"/timetable", primary:true },
-    { icon:<BookMarked size={13}/>, label:"Share Notes",   path:"/notes" },
-    { icon:<Video size={13}/>,      label:"Create Kuppi",  path:"/kuppi" },
-    { icon:<Users size={13}/>,      label:"New Group",     path:"/groups" },
-  ];
-
+  // Nav links - dynamic active state based on location
   const navLinks = [
-    { icon:<HomeIcon size={14}/>,        label:"Home",       path:"/" },
-    { icon:<LayoutDashboard size={14}/>, label:"Dashboard",  path:"/dashboard", active:true },
-    { icon:<Brain size={14}/>,           label:"Timetable",  path:"/timetable" },
-    { icon:<BookMarked size={14}/>,      label:"Notes",      path:"/notes" },
-    { icon:<Video size={14}/>,           label:"Kuppi",      path:"/kuppi" },
-    { icon:<Users size={14}/>,           label:"Groups",     path:"/groups" },
-  ];
-
-  const shortcuts = [
-    { label: "Open Timetable", path: "/timetable" },
-    { label: "Open Notes", path: "/notes" },
-    { label: "Create Kuppi", path: "/kuppi" },
+    { icon: <HomeIcon size={20} strokeWidth={2.5} />, label: "Home", path: "/" },
+    { icon: <LayoutDashboard size={20} strokeWidth={2.5} />, label: "Dashboard", path: "/dashboard" },
+    { icon: <Brain size={20} strokeWidth={2.5} />, label: "Timetable", path: "/timetable" },
+    { icon: <BookMarked size={20} strokeWidth={2.5} />, label: "Notes", path: "/notes" },
+    { icon: <Video size={20} strokeWidth={2.5} />, label: "Kuppi", path: "/kuppi" },
+    { icon: <Users size={20} strokeWidth={2.5} />, label: "Groups", path: "/groups" },
   ];
 
   return (
-    <div className="db-root dashboard-page">
-      {/* Canvas */}
-      <div className="db-canvas-wrap" ref={canvasRefCallback} />
-      <div className="db-overlay-vignette" />
-      <div className="db-overlay-scan" />
+    <div className="dashboard" data-theme={theme}>
+      {/* Header */}
+      <header className="dashboard-header">
+        <div className="dashboard-header__inner">
+          <Link to="/dashboard" className="dashboard-logo">
+            <span className="dashboard-logo__text">User Dashboard</span>
+          </Link>
 
-      {/* HUD corner brackets */}
-      <div className="db-hud-br db-hud-br--tl" />
-      <div className="db-hud-br db-hud-br--tr" />
-      <div className="db-hud-br db-hud-br--bl" />
-      <div className="db-hud-br db-hud-br--br" />
+          <nav className="dashboard-nav">
+            {navLinks.map((link, idx) => (
+              <Link
+                key={link.path}
+                to={link.path}
+                className={`dashboard-nav__link ${location.pathname === link.path ? "active" : ""}`}
+                style={{ "--i": idx }}
+              >
+                {link.icon}
+                <span>{link.label}</span>
+              </Link>
+            ))}
+          </nav>
 
-      <div className="db-layout">
-
-        {/* ── Navbar ── */}
-        <nav className="db-nav">
-          <div className="db-nav__inner">
-            <Link to="/dashboard" className="db-brand">
-              <div className="db-brand__mark">
-                <Waves size={16} color="#00f5c4" />
-              </div>
-              <div>
-                <div className="db-brand__name">Smart Campus</div>
-                <div className="db-brand__sub">Student Collaboration Hub</div>
-              </div>
-            </Link>
-
-            <div className="db-nav__links">
-              {navLinks.map((l, i) => (
-                <Link key={i} to={l.path} className={`db-nav__link${l.active ? " db-nav__link--active" : ""}`}>
-                  {l.icon}<span>{l.label}</span>
-                </Link>
-              ))}
-            </div>
-
-            <div className="db-nav__right">
-              <NotificationBell />
-              <button className="db-top-btn" onClick={() => navigate("/profile")}>My Profile</button>
-              <button className="db-top-btn db-top-btn--danger" onClick={handleLogout}>
-                <LogOut size={13} />
-                <span>Sign Out</span>
-              </button>
-            </div>
+          <div className="dashboard-actions" style={{ display: 'flex', alignItems: 'center', gap: '1.2rem' }}>
+            <NotificationBell />
+            <button className="dashboard-profile-btn" onClick={() => navigate("/profile")}>
+              <span className="dashboard-avatar">
+                {user.name?.charAt(0) || "U"}
+              </span>
+              <span className="dashboard-profile-name">{user.name?.split(" ")[0]}</span>
+            </button>
+            <button className="dashboard-logout-btn" onClick={handleLogout} aria-label="Log Out">
+              <LogOut size={22} strokeWidth={2.5} />
+            </button>
           </div>
-        </nav>
+        </div>
+      </header>
 
-        {/* ── Main ── */}
-        <main className="db-main">
-
-          {/* Hero */}
-          <section className="db-hero db-hero--modern">
-            <div className="db-hero__left">
-              <div className="db-hero__sys">{getGreeting()}</div>
-              <h1 className="db-hero__name">{user.name}</h1>
-              <p className="db-hero__sub">
-                All your study tools are centralized here. Track your progress, access resources, and move quickly through your day.
-              </p>
-              <div className="db-hero__badges">
-                <span className="db-badge"><GraduationCap size={10} />{user.role}</span>
-                {user.department && <span className="db-badge"><Radio size={10} />{user.department}</span>}
-                {user.year && <span className="db-badge"><Activity size={10} />Year {user.year}</span>}
-                {user.studentId && <span className="db-badge"><Shield size={10} />{user.studentId}</span>}
+      {/* Main Content */}
+      <main className="dashboard-main">
+        <div className="dashboard-container">
+          {/* Hero Section */}
+          <section className="dashboard-hero">
+            <div>
+              {/* Task 1: SYSTEM ONLINE status row */}
+              <div className="dashboard-hero__system-status">
+                <span className="dashboard-hero__system-dot"></span>
+                <span className="dashboard-hero__system-text">SYSTEM ONLINE</span>
               </div>
-              <div className="db-shortcuts">
-                {shortcuts.map((item) => (
-                  <button key={item.path} className="db-shortcut-btn" onClick={() => navigate(item.path)}>
-                    {item.label}
-                  </button>
-                ))}
+              <div className="dashboard-hero__greeting">
+                <span className="dashboard-hero__status-dot"></span>
+                {getGreeting()}
+              </div>
+              <h1 className="dashboard-hero__name">{user.name}</h1>
+              <div className="dashboard-hero__status">
+                {animatedStats[0] || 0} notes · {animatedStats[1] || 0} groups · 7-day streak active
+              </div>
+              <p className="dashboard-hero__desc">
+                Your study hub is ready. Track progress, access tools, and stay on top of your goals.
+              </p>
+              <div className="dashboard-hero__shortcuts">
+                <button onClick={() => navigate("/timetable")}>Open Timetable</button>
+                <button onClick={() => navigate("/notes")}>View Notes</button>
+                <button onClick={() => navigate("/groups")}>Study Groups</button>
               </div>
             </div>
-            <div className="db-clock">
-              <div className="db-clock__label">Current Time</div>
-              <div className="db-clock__time">
-                {now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })}
+
+            {/* Clock Panel */}
+            <div className="dashboard-time">
+              <div className="dashboard-time__progress">
+                <svg viewBox="0 0 100 100">
+                  <circle className="progress-ring-bg" cx="50" cy="50" r="48" />
+                  <circle
+                    className="progress-ring"
+                    cx="50"
+                    cy="50"
+                    r="48"
+                    strokeDasharray={`${2 * Math.PI * 48}`}
+                    strokeDashoffset={ringOffset}
+                  />
+                </svg>
               </div>
-              <div className="db-clock__date">
-                {now.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+              <div className="dashboard-time__label">
+                <Clock size={14} /> Current Time
+              </div>
+              <div className="dashboard-time__value">
+                {new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })}
+              </div>
+              <div className="dashboard-time__date">
+                {new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
               </div>
             </div>
           </section>
 
-          {/* Stats */}
-          <section className="db-stats">
-            {stats.map((s, i) => (
-              <div key={i} className="db-stat hover-glow" style={{ "--ac": s.ac }}>
-                <div className="db-stat__icon">{s.icon}</div>
-                <div>
-                  <div className="db-stat__val">{s.val}</div>
-                  <div className="db-stat__lbl">{s.lbl}</div>
+          {/* Stats Grid */}
+          <div className="dashboard-stats">
+            {stats.map((stat, idx) => (
+              <div
+                key={idx}
+                className="stat-card"
+                style={{ "--accent": stat.color, "--accent-rgb": stat.rgb, "--i": idx + 5 }}
+              >
+                <div className="stat-card__icon">{stat.icon}</div>
+                <div className="stat-card__content">
+                  <div className="stat-card__value">{stat.value}</div>
+                  <div className="stat-card__label">{stat.label}</div>
                 </div>
-                <div className="db-stat__trend"><TrendingUp size={9} />{s.trend}</div>
+                <div className="stat-card__trend">
+                  <TrendingUp size={12} />
+                  {stat.trend}
+                </div>
               </div>
             ))}
-          </section>
+          </div>
 
-          {/* Grid */}
-          <div className="db-grid">
-            <div className="db-grid-left">
-              {/* Primary */}
-              <div className="db-sec-head">
-                <span className="db-sec-title">Core Modules</span>
-                <span className="db-sec-count">{primaryModules.length} Active</span>
+          {/* Two‑column layout */}
+          <div className="dashboard-grid">
+            {/* Left column: Modules */}
+            <div className="dashboard-modules">
+              {/* Primary modules */}
+              <div className="section-header">
+                <h2>Core Tools</h2>
+                <span className="section-badge">{primaryModules.length} active</span>
               </div>
-              <div className="db-cards-p">
-                {primaryModules.map((m, i) => (
-                  <Link key={i} to={m.path} className="db-card-p card-shine hover-glow">
-                    <div className="db-card-p__head">
-                      <div className="db-card-p__icon" style={{ background: m.gradient }}>
-                        {m.icon}
+              <div className="primary-modules">
+                {primaryModules.map((mod, idx) => (
+                  <Link
+                    key={idx}
+                    to={mod.path}
+                    className="primary-card"
+                    style={{ "--color": mod.color, "--i": idx + 10 }}
+                  >
+                    <div className="primary-card__icon" style={{ backgroundColor: mod.color + "15", color: mod.color }}>
+                      {mod.icon}
+                    </div>
+                    <div className="primary-card__content">
+                      <div className="primary-card__title">
+                        {mod.title}
+                        {mod.badge && <span className="primary-card__badge">{mod.badge}</span>}
                       </div>
-                      <span className="db-card-p__pill" style={{
-                        color: m.pillColor,
-                        background: m.pillBg,
-                        borderColor: m.pillBorder,
-                      }}>{m.pill}</span>
-                    </div>
-                    <div className="db-card-p__title">{m.title}</div>
-                    <div className="db-card-p__desc">{m.desc}</div>
-                    <div className="db-card-p__chips">
-                      {m.chips.map((c, ci) => (
-                        <span key={ci} className="db-chip"><Zap size={8} /> {c}</span>
-                      ))}
-                    </div>
-                    <div className="db-card-p__foot">
-                      <span className="db-card-p__status">
-                        <span className="bio-dot" /> Ready
-                      </span>
-                      <ArrowRight size={14} className="db-card-p__arrow" />
+                      <p className="primary-card__desc">{mod.desc}</p>
+                      <div className="primary-card__action">
+                        <span>Explore Tool</span>
+                        <span className="primary-card__arrow">→</span>
+                        <ArrowRight size={14} />
+                      </div>
                     </div>
                   </Link>
                 ))}
               </div>
 
-              {/* Secondary */}
-              <div className="db-sec-head" style={{ marginTop: "1.4rem" }}>
-                <span className="db-sec-title">More Tools</span>
+              {/* Secondary modules */}
+              <div className="section-header" style={{ marginTop: "2rem" }}>
+                <h2>More Tools</h2>
               </div>
-              <div className="db-cards-s db-cards-s--modern">
-                {secondaryModules.map((m, i) => (
-                  <Link key={i} to={m.path} className="db-card-row card-shine hover-glow">
-                    <div className="db-card-row__icon" style={{ background: m.gradient }}>{m.icon}</div>
-                    <div style={{ flex: 1 }}>
-                      <div className="db-card-row__title">
-                        {m.title}
-                        {m.pill && (
-                          <span className="db-card-p__pill" style={{
-                            fontSize: "8px", padding: "2px 6px",
-                            color: m.color,
-                            background: `${m.color}18`,
-                            borderColor: `${m.color}35`,
-                          }}>{m.pill}</span>
-                        )}
-                      </div>
-                      <div className="db-card-row__desc">{m.desc}</div>
+              <div className="secondary-modules">
+                {secondaryModules.map((mod, idx) => (
+                  <Link
+                    key={idx}
+                    to={mod.path}
+                    className="secondary-card"
+                    style={{ "--color": mod.color, "--i": idx + 15 }}
+                  >
+                    <div className="secondary-card__icon" style={{ backgroundColor: mod.color + "15", color: mod.color }}>
+                      {mod.icon}
                     </div>
-                    <ChevronRight size={14} className="db-card-row__arrow" />
+                    <div className="secondary-card__info">
+                      <div className="secondary-card__title">{mod.title}</div>
+                      <div className="secondary-card__desc">{mod.desc}</div>
+                    </div>
+                    <ChevronRight size={16} className="secondary-card__arrow" />
                   </Link>
                 ))}
               </div>
             </div>
 
-            {/* Sidebar */}
-            <aside className="db-sidebar db-sidebar--modern">
-              <div className="db-side-card uiverse-glass">
-                <div className="db-side-title">Quick Actions</div>
-                <div className="db-qa-list">
-                  {quickActions.map((a, i) => (
-                    <button key={i}
-                      className={`db-qa-btn${a.primary ? " db-qa-btn--primary" : ""}`}
-                      onClick={() => navigate(a.path)}>
-                      {a.icon}<span>{a.label}</span>
+            {/* Right sidebar */}
+            <aside className="dashboard-sidebar">
+              {/* Quick Actions */}
+              <div className="sidebar-card">
+                <div className="sidebar-card__title">Quick Actions</div>
+                <div className="quick-actions">
+                  {quickActions.map((action, idx) => (
+                    <button
+                      key={idx}
+                      className={`quick-action ${action.primary ? "primary" : ""}`}
+                      onClick={() => navigate(action.path)}
+                    >
+                      {action.icon}
+                      <span>{action.label}</span>
                     </button>
                   ))}
                 </div>
               </div>
 
-              <div className="db-side-card uiverse-glass">
-                <div className="db-side-title">Upcoming Events</div>
-                <div className="db-empty">
-                  <Calendar size={24} strokeWidth={1.2} className="db-empty__icon" />
-                  <div className="db-empty__title">No Upcoming Events</div>
-                  <div className="db-empty__sub">Your schedule is clear</div>
-                </div>
+
+              {/* Upcoming Event Section */}
+              <div className="sidebar-card">
+                <div className="sidebar-card__title">Upcoming Event</div>
+                <UpcomingEvent />
               </div>
 
-              <div className="db-side-card uiverse-glass">
-                <div className="db-side-head-row">
-                  <div className="db-side-title" style={{ marginBottom: 0 }}>Recent Activity</div>
-                  <Link to="/notifications" className="db-side-link">View All <ChevronRight size={10} /></Link>
+              {/* Task 5: Today's Classes */}
+              <div className="sidebar-card">
+                <div className="sidebar-card__title">Today's Classes</div>
+                <TodayClasses />
+              </div>
+
+              {/* Task 5: Recent Activity */}
+              <div className="sidebar-card">
+                <div className="sidebar-card__title">Recent Activity</div>
+                <RecentActivity />
+              </div>
+
+              {/* Optional: Study streak */}
+              <div className="sidebar-card streak-card">
+                <div className="streak-icon">
+                  <Award size={24} />
                 </div>
-                <div className="db-empty">
-                  <Sparkles size={24} strokeWidth={1.2} className="db-empty__icon" />
-                  <div className="db-empty__title">No Recent Activity</div>
-                  <div className="db-empty__sub">You're all caught up</div>
+                <div>
+                  <div className="streak-value">7 day streak</div>
+                  <div className="streak-label">Keep it going! 🔥</div>
                 </div>
               </div>
             </aside>
           </div>
-
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
+
   );
 }

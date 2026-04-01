@@ -1,55 +1,46 @@
 import mongoose from "mongoose";
 
-const timetableSchema = new mongoose.Schema({
-    userId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-        required: [true, "User ID is required"]
-    },
-    subject: {
-        type: String,
-        required: [true, "Subject is required"],
-        trim: true
-    },
-    dayOfWeek: {
-        type: String,
-        enum: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
-        required: [true, "Day of week is required"]
-    },
-    startTime: {
-        type: String,
-        required: [true, "Start time is required"],
-        match: [/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Invalid time format (HH:MM)"]
-    },
-    endTime: {
-        type: String,
-        required: [true, "End time is required"],
-        match: [/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Invalid time format (HH:MM)"]
-    },
-    location: {
-        type: String,
-        trim: true,
-        default: ""
-    },
-    lecturer: {
-        type: String,
-        trim: true,
-        default: ""
-    },
-    type: {
-        type: String,
-        enum: ["lecture", "lab", "tutorial", "other"],
-        default: "lecture"
-    },
-    color: {
-        type: String,
-        default: "#4F46E5"
-    }
-}, {
-    timestamps: true
-});
+// Timetable model shape expected by:
+// - `backend/src/controllers/timetableController.js`
+// - `frontend/src/pages/Timetable.jsx`
+//
+// The app stores a single timetable document per user with:
+// - `universitySchedule`: base events (user-provided)
+// - `optimizedSchedule`: AI/rule-based added study sessions
+//
+// Each event uses `start`/`end` datetimes (ISO strings cast to Date by Mongoose).
 
-timetableSchema.index({ userId: 1, dayOfWeek: 1 });
+const timetableEventSchema = new mongoose.Schema(
+  {
+    title: { type: String, default: "" },
+    subjectCode: { type: String, default: "" },
+    type: { type: String, default: "lecture" }, // lecture | lab | tutorial | exam | study | other
+    start: { type: Date, required: true },
+    end: { type: Date, required: true },
+    location: { type: String, default: "" },
+    metadata: { type: Object, default: {} }
+  },
+  { _id: false }
+);
+
+const timetableSchema = new mongoose.Schema(
+  {
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true
+    },
+    universitySchedule: { type: [timetableEventSchema], default: [] },
+    optimizedSchedule: { type: [timetableEventSchema], default: [] }
+  },
+  {
+    timestamps: true
+  }
+);
+
+// Allow multiple historical timetables; controllers use `sort({ createdAt: -1 })`
+// to pick the latest one.
+timetableSchema.index({ user: 1 });
 
 const Timetable = mongoose.model("Timetable", timetableSchema);
 

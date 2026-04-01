@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../features/auth/authSlice";
 import gsap from "gsap";
@@ -10,12 +10,7 @@ import { useCyberpunkBackground } from "../hooks/useCyberpunkBackground";
 gsap.registerPlugin(ScrollTrigger);
 
 // ========== DATA (same) ==========
-const stats = [
-  { value: "50K+", label: "Active Students" },
-  { value: "10K+", label: "Study Groups" },
-  { value: "99.9%", label: "Uptime" },
-  { value: "4.9★", label: "Avg Rating" },
-];
+// ...existing code...
 
 const features = [
   { icon: "📝", tag: "Notes", title: "Smart Notes Sharing", desc: "Upload, organize, and share lecture notes with your peers. AI-powered summaries help you study smarter." },
@@ -72,13 +67,17 @@ const faqs = [
 
 export default function Home() {
   const [scrolled, setScrolled] = useState(false);
+  const [navHidden, setNavHidden] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [canvasReady, setCanvasReady] = useState(false);
   const canvasRef = useRef(null);
   const rootRef = useRef(null);
   const profileMenuRef = useRef(null);
+  const mobileMenuRef = useRef(null);
 
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { isAuthenticated, user } = useSelector((state) => state.auth);
 
   // Initialize enhanced Three.js background (now with green neon)
@@ -106,7 +105,25 @@ export default function Home() {
 
   // Navbar scroll effect
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
+    let lastY = window.scrollY;
+    const onScroll = () => {
+      const y = window.scrollY;
+      setScrolled(y > 20);
+
+      // Hide when scrolling down, reveal when scrolling up.
+      // Small hysteresis to avoid flicker around the threshold.
+      const scrollingDown = y > lastY + 6;
+      const scrollingUp = y < lastY - 6;
+      if (y < 60) {
+        setNavHidden(false);
+      } else if (scrollingDown) {
+        setNavHidden(true);
+      } else if (scrollingUp) {
+        setNavHidden(false);
+      }
+
+      lastY = y;
+    };
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
@@ -203,6 +220,9 @@ export default function Home() {
       if (profileMenuRef.current && !profileMenuRef.current.contains(e.target)) {
         setProfileOpen(false);
       }
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(e.target)) {
+        setMobileOpen(false);
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -245,17 +265,21 @@ export default function Home() {
         .glow-card-btn:focus-visible,
         .profile-dropdown a:focus-visible,
         .profile-dropdown button:focus-visible,
-        .nav-links button:focus-visible {
+        .nav-links .nav-item:focus-visible {
           outline: 2px solid var(--accent-green);
           outline-offset: 2px;
           box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
         }
 
         :root {
-          --bg-dark: #101828;
-          --bg-card: rgba(18, 22, 36, 0.8);
-          --bg-surface: #121624;
-          --border: rgba(255, 255, 255, 0.08);
+          --bg-dark: #1b2a43;
+          --bg-card: rgba(36, 50, 74, 0.8);
+          --bg-surface: #253651;
+          --glass-header: rgba(15, 23, 42, 0.92);
+          --glass-header-top: rgba(15, 23, 42, 0.38);
+          --glass-bg: rgba(30, 41, 59, 0.22);
+          --glass-hover: rgba(51, 65, 85, 0.45);
+          --border: rgba(255, 255, 255, 0.11);
           --accent-cyan: #2dd4bf;
           --accent-green: #10b981;
           --accent-purple: #a78bfa;
@@ -286,8 +310,8 @@ export default function Home() {
           inset: 0;
           z-index: 0;
           pointer-events: none;
-          opacity: 0.9;
-          filter: contrast(1.14) saturate(1.14) brightness(1.08);
+          opacity: 0.96;
+          filter: contrast(1.2) saturate(1.2) brightness(1.16);
         }
 
         .overlay {
@@ -295,9 +319,9 @@ export default function Home() {
           inset: 0;
           z-index: 1;
           pointer-events: none;
-          background: radial-gradient(circle at 30% 30%, rgba(16, 185, 129, 0.1) 0%, transparent 58%),
-                      radial-gradient(circle at 70% 80%, rgba(45, 212, 191, 0.1) 0%, transparent 58%),
-                      linear-gradient(180deg, rgba(10, 12, 20, 0.03) 0%, rgba(10, 12, 20, 0.46) 100%);
+          background: radial-gradient(circle at 30% 30%, rgba(16, 185, 129, 0.12) 0%, transparent 58%),
+                      radial-gradient(circle at 70% 80%, rgba(45, 212, 191, 0.12) 0%, transparent 58%),
+                      linear-gradient(180deg, rgba(27, 42, 67, 0.01) 0%, rgba(27, 42, 67, 0.22) 100%);
         }
 
         .content {
@@ -305,126 +329,277 @@ export default function Home() {
           z-index: 10;
         }
 
-        /* Navigation */
+        /* ===== NAVIGATION ===== */
         nav {
           position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          z-index: 100;
-          padding: 1.25rem clamp(1.5rem, 5vw, 4rem);
-          transition: background 0.3s, backdrop-filter 0.3s;
+          top: 0; left: 0; right: 0;
+          z-index: 200;
+          width: 100%;
+          background: var(--glass-header-top);
+          backdrop-filter: blur(20px);
+          border-bottom: 1px solid var(--border);
+          transition: background 0.35s ease, box-shadow 0.35s ease, border-color 0.35s ease, transform 0.22s ease, opacity 0.22s ease;
         }
         nav.scrolled {
-          background: rgba(10, 12, 20, 0.85);
-          backdrop-filter: blur(12px);
-          border-bottom: 1px solid var(--border);
+          background: var(--glass-header);
+          border-bottom-color: rgba(255, 255, 255, 0.16);
+          box-shadow: 0 10px 34px rgba(0, 0, 0, 0.42);
+        }
+        nav.nav-hidden {
+          transform: translateY(-110%);
+          opacity: 0;
+          pointer-events: none;
         }
         .nav-inner {
-          max-width: 1280px;
+          width: 100%;
+          max-width: 1600px;
           margin: 0 auto;
+          padding: 1.2rem 2.4rem;
           display: flex;
           align-items: center;
-          gap: 2rem;
+          justify-content: space-between;
+          gap: 1rem;
         }
-        .brand {
+
+        /* ---- Brand ---- */
+        .nav-brand {
+          display: flex;
+          align-items: center;
+          gap: 0.8rem;
+          background: none;
+          border: none;
+          cursor: pointer;
+          text-decoration: none;
+          color: var(--text-primary);
+          padding: 0;
+          line-height: 1;
+        }
+        .nav-brand-logo {
+          width: 38px;
+          height: 38px;
+          border-radius: 12px;
+          background: linear-gradient(135deg, var(--accent-green), var(--accent-cyan));
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1.05rem;
+          font-weight: 900;
+          color: #fff;
+          flex-shrink: 0;
+          box-shadow: 0 10px 28px rgba(16,185,129,0.4), 0 0 20px rgba(45,212,191,0.3);
+        }
+        .nav-brand-name {
+          font-family: 'Inter', sans-serif;
+          font-weight: 800;
+          font-size: 1.62rem;
+          letter-spacing: -0.03em;
+          background: linear-gradient(135deg, var(--text-primary), var(--accent-green));
+          -webkit-background-clip: text;
+          background-clip: text;
+          color: transparent;
+          line-height: 1;
+        }
+        .nav-brand-name span {
+          color: inherit;
+        }
+
+        /* ---- Center Links ---- */
+        .nav-center {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        .nav-link {
+          /* complete reset for both <a> and <button> */
+          all: unset;
+          cursor: pointer;
+          box-sizing: border-box;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          min-height: 48px;
+          padding: 14px 26px;
+          border-radius: 18px;
+          font-size: 1.08rem;
           font-weight: 700;
-          font-size: 1.25rem;
-          color: var(--text-primary);
-          background: none;
-          border: none;
-          cursor: pointer;
+          line-height: 1;
+          color: #e2e8f0;
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.14);
+          transition: all 0.25s ease;
+          white-space: nowrap;
+          text-decoration: none;
+          -webkit-font-smoothing: antialiased;
+        }
+        .nav-link:visited,
+        .nav-link:active {
+          color: #e2e8f0;
+        }
+        .nav-link:hover {
+          color: #f8fafc;
+          background: rgba(255, 255, 255, 0.16);
+          border-color: rgba(255, 255, 255, 0.24);
+          transform: translateY(-2px);
+        }
+        .nav-link.active-link {
+          color: #ffffff;
+          background: linear-gradient(135deg, var(--accent-green), #059669);
+          border-color: transparent;
+          box-shadow: 0 10px 20px -6px rgba(16, 185, 129, 0.45), inset 0 2px 4px rgba(255, 255, 255, 0.2);
+        }
+
+        /* ---- Right side ---- */
+        .nav-right {
           display: flex;
           align-items: center;
-          gap: 0.5rem;
-          letter-spacing: -0.02em;
-        }
-        .brand-dot {
-          width: 8px;
-          height: 8px;
-          background: var(--accent-green);
-          border-radius: 50%;
-          box-shadow: var(--glow-green);
-        }
-        .nav-links {
-          display: flex;
-          align-items: center;
-          gap: 0.25rem;
-          margin-left: auto;
-        }
-        .nav-links button {
-          font-size: 0.9rem;
-          font-weight: 500;
-          color: var(--text-secondary);
-          background: none;
-          border: none;
-          padding: 0.5rem 1rem;
-          border-radius: 30px;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-        .nav-links button:hover {
-          color: var(--text-primary);
-          background: rgba(16, 185, 129, 0.1);
-        }
-        .nav-actions {
-          display: flex;
-          align-items: center;
+          justify-content: flex-end;
           gap: 0.75rem;
         }
         .home-signin-btn {
-          font-size: 0.9rem;
-          font-weight: 500;
-          color: var(--accent-green);
-          background: transparent;
-          border: 1px solid rgba(16, 185, 129, 0.45);
-          border-radius: 30px;
-          padding: 0.5rem 1.4rem;
+          all: unset;
+          cursor: pointer;
+          box-sizing: border-box;
+          display: inline-flex;
+          align-items: center;
+          padding: 11px 20px;
+          font-size: 0.98rem;
+          font-weight: 700;
+          line-height: 1;
+          color: #cbd5e1;
+          border-radius: 14px;
+          border: 1px solid var(--border);
+          background: var(--glass-bg);
+          transition: all 0.25s ease;
           text-decoration: none;
-          box-shadow: 0 0 14px rgba(16, 185, 129, 0.2);
-          transition: all 0.2s;
+          white-space: nowrap;
         }
-        .home-signin-btn:visited,
-        .home-signin-btn:active {
-          color: var(--accent-green);
-        }
+        .home-signin-btn:visited { color: #cbd5e1; }
         .home-signin-btn:hover {
-          border-color: var(--accent-green);
-          color: var(--accent-green);
-          background: rgba(16, 185, 129, 0.16);
-          transform: translateY(-3px);
-          box-shadow: 0 0 22px rgba(16, 185, 129, 0.35);
-        }
-
-        .nav-actions .home-signin-btn,
-        .nav-actions .home-signin-btn:visited,
-        .nav-actions .home-signin-btn:active,
-        .nav-actions .home-signin-btn:hover,
-        .nav-actions .home-signin-btn:focus,
-        .nav-actions .home-signin-btn:focus-visible {
-          color: var(--accent-green) !important;
-          text-decoration: none !important;
+          color: #f8fafc;
+          background: var(--glass-hover);
+          transform: translateY(-2px);
         }
         .btn-solid {
-          font-size: 0.9rem;
-          font-weight: 600;
-          color: #ffffff;
-          background: var(--accent-green);
-          border: none;
-          border-radius: 30px;
-          padding: 0.5rem 1.6rem;
+          all: unset;
+          cursor: pointer;
+          box-sizing: border-box;
+          display: inline-flex;
+          align-items: center;
+          padding: 11px 22px;
+          font-size: 0.98rem;
+          font-weight: 700;
+          line-height: 1;
+          color: #fff;
+          background: linear-gradient(135deg, var(--accent-green), #059669);
+          border-radius: 14px;
           text-decoration: none;
-          box-shadow: var(--glow-green);
-          transition: opacity 0.2s, box-shadow 0.2s;
+          white-space: nowrap;
+          box-shadow: 0 10px 20px -6px rgba(16, 185, 129, 0.5);
+          transition: background 0.2s, box-shadow 0.2s, transform 0.2s;
         }
-        .btn-solid:visited,
-        .btn-solid:active,
+        .btn-solid:visited, .btn-solid:active { color: #fff; }
         .btn-solid:hover {
-          color: #ffffff;
+          background: linear-gradient(135deg, #12c98d, #0d9a69);
+          transform: translateY(-2px);
+          box-shadow: 0 8px 24px -4px rgba(16,185,129,0.85);
+          color: #fff;
         }
-        .btn-solid:hover {
-          opacity: 0.9;
-          box-shadow: 0 0 25px var(--accent-green);
+
+        /* ---- Hamburger ---- */
+        .nav-hamburger {
+          all: unset;
+          cursor: pointer;
+          display: none;
+          flex-direction: column;
+          justify-content: center;
+          gap: 5px;
+          width: 34px;
+          height: 34px;
+          padding: 4px;
+        }
+        .nav-hamburger span {
+          display: block;
+          height: 2px;
+          background: var(--text-primary);
+          border-radius: 2px;
+          transition: all 0.3s ease;
+          transform-origin: center;
+        }
+        .nav-hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+        .nav-hamburger.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+        .nav-hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+        /* ---- Mobile Drawer ---- */
+        .nav-mobile-drawer {
+          display: none;
+          position: fixed;
+          top: 68px;
+          left: 0;
+          right: 0;
+          background: rgba(28, 44, 70, 0.95);
+          backdrop-filter: blur(20px);
+          border-bottom: 1px solid rgba(255,255,255,0.11);
+          z-index: 199;
+          flex-direction: column;
+          padding: 1.25rem 1.5rem 1.75rem;
+          gap: 0.25rem;
+          animation: slideDown 0.3s cubic-bezier(0.16,1,0.3,1);
+        }
+        @keyframes slideDown {
+          from { opacity: 0; transform: translateY(-12px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .nav-mobile-drawer.open { display: flex; }
+        .nav-drawer-link {
+          all: unset;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          padding: 0.85rem 1rem;
+          border-radius: 12px;
+          font-size: 1rem;
+          font-weight: 500;
+          color: var(--text-secondary);
+          text-decoration: none;
+          transition: background 0.2s, color 0.2s;
+        }
+        .nav-drawer-link:hover {
+          background: rgba(16,185,129,0.1);
+          color: var(--text-primary);
+        }
+        .nav-drawer-link .drawer-icon {
+          width: 32px;
+          height: 32px;
+          border-radius: 8px;
+          background: rgba(255,255,255,0.05);
+          border: 1px solid rgba(255,255,255,0.08);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 0.95rem;
+          flex-shrink: 0;
+        }
+        .nav-drawer-divider {
+          height: 1px;
+          background: rgba(255,255,255,0.06);
+          margin: 0.75rem 0;
+        }
+        .nav-drawer-btns {
+          display: flex;
+          gap: 0.75rem;
+          padding-top: 0.5rem;
+        }
+        .nav-drawer-btns .home-signin-btn,
+        .nav-drawer-btns .btn-solid {
+          flex: 1;
+          justify-content: center;
+          height: 46px;
+          font-size: 0.95rem;
+        }
+        .nav-drawer-btns .home-signin-btn {
+          border: 1px solid rgba(255,255,255,0.12);
         }
 
         /* Profile dropdown */
@@ -453,7 +628,7 @@ export default function Home() {
           border-radius: 16px;
           padding: 0.5rem 0;
           z-index: 200;
-          box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+          box-shadow: 0 14px 34px rgba(0,0,0,0.52);
         }
         .profile-dropdown-header {
           padding: 0.8rem 1rem;
@@ -954,26 +1129,55 @@ export default function Home() {
         }
 
         /* Light theme overrides */
+        [data-theme="light"] {
+          --text-primary: #0f172a;
+          --text-secondary: #1e293b;
+          --text-muted: #334155;
+          --border: rgba(15, 23, 42, 0.18);
+          --bg-card: rgba(241, 247, 255, 0.88);
+          --bg-surface: rgba(236, 244, 255, 0.95);
+          --glow-green: 0 0 18px rgba(16, 185, 129, 0.32);
+          --glow-cyan: 0 0 18px rgba(45, 212, 191, 0.28);
+        }
+
         [data-theme="light"] body {
-          background: #f4f7fb;
+          background: linear-gradient(180deg, #eaf1ff 0%, #e6efff 46%, #edf4ff 100%);
           color: #0f172a;
         }
 
         [data-theme="light"] .bg-canvas {
-          opacity: 0.68;
-          filter: contrast(1.18) saturate(1.06);
+          opacity: 0.64;
+          filter: contrast(1.14) saturate(1.07);
         }
 
         [data-theme="light"] .overlay {
           background:
-            radial-gradient(circle at 20% 20%, rgba(16, 185, 129, 0.11) 0%, transparent 55%),
-            radial-gradient(circle at 80% 75%, rgba(45, 212, 191, 0.1) 0%, transparent 55%),
-            linear-gradient(180deg, rgba(244, 247, 251, 0) 0%, rgba(244, 247, 251, 0.45) 100%);
+            radial-gradient(circle at 20% 20%, rgba(45, 212, 191, 0.1) 0%, transparent 58%),
+            radial-gradient(circle at 80% 75%, rgba(59, 130, 246, 0.1) 0%, transparent 58%),
+            linear-gradient(180deg, rgba(234, 241, 255, 0) 0%, rgba(234, 241, 255, 0.42) 100%);
         }
 
         [data-theme="light"] nav.scrolled {
-          background: rgba(255, 255, 255, 0.9);
-          border-bottom: 1px solid rgba(15, 23, 42, 0.1);
+          background: rgba(255, 255, 255, 0.95);
+          border-bottom: 1px solid rgba(15, 23, 42, 0.12);
+        }
+
+        [data-theme="light"] nav {
+          background: rgba(255, 255, 255, 0.55);
+        }
+
+        [data-theme="light"] .nav-mobile-drawer {
+          background: rgba(236, 245, 255, 0.96);
+          border-bottom: 1px solid rgba(15, 23, 42, 0.14);
+        }
+
+        [data-theme="light"] .nav-drawer-link {
+          color: #1e293b;
+        }
+
+        [data-theme="light"] .nav-drawer-link .drawer-icon {
+          background: rgba(255,255,255,0.82);
+          border: 1px solid rgba(15, 23, 42, 0.1);
         }
 
         [data-theme="light"] .brand,
@@ -992,14 +1196,42 @@ export default function Home() {
         [data-theme="light"] .glow-card-sub,
         [data-theme="light"] .cta-sub,
         [data-theme="light"] .footer-copy,
-        [data-theme="light"] .nav-links button {
+        [data-theme="light"] .nav-link {
           color: #334155;
+        }
+
+        [data-theme="light"] .nav-link:hover {
+          color: #0f172a;
+          background: rgba(37, 99, 235, 0.1);
+          border-color: rgba(37, 99, 235, 0.2);
+        }
+
+        [data-theme="light"] .nav-link,
+        [data-theme="light"] .nav-link:visited,
+        [data-theme="light"] .nav-link:active {
+          color: #334155;
+          background: rgba(255, 255, 255, 0.75);
+        }
+
+        [data-theme="light"] .home-signin-btn:visited {
+          color: #0f172a;
+        }
+
+        [data-theme="light"] .home-signin-btn {
+          color: #0f172a;
+          background: rgba(255, 255, 255, 0.92);
+          border-color: rgba(100, 116, 139, 0.28);
         }
 
         [data-theme="light"] .stat-label,
         [data-theme="light"] .mini-stat-lbl,
         [data-theme="light"] .feat-tag {
           color: #475569;
+        }
+
+        [data-theme="light"] .feat-tag {
+          background: rgba(255,255,255,0.78);
+          border-color: rgba(59, 130, 246, 0.16);
         }
 
         [data-theme="light"] .feat-card,
@@ -1009,35 +1241,35 @@ export default function Home() {
         [data-theme="light"] .faq-item,
         [data-theme="light"] .milestone-item,
         [data-theme="light"] .milestone-end {
-          background: rgba(255, 255, 255, 0.9);
-          border: 1px solid rgba(15, 23, 42, 0.14);
-          box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+          background: rgba(243, 249, 255, 0.88);
+          border: 1px solid rgba(100, 116, 139, 0.28);
+          box-shadow: 0 14px 30px rgba(15, 23, 42, 0.1);
         }
 
         [data-theme="light"] .glow-card,
         [data-theme="light"] .cta-block {
-          background: linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(236, 253, 245, 0.9));
-          border: 1px solid rgba(16, 185, 129, 0.4);
+          background: linear-gradient(135deg, rgba(241, 249, 255, 0.9), rgba(227, 241, 255, 0.92));
+          border: 1px solid rgba(59, 130, 246, 0.3);
           box-shadow: 0 18px 32px rgba(15, 23, 42, 0.1);
         }
 
         [data-theme="light"] .mini-stat {
-          background: rgba(255, 255, 255, 0.86);
+          background: rgba(236, 245, 255, 0.9);
         }
 
         [data-theme="light"] .btn-hero-ghost,
         [data-theme="light"] .home-signin-btn {
           color: #0f172a !important;
-          background: rgba(255, 255, 255, 0.7);
-          border-color: rgba(15, 23, 42, 0.14);
+          background: rgba(233, 243, 255, 0.9);
+          border-color: rgba(59, 130, 246, 0.24);
         }
 
         [data-theme="light"] .hero-tag,
         [data-theme="light"] .section-label,
         [data-theme="light"] .cta-badge {
           color: #0f766e;
-          background: rgba(15, 118, 110, 0.12);
-          border-color: rgba(15, 118, 110, 0.3);
+          background: rgba(45, 212, 191, 0.12);
+          border-color: rgba(45, 212, 191, 0.32);
         }
 
         [data-theme="light"] .faq-a,
@@ -1064,7 +1296,7 @@ export default function Home() {
 
         [data-theme="light"] .btn-hero-ghost:hover,
         [data-theme="light"] .home-signin-btn:hover,
-        [data-theme="light"] .nav-links button:hover,
+        [data-theme="light"] .nav-link:hover,
         [data-theme="light"] .profile-dropdown a:hover,
         [data-theme="light"] .profile-dropdown button:hover {
           background: rgba(16, 185, 129, 0.16);
@@ -1081,12 +1313,23 @@ export default function Home() {
           color: #475569;
         }
 
-        /* Responsive */
+        /* Responsive nav */
+        @media (max-width: 1024px) {
+          .nav-link { padding: 0 0.85rem; font-size: 0.85rem; }
+        }
+        @media (max-width: 860px) {
+          .nav-inner { padding: 1rem 1.2rem; }
+          .nav-center { display: none; }
+          .nav-hamburger { display: flex; }
+          .nav-right .home-signin-btn,
+          .nav-right .btn-solid { display: none; }
+        }
+
+        /* Other responsive */
         @media (max-width: 900px) {
           .steps-grid { grid-template-columns: 1fr; }
           .mini-stats { grid-template-columns: 1fr 1fr; }
           .faq-list { grid-template-columns: 1fr; }
-          .nav-links, .nav-actions .home-signin-btn { display: none; }
         }
         @media (max-width: 600px) {
           .stats-row { gap: 2rem; }
@@ -1100,21 +1343,29 @@ export default function Home() {
         <div className="overlay" />
 
         <div className="content">
-          <nav className={scrolled ? "scrolled" : ""}>
+          <nav className={[scrolled ? "scrolled" : "", navHidden ? "nav-hidden" : ""].filter(Boolean).join(" ")}>
             <div className="nav-inner">
-              <button className="brand">
-                <span className="brand-dot" />
-                Campus Companion
-              </button>
-              <div className="nav-links">
-                <button onClick={() => document.querySelector(".features-grid")?.scrollIntoView({ behavior: "smooth" })}>Features</button>
-                <button onClick={() => document.querySelector(".steps-section")?.scrollIntoView({ behavior: "smooth" })}>How It Works</button>
+              {/* Brand */}
+              <Link to="/" className="nav-brand">
+                {/* Removed app icon as requested */}
+                <span className="nav-brand-name">Smart<span> Campus Companion</span></span>
+              </Link>
+
+              {/* Center Links – desktop */}
+              <div className="nav-center">
+                <button className="nav-link" onClick={() => document.querySelector(".features-grid")?.scrollIntoView({ behavior: "smooth" })}>Features</button>
+                <Link className="nav-link" to="/community">Community</Link>
+                <Link className="nav-link" to="/resources">Resources</Link>
+                <Link className="nav-link" to="/tutors">Tutors</Link>
+                <button className="nav-link" onClick={() => document.querySelector(".steps-section")?.scrollIntoView({ behavior: "smooth" })}>How it works</button>
               </div>
-              <div className="nav-actions">
+
+              {/* Right – desktop */}
+              <div className="nav-right">
                 {isAuthenticated ? (
                   <div className="profile-wrapper" ref={profileMenuRef}>
                     <div className="profile-avatar" onClick={() => setProfileOpen((v) => !v)}>
-                      {user?.profilePicture ? <img src={user.profilePicture} alt={user.name} /> : (user?.name?.[0] || "U")}
+                      {user?.profilePicture ? <img src={user.profilePicture} alt={user.name} style={{width:"100%",height:"100%",borderRadius:"50%",objectFit:"cover"}} /> : (user?.name?.[0] || "U")}
                     </div>
                     {profileOpen && (
                       <div className="profile-dropdown">
@@ -1122,22 +1373,72 @@ export default function Home() {
                           <div className="profile-dropdown-name">{user?.name || "User"}</div>
                           <div className="profile-dropdown-email">{user?.email || ""}</div>
                         </div>
-                        <Link to="/dashboard" onClick={() => setProfileOpen(false)}>Dashboard</Link>
-                        <Link to="/groups" onClick={() => setProfileOpen(false)}>My Groups</Link>
-                        <Link to="/notes" onClick={() => setProfileOpen(false)}>My Notes</Link>
-                        <button className="logout-btn" onClick={() => { dispatch(logout()); setProfileOpen(false); }}>Sign Out</button>
+                        <Link to="/dashboard" onClick={() => setProfileOpen(false)}>🏠 Dashboard</Link>
+                        <Link to="/groups" onClick={() => setProfileOpen(false)}>👥 My Groups</Link>
+                        <Link to="/notes" onClick={() => setProfileOpen(false)}>📝 My Notes</Link>
+                        <Link to="/notifications" onClick={() => setProfileOpen(false)}>🔔 Notifications</Link>
+                        <Link to="/profile" onClick={() => setProfileOpen(false)}>⚙️ Profile Settings</Link>
+                        <button className="logout-btn" onClick={() => { dispatch(logout()); setProfileOpen(false); navigate("/"); }}>Sign Out</button>
                       </div>
                     )}
                   </div>
                 ) : (
                   <>
                     <Link to="/login" className="home-signin-btn">Sign In</Link>
-                    <Link to="/register" className="btn-solid">Register</Link>
+                    <Link to="/register" className="btn-solid">Get Started →</Link>
                   </>
                 )}
+                {/* Mobile hamburger */}
+                <button
+                  className={`nav-hamburger${mobileOpen ? " open" : ""}`}
+                  onClick={() => setMobileOpen((v) => !v)}
+                  aria-label="Menu"
+                >
+                  <span /><span /><span />
+                </button>
               </div>
             </div>
           </nav>
+
+          {/* Mobile Drawer */}
+          <div className={`nav-mobile-drawer${mobileOpen ? " open" : ""}`} ref={mobileMenuRef}>
+            <button className="nav-drawer-link" onClick={() => { document.querySelector(".features-grid")?.scrollIntoView({ behavior: "smooth" }); setMobileOpen(false); }}>
+              <span className="drawer-icon">✨</span> Features
+            </button>
+            <Link className="nav-drawer-link" to="/community" onClick={() => setMobileOpen(false)}>
+              <span className="drawer-icon">👥</span> Community
+            </Link>
+            <Link className="nav-drawer-link" to="/resources" onClick={() => setMobileOpen(false)}>
+              <span className="drawer-icon">📝</span> Resources
+            </Link>
+            <Link className="nav-drawer-link" to="/tutors" onClick={() => setMobileOpen(false)}>
+              <span className="drawer-icon">🎓</span> Tutors
+            </Link>
+            {isAuthenticated && (
+              <Link className="nav-drawer-link" to="/dashboard" onClick={() => setMobileOpen(false)}>
+                <span className="drawer-icon">🏠</span> Dashboard
+              </Link>
+            )}
+            {isAuthenticated && (
+              <Link className="nav-drawer-link" to="/notifications" onClick={() => setMobileOpen(false)}>
+                <span className="drawer-icon">🔔</span> Notifications
+              </Link>
+            )}
+            <button className="nav-drawer-link" onClick={() => { document.querySelector(".steps-section")?.scrollIntoView({ behavior: "smooth" }); setMobileOpen(false); }}>
+              <span className="drawer-icon">ℹ️</span> How it works
+            </button>
+            <div className="nav-drawer-divider" />
+            {isAuthenticated ? (
+              <button className="nav-drawer-link" style={{color:"var(--accent-green)"}} onClick={() => { dispatch(logout()); setMobileOpen(false); navigate("/"); }}>
+                <span className="drawer-icon">🚪</span> Sign Out
+              </button>
+            ) : (
+              <div className="nav-drawer-btns">
+                <Link to="/login" className="home-signin-btn" onClick={() => setMobileOpen(false)}>Sign In</Link>
+                <Link to="/register" className="btn-solid" onClick={() => setMobileOpen(false)}>Get Started →</Link>
+              </div>
+            )}
+          </div>
 
           <main>
             {/* Hero */}
@@ -1152,19 +1453,16 @@ export default function Home() {
                   Smart Campus Companion brings together notes, study groups, AI insights, and seamless collaboration—all in one sleek workspace.
                 </p>
                 <div className="hero-btns" data-hero-cta>
-                  <Link to="/register" className="btn-hero-primary">Launch Your Workspace →</Link>
+                  {isAuthenticated ? (
+                    <Link to="/dashboard" className="btn-hero-primary">Go to Dashboard →</Link>
+                  ) : (
+                    <Link to="/register" className="btn-hero-primary">Launch Your Workspace →</Link>
+                  )}
                   <button className="btn-hero-ghost" onClick={() => document.querySelector(".features-grid")?.scrollIntoView({ behavior: "smooth" })}>
                     Explore Features
                   </button>
                 </div>
-                <div className="stats-row" data-hero-stats>
-                  {stats.map((s) => (
-                    <div className="stat-item" key={s.label}>
-                      <div className="stat-val">{s.value}</div>
-                      <div className="stat-label">{s.label}</div>
-                    </div>
-                  ))}
-                </div>
+                {/* Stats removed as requested */}
               </div>
             </section>
 
@@ -1219,12 +1517,7 @@ export default function Home() {
                   <h3 className="glow-card-title">Join 50,000+ students already thriving</h3>
                   <p className="glow-card-sub">The average student reports 40% better time management and significantly less exam stress within the first month.</p>
                   <div className="mini-stats">
-                    {stats.map((s) => (
-                      <div className="mini-stat" key={s.label}>
-                        <div className="mini-stat-val">{s.value}</div>
-                        <div className="mini-stat-lbl">{s.label}</div>
-                      </div>
-                    ))}
+                    {/* Mini stats removed as requested */}
                   </div>
                   <Link to="/register" className="glow-card-btn">Create Free Account →</Link>
                 </div>

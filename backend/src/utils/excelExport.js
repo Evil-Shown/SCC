@@ -26,14 +26,15 @@ export const generateApplicantsExcel = async (applicants, kuppiDetails) => {
   worksheet.getRow(1).alignment = { vertical: "middle", horizontal: "center" };
   
   applicants.forEach((applicant, index) => {
+    const user = applicant.applicantId || {};
     worksheet.addRow({
       no: index + 1,
-      name: applicant.name,
-      email: applicant.email,
-      studentId: applicant.applicantId?.studentId || "N/A",
-      department: applicant.applicantId?.department || "N/A",
-      year: applicant.applicantId?.year || "N/A",
-      appliedAt: new Date(applicant.createdAt).toLocaleDateString()
+      name: applicant.name || "N/A",
+      email: applicant.email || "N/A",
+      studentId: user.studentId || "N/A",
+      department: user.department || "N/A",
+      year: user.year || "N/A",
+      appliedAt: applicant.createdAt ? new Date(applicant.createdAt).toLocaleDateString() : "N/A"
     });
   });
   

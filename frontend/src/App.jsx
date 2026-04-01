@@ -1,9 +1,13 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { Provider } from "react-redux";
+import { Provider, useDispatch, useSelector } from "react-redux";
+import { useEffect, useRef, useState } from "react";
 import { Toaster } from "react-hot-toast";
 import store from "./store/store";
 import { ThemeProvider } from "./context/ThemeContext";
 import ThemeToggle from "./components/ThemeToggle";
+import { fetchUserProfile, logout, updateLastActivity, resetAuth } from "./features/auth/authSlice";
+import SessionEnd from "./components/SessionEnd";
+import { initSocket } from "./socket/socket";
 
 // Pages
 import Home from "./pages/Home";
@@ -16,6 +20,12 @@ import Notes from "./pages/Notes";
 import NoteDetail from "./pages/NoteDetail";
 import Kuppi from "./pages/Kuppi";
 import Notifications from "./pages/Notifications";
+import CommunityPage from "./pages/CommunityPage";
+import ResourcesPage from "./pages/ResourcesPage";
+import TutorsPage from "./pages/TutorsPage";
+import Timetable from "./pages/Timetable";
+import AiChat from "./pages/AiChat";
+import AdminDashboard from "./pages/AdminDashboard";
 import ExamMode from './pages/ExamMode'; 
 
 // Components
@@ -29,9 +39,73 @@ import ExamProtectedRoute from './components/ExamProtectedRoute';
 import "./App.css";
 import "./styles/Uiverse.css";
 
+// Re-verify auth and re-init socket on page load/refresh
+function AuthInitializer({ children }) {
+  const dispatch = useDispatch();
+  const { accessToken, user } = useSelector((state) => state.auth);
+
+  useEffect(() => {
+    if (accessToken) {
+      dispatch(fetchUserProfile());
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (accessToken && user?._id) {
+      initSocket(user._id);
+    }
+  }, [accessToken, user?._id]);
+
+  return children;
+}
+
 function App() {
+  // Session timeout logic
+  const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes in ms
+  const [sessionEnded, setSessionEnded] = useState(false);
+  const dispatch = store.dispatch;
+  const lastActivity = store.getState().auth.lastActivity;
+  const isAuthenticated = store.getState().auth.isAuthenticated;
+  const timerRef = useRef();
+
+  // Reset timer on activity
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const handleActivity = () => {
+      dispatch(updateLastActivity());
+    };
+    window.addEventListener("mousemove", handleActivity);
+    window.addEventListener("keydown", handleActivity);
+    window.addEventListener("click", handleActivity);
+    return () => {
+      window.removeEventListener("mousemove", handleActivity);
+      window.removeEventListener("keydown", handleActivity);
+      window.removeEventListener("click", handleActivity);
+    };
+  }, [isAuthenticated, dispatch]);
+
+  // Check for inactivity
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      const now = Date.now();
+      if (now - store.getState().auth.lastActivity > SESSION_TIMEOUT) {
+        setSessionEnded(true);
+        dispatch(resetAuth());
+        clearInterval(timerRef.current);
+      }
+    }, 10000); // check every 10s
+    return () => clearInterval(timerRef.current);
+  }, [isAuthenticated, lastActivity, dispatch]);
+
+  const handleSessionEndClose = () => {
+    setSessionEnded(false);
+  };
+
   return (
     <Provider store={store}>
+      <AuthInitializer>
       <ThemeProvider>
         <Router>
           <div className="app">
@@ -59,6 +133,7 @@ function App() {
               }}
             />
             <ThemeToggle />
+            {sessionEnded && <SessionEnd onClose={handleSessionEndClose} />}
             <Routes>
               {/* --- සාමාන්‍ය (Public & Protected) Routes --- */}
               <Route path="/" element={<Home />} />
@@ -129,23 +204,38 @@ function App() {
                   </ProtectedRoute>
                 }
               />
-
-              {/* --- Exam Mode ට අදාළ Routes --- */}
-              
-              {/* 1. Exam Mode Login පිටුව */}
-              <Route path="/exam-login" element={<ExamLogin />} />
-
-              {/* 2. Exam Mode Protected Routes (ExamProtectedRoute හරහා) */}
-              <Route element={<ExamProtectedRoute />}>
-                <Route path="/exam-mode" element={<ExamMode />} />
-                {/* අනාගතයේදී එකතු කරන Exam sub-routes මෙතනට දමන්න */}
-                {/* <Route path="/exam-mode/study-plan" element={<StudyPlanGenerator />} /> */}
-              </Route>
-
+              <Route
+                path="/timetable"
+                element={
+                  <ProtectedRoute>
+                    <Timetable />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/ai-chat"
+                element={
+                  <ProtectedRoute>
+                    <AiChat />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/community" element={<CommunityPage />} />
+              <Route path="/resources" element={<ResourcesPage />} />
+              <Route path="/tutors" element={<TutorsPage />} />
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute>
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                }
+              />
             </Routes>
           </div>
         </Router>
       </ThemeProvider>
+      </AuthInitializer>
     </Provider>
   );
 }

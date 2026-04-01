@@ -1,627 +1,596 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchGroup, leaveGroup as leaveGroupAction, deleteGroupAction } from "../features/groups/groupSlice";
 import {
-  fetchMessages,
-  sendMessage as sendMessageAction,
-  setCurrentGroup,
-  addMessage,
-  updateMessage,
-  removeMessage
-} from "../features/chat/chatSlice";
-import { getSocket, joinGroup, leaveGroup as leaveGroupSocket } from "../socket/socket";
-import { uploadFile, getFiles, downloadFile, deleteFile as deleteFileService } from "../services/fileService";
-import ProtectedRoute from "../components/ProtectedRoute";
-import { 
-  MessageCircle, 
-  FolderOpen, 
-  Users as UsersIcon, 
-  Send, 
-  Upload, 
-  Download, 
-  Trash2, 
-  LogOut,
-  AlertTriangle,
-  ArrowLeft,
-  BookOpen,
-  Crown,
-  Shield
+    fetchGroupById, leaveGroupAction, clearError,
+} from "../features/groups/groupSlice";
+import {
+    fetchGroupMeetups, createGroupMeetup,
+    meetupCreatedRealtime, meetupStatusChangedRealtime, meetupVotedRealtime,
+} from "../features/meetups/meetupSlice";
+import { joinGroup as joinSocketRoom, leaveGroup as leaveSocketRoom, getSocket } from "../socket/socket";
+import * as groupService from "../services/groupService";
+import {
+    ArrowLeft, Users, MessageSquare, File, Calendar,
+    Plus, X, Clock, Zap, Globe, Navigation, Shuffle,
+    Award, Lock, Trash2, LogOut, Waves,
+    Home as HomeIcon, Brain, BookMarked, Video, LayoutDashboard,
+    ChevronDown, ChevronUp, AlertTriangle,
 } from "lucide-react";
 import LoadingSpinner from "../components/LoadingSpinner";
-import ErrorMessage from "../components/ErrorMessage";
-import EmptyState from "../components/EmptyState";
-import { confirmAction, notifyError, notifySuccess } from "../utils/toast";
+import NotificationBell from "../components/NotificationBell";
+import ChatTab from "../components/groups/ChatTab";
+import MeetupCard from "../components/groups/MeetupCard";
+import FilesTab from "../components/groups/FilesTab";
+import MemberList from "../components/groups/MemberList";
+import { confirmAction } from "../utils/toast";
+import "../styles/Dashboard.css";
+import "../styles/Groups.css";
+import "../styles/GroupsExtra.css";
+import "../styles/Notifications.css";
 
-const GroupDetail = () => {
-  const { groupId } = useParams();
-  const navigate = useNavigate();
-  const dispatch = useDispatch();
-  const [activeTab, setActiveTab] = useState("chat");
-  const [messageInput, setMessageInput] = useState("");
-  const [fileInput, setFileInput] = useState(null);
-  const [uploading, setUploading] = useState(false);
-  const messagesEndRef = useRef(null);
-  const fileInputRef = useRef(null);
-
-  const { currentGroup, isLoading: groupLoading, error: groupError } = useSelector((state) => state.groups);
-  const { messages, isLoading } = useSelector((state) => state.chat);
-  const { user } = useSelector((state) => state.auth);
-  const [groupFiles, setGroupFiles] = useState([]);
-  const [loadingFiles, setLoadingFiles] = useState(false);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  const loadFiles = async () => {
-    setLoadingFiles(true);
-    try {
-      const response = await getFiles(groupId);
-      setGroupFiles(response.data.files);
-    } catch (error) {
-      console.error("Error loading files:", error);
-    } finally {
-      setLoadingFiles(false);
-    }
-  };
-
-  useEffect(() => {
-    dispatch(setCurrentGroup(groupId));
-    dispatch(fetchGroup(groupId));
-    dispatch(fetchMessages({ groupId, page: 1, limit: 50 }));
-    loadFiles();
-
-    const socket = getSocket();
-    if (socket) {
-      joinGroup(groupId);
-
-      const handleNewMessage = (data) => {
-        dispatch(addMessage({ groupId, message: data.message }));
-        scrollToBottom();
-      };
-
-      const handleMessageEdited = (data) => {
-        dispatch(updateMessage({ groupId, message: data.message }));
-      };
-
-      const handleMessageDeleted = (data) => {
-        dispatch(removeMessage({ groupId, messageId: data.messageId }));
-      };
-
-      const handleFileUploaded = (data) => {
-        setGroupFiles(prev => [data.file, ...prev]);
-        dispatch(addMessage({ groupId, message: data.message }));
-      };
-
-      const handleFileDeleted = (data) => {
-        setGroupFiles(prev => prev.filter(f => f._id !== data.fileId));
-      };
-
-      socket.on("new-message", handleNewMessage);
-      socket.on("message-edited", handleMessageEdited);
-      socket.on("message-deleted", handleMessageDeleted);
-      socket.on("file-uploaded", handleFileUploaded);
-      socket.on("file-deleted", handleFileDeleted);
-
-      return () => {
-        leaveGroupSocket(groupId);
-        socket.off("new-message", handleNewMessage);
-        socket.off("message-edited", handleMessageEdited);
-        socket.off("message-deleted", handleMessageDeleted);
-        socket.off("file-uploaded", handleFileUploaded);
-        socket.off("file-deleted", handleFileDeleted);
-      };
-    }
-  }, [groupId, dispatch]);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages[groupId]]);
-
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!messageInput.trim()) return;
-
-    const result = await dispatch(sendMessageAction({ groupId, content: messageInput.trim() }));
-    if (sendMessageAction.fulfilled.match(result)) {
-      setMessageInput("");
-      scrollToBottom();
-    }
-  };
-
-  const handleFileUpload = async () => {
-    if (!fileInput) return;
-
-    setUploading(true);
-    try {
-      await uploadFile(groupId, fileInput);
-      setFileInput(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-      loadFiles();
-      notifySuccess("File uploaded successfully");
-    } catch (error) {
-      console.error("Error uploading file:", error);
-      notifyError("Failed to upload file");
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleDownloadFile = async (fileId, fileName) => {
-    try {
-      const blob = await downloadFile(fileId);
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (error) {
-      console.error("Error downloading file:", error);
-      notifyError("Failed to download file");
-    }
-  };
-
-  const handleDeleteFile = async (fileId) => {
-    const confirmed = await confirmAction("Are you sure you want to delete this file?", {
-      confirmText: "Delete",
+/* ═══════════════════════════════════════════════════════════
+   CREATE MEETUP MODAL
+═══════════════════════════════════════════════════════════ */
+function CreateMeetupModal({ groupId, memberCount, onClose }) {
+    const dispatch = useDispatch();
+    const [form, setForm] = useState({
+        title: "", description: "", meetingDate: "", time: "",
+        mode: "ONLINE", meetingLink: "", location: "",
+        minConfirmations: Math.max(1, Math.floor(memberCount / 2)),
+        duration: 60,
     });
-    if (!confirmed) return;
+    const [busy, setBusy] = useState(false);
+    const [err, setErr] = useState("");
 
-    try {
-      await deleteFileService(fileId);
-      loadFiles();
-      notifySuccess("File deleted successfully");
-    } catch (error) {
-      console.error("Error deleting file:", error);
-      notifyError("Failed to delete file");
-    }
-  };
+    const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+    const minDate = (() => {
+        const t = new Date(); t.setDate(t.getDate() + 0);
+        return t.toISOString().split("T")[0];
+    })();
 
-  const handleLeaveGroup = async () => {
-    const confirmed = await confirmAction("Are you sure you want to leave this group?", {
-      confirmText: "Leave group",
-    });
-    if (!confirmed) return;
+    const MODES = [
+        { val: "ONLINE", Icon: Globe, label: "Online" },
+        { val: "PHYSICAL", Icon: Navigation, label: "Physical" },
+        { val: "HYBRID", Icon: Shuffle, label: "Hybrid" },
+    ];
 
-    const result = await dispatch(leaveGroupAction(groupId));
-    if (leaveGroupAction.fulfilled.match(result)) {
-      notifySuccess("You left the group");
-      navigate("/groups");
-    } else {
-      notifyError(result.payload || "Failed to leave group");
-    }
-  };
+    const submit = async (e) => {
+        e.preventDefault();
+        if (!form.title.trim()) return setErr("Title is required");
+        if (!form.meetingDate) return setErr("Date is required");
+        if (!form.time) return setErr("Time is required");
+        if (form.mode === "ONLINE" && !form.meetingLink) return setErr("Meeting link is required for online meetups");
+        if (form.mode === "PHYSICAL" && !form.location) return setErr("Location is required for physical meetups");
+        setBusy(true); setErr("");
+        try {
+            await dispatch(createGroupMeetup({ groupId, payload: form })).unwrap();
+            onClose();
+        } catch (e) { setErr(typeof e === "string" ? e : "Failed to create meetup"); }
+        finally { setBusy(false); }
+    };
 
-  const handleDeleteGroup = async () => {
-    const confirmed = await confirmAction(
-      "Are you sure you want to delete this group? This action cannot be undone.",
-      { confirmText: "Delete group" }
-    );
-    if (!confirmed) return;
-
-    const result = await dispatch(deleteGroupAction(groupId));
-    if (deleteGroupAction.fulfilled.match(result)) {
-      notifySuccess("Group deleted successfully");
-      navigate("/groups");
-    } else {
-      notifyError(result.payload || "Failed to delete group");
-    }
-  };
-
-  const isAdmin = currentGroup && (
-    currentGroup.creator?._id === user?._id ||
-    currentGroup.creator === user?._id ||
-    currentGroup.admins?.some(a => a._id === user?._id || a === user?._id)
-  );
-
-  const groupMessages = messages[groupId] || [];
-
-  return (
-    <ProtectedRoute>
-      <div className="group-detail-container">
-        {groupLoading ? (
-          <LoadingSpinner text="Loading group details..." />
-        ) : groupError ? (
-          <div className="fade-in">
-            <ErrorMessage message={`Error loading group: ${groupError}`} />
-            <div style={{ textAlign: 'center', marginTop: 'var(--spacing-xl)' }}>
-              <button 
-                className="btn btn-primary" 
-                onClick={() => navigate("/groups")}
-              >
-                <ArrowLeft size={18} />
-                Back to Groups
-              </button>
-            </div>
-          </div>
-        ) : currentGroup ? (
-          <>
-            <div className="group-detail-header fade-in">
-              <div style={{ flex: 1 }}>
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 'var(--spacing-md)',
-                  marginBottom: 'var(--spacing-sm)'
-                }}>
-                  <h1 style={{ margin: 0 }}>{currentGroup.name}</h1>
-                  {currentGroup.subject && (
-                    <span className="badge badge-primary">
-                      <BookOpen size={12} />
-                      {currentGroup.subject}
-                    </span>
-                  )}
+    return (
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+            <div className="modal-content scale-in" style={{ maxWidth: "560px" }} onClick={(e) => e.stopPropagation()}>
+                <div className="modal-header">
+                    <h2 style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <span style={{
+                            width: 36, height: 36, borderRadius: 8,
+                            background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+                            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                        }}>
+                            <Calendar size={18} color="#fff" />
+                        </span>
+                        Schedule Meetup
+                    </h2>
+                    <button className="modal-close" onClick={onClose}><X size={20} /></button>
                 </div>
-                {currentGroup.description && (
-                  <p style={{ 
-                    color: 'var(--color-text-secondary)', 
-                    marginBottom: 'var(--spacing-md)',
-                    fontSize: 'var(--font-size-base)'
-                  }}>
-                    {currentGroup.description}
-                  </p>
-                )}
-                <div className="group-info">
-                  <span style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: 'var(--spacing-xs)' 
-                  }}>
-                    <UsersIcon size={16} />
-                    {currentGroup.members?.length || 0} members
-                  </span>
-                  {currentGroup.courseCode && (
-                    <span style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: 'var(--spacing-xs)' 
-                    }}>
-                      <BookOpen size={16} />
-                      {currentGroup.courseCode}
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="group-actions-header">
-                {isAdmin && (
-                  <button 
-                    className="btn btn-danger" 
-                    onClick={handleDeleteGroup}
-                  >
-                    <Trash2 size={18} />
-                    Delete Group
-                  </button>
-                )}
-                <button 
-                  className="btn btn-secondary" 
-                  onClick={handleLeaveGroup}
-                >
-                  <LogOut size={18} />
-                  Leave Group
-                </button>
-              </div>
-            </div>
 
-            <div className="group-tabs fade-in" style={{ animationDelay: '100ms' }}>
-              <button
-                className={activeTab === "chat" ? "active" : ""}
-                onClick={() => setActiveTab("chat")}
-              >
-                <MessageCircle size={18} />
-                Chat
-              </button>
-              <button
-                className={activeTab === "files" ? "active" : ""}
-                onClick={() => setActiveTab("files")}
-              >
-                <FolderOpen size={18} />
-                Files
-              </button>
-              <button
-                className={activeTab === "members" ? "active" : ""}
-                onClick={() => setActiveTab("members")}
-              >
-                <UsersIcon size={18} />
-                Members ({currentGroup.members?.length || 0})
-              </button>
-            </div>
+                <div className="modal-body">
+                    <form id="meetup-form" onSubmit={submit}
+                        style={{ display: "flex", flexDirection: "column", gap: "var(--spacing-md)" }}>
 
-            {activeTab === "chat" && (
-              <div className="chat-container fade-in" style={{ animationDelay: '200ms' }}>
-                <div className="messages-container">
-                  {isLoading && groupMessages.length === 0 ? (
-                    <LoadingSpinner text="Loading messages..." size="sm" />
-                  ) : groupMessages.length === 0 ? (
-                    <EmptyState
-                      icon="💬"
-                      title="No messages yet"
-                      description="Start the conversation and collaborate with your peers!"
-                    />
-                  ) : (
-                    groupMessages.map((message, index) => (
-                      <div
-                        key={message._id}
-                        className={`message ${message.sender?._id === user?._id || message.sender === user?._id ? "own" : ""} ${message.type === "system" ? "system" : ""} fade-in`}
-                        style={{ animationDelay: `${index * 20}ms` }}
-                      >
-                        {message.type !== "system" && (
-                          <div className="message-avatar">
-                            {message.sender?.profilePicture ? (
-                              <img src={message.sender.profilePicture} alt={message.sender.name} />
-                            ) : (
-                              <div className="avatar-placeholder">
-                                {message.sender?.name?.charAt(0).toUpperCase()}
-                              </div>
-                            )}
-                          </div>
+                        <div className="form-field" style={{ marginBottom: 0 }}>
+                            <label className="form-label">Title *</label>
+                            <input className="form-input" value={form.title}
+                                onChange={(e) => set("title", e.target.value)}
+                                placeholder="Sprint review session" required />
+                        </div>
+
+                        <div className="form-field" style={{ marginBottom: 0 }}>
+                            <label className="form-label">Description</label>
+                            <textarea className="form-textarea" value={form.description}
+                                onChange={(e) => set("description", e.target.value)}
+                                placeholder="Agenda and goals…" rows={2}
+                                style={{ resize: "vertical" }} />
+                        </div>
+
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--spacing-md)" }}>
+                            <div className="form-field" style={{ marginBottom: 0 }}>
+                                <label className="form-label">Date *</label>
+                                <input type="date" className="form-input" value={form.meetingDate}
+                                    onChange={(e) => set("meetingDate", e.target.value)} min={minDate} required />
+                            </div>
+                            <div className="form-field" style={{ marginBottom: 0 }}>
+                                <label className="form-label">Time *</label>
+                                <input type="time" className="form-input" value={form.time}
+                                    onChange={(e) => set("time", e.target.value)} required />
+                            </div>
+                        </div>
+
+                        {/* Mode segment */}
+                        <div className="form-field" style={{ marginBottom: 0 }}>
+                            <label className="form-label">Meeting Mode</label>
+                            <div style={{ display: "flex", gap: 6 }}>
+                                {MODES.map(({ val, Icon, label }) => (
+                                    <button key={val} type="button" onClick={() => set("mode", val)}
+                                        style={{
+                                            flex: 1, padding: "9px 4px", borderRadius: "var(--radius-md)",
+                                            fontSize: "12px", fontWeight: 700, cursor: "pointer",
+                                            border: `2px solid ${form.mode === val ? "var(--color-primary-500)" : "var(--color-border)"}`,
+                                            background: form.mode === val ? "rgba(99,102,241,.12)" : "var(--color-bg-primary)",
+                                            color: form.mode === val ? "var(--color-primary-500)" : "var(--color-text-secondary)",
+                                            display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                                            transition: "all var(--transition-fast)",
+                                        }}>
+                                        <Icon size={13} /> {label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {["ONLINE", "HYBRID"].includes(form.mode) && (
+                            <div className="form-field" style={{ marginBottom: 0 }}>
+                                <label className="form-label">Meeting Link {form.mode === "ONLINE" ? "*" : "(optional)"}</label>
+                                <input className="form-input" value={form.meetingLink}
+                                    onChange={(e) => set("meetingLink", e.target.value)}
+                                    placeholder="https://meet.google.com/…"
+                                    required={form.mode === "ONLINE"} />
+                            </div>
                         )}
-                        <div className="message-content">
-                          {message.type !== "system" && (
-                            <div className="message-header">
-                              <span className="message-sender">{message.sender?.name}</span>
-                              <span className="message-time">
-                                {new Date(message.createdAt).toLocaleTimeString([], { 
-                                  hour: '2-digit', 
-                                  minute: '2-digit' 
-                                })}
-                              </span>
+
+                        {["PHYSICAL", "HYBRID"].includes(form.mode) && (
+                            <div className="form-field" style={{ marginBottom: 0 }}>
+                                <label className="form-label">Location {form.mode === "PHYSICAL" ? "*" : "(optional)"}</label>
+                                <input className="form-input" value={form.location}
+                                    onChange={(e) => set("location", e.target.value)}
+                                    placeholder="Room 204, Library…"
+                                    required={form.mode === "PHYSICAL"} />
                             </div>
-                          )}
-                          {message.type === "file" && message.file ? (
-                            <div className="file-message">
-                              <span>📎 {message.file.fileName}</span>
-                              <span className="file-size">
-                                {(message.file.fileSize / 1024).toFixed(2)} KB
-                              </span>
-                            </div>
-                          ) : (
-                            <p>{message.content}</p>
-                          )}
-                          {message.edited && (
-                            <span className="edited-badge">(edited)</span>
-                          )}
+                        )}
+
+                        <div className="form-field" style={{ marginBottom: 0 }}>
+                            <label className="form-label">
+                                Min Confirmations to Auto-Confirm&nbsp;
+                                <strong style={{ color: "var(--color-primary-500)" }}>({form.minConfirmations})</strong>
+                            </label>
+                            <input type="range" min={1} max={Math.max(memberCount, 1)}
+                                value={form.minConfirmations}
+                                onChange={(e) => set("minConfirmations", parseInt(e.target.value))}
+                                style={{ width: "100%", accentColor: "var(--color-primary-500)" }} />
+                            <span className="form-hint">
+                                Auto-confirms when {form.minConfirmations} member{form.minConfirmations !== 1 ? "s" : ""} vote YES
+                            </span>
                         </div>
-                      </div>
-                    ))
-                  )}
-                  <div ref={messagesEndRef} />
+
+                        {err && <p style={{ color: "var(--color-error)", fontSize: "var(--font-size-sm)", margin: 0 }}>{err}</p>}
+                    </form>
                 </div>
 
-                <form onSubmit={handleSendMessage} className="message-input-form">
-                  <input
-                    type="text"
-                    value={messageInput}
-                    onChange={(e) => setMessageInput(e.target.value)}
-                    placeholder="Type your message..."
-                    className="message-input"
-                    autoComplete="off"
-                  />
-                  <button 
-                    type="submit" 
-                    className="btn btn-primary" 
-                    disabled={!messageInput.trim()}
-                    aria-label="Send message"
-                  >
-                    <Send size={18} />
-                  </button>
-                </form>
-              </div>
-            )}
-
-            {activeTab === "files" && (
-              <div className="files-container card fade-in" style={{ animationDelay: '200ms' }}>
-                <div className="file-upload-section">
-                  <label 
-                    htmlFor="file-upload"
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      padding: 'var(--spacing-2xl)',
-                      border: '2px dashed var(--color-border)',
-                      borderRadius: 'var(--radius-lg)',
-                      cursor: 'pointer',
-                      transition: 'all var(--transition-base)',
-                      background: 'var(--color-bg-secondary)'
-                    }}
-                    className="file-drop-zone"
-                    onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--color-primary-500)'}
-                    onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
-                  >
-                    <Upload size={32} style={{ color: 'var(--color-primary-500)', marginBottom: 'var(--spacing-md)' }} />
-                    <span style={{ 
-                      fontSize: 'var(--font-size-base)', 
-                      fontWeight: 'var(--font-weight-medium)',
-                      marginBottom: 'var(--spacing-xs)'
-                    }}>
-                      Click to upload or drag and drop
-                    </span>
-                    <span style={{ 
-                      fontSize: 'var(--font-size-sm)', 
-                      color: 'var(--color-text-tertiary)' 
-                    }}>
-                      PDF, DOC, PPT, Images (max 10MB)
-                    </span>
-                  </label>
-                  <input
-                    id="file-upload"
-                    ref={fileInputRef}
-                    type="file"
-                    onChange={(e) => setFileInput(e.target.files[0])}
-                    className="file-input"
-                    style={{ display: 'none' }}
-                  />
-                  {fileInput && (
-                    <div className="file-preview fade-in" style={{ marginTop: 'var(--spacing-md)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
-                        <FolderOpen size={20} style={{ color: 'var(--color-primary-600)' }} />
-                        <span style={{ fontWeight: 'var(--font-weight-medium)' }}>{fileInput.name}</span>
-                      </div>
-                      <button 
-                        onClick={handleFileUpload} 
-                        disabled={uploading} 
-                        className={`btn btn-primary btn-sm ${uploading ? 'loading' : ''}`}
-                      >
-                        {!uploading && <Upload size={16} />}
-                        {uploading ? 'Uploading...' : 'Upload'}
-                      </button>
-                    </div>
-                  )}
+                <div className="modal-actions">
+                    <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+                    <button type="submit" form="meetup-form" className="btn btn-primary" disabled={busy}>
+                        {busy ? "Creating…" : <><Calendar size={16} /> Create Meetup</>}
+                    </button>
                 </div>
+            </div>
+        </div>
+    );
+}
 
-                {loadingFiles ? (
-                  <LoadingSpinner text="Loading files..." size="sm" />
-                ) : groupFiles.length === 0 ? (
-                  <EmptyState
-                    icon="📁"
-                    title="No files yet"
-                    description="Upload study materials, notes, and resources to share with the group"
-                  />
-                ) : (
-                  <div className="files-list">
-                    {groupFiles.map((file, index) => (
-                      <div 
-                        key={file._id} 
-                        className="file-item slide-in"
-                        style={{ animationDelay: `${index * 50}ms` }}
-                      >
-                        <div className="file-info">
-                          <div style={{
-                            width: '48px',
-                            height: '48px',
-                            borderRadius: 'var(--radius-lg)',
-                            background: 'var(--color-primary-50)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: 'var(--font-size-2xl)',
-                            flexShrink: 0
-                          }}>
-                            📄
-                          </div>
-                          <div style={{ flex: 1 }}>
-                            <div className="file-name">{file.originalName}</div>
-                            <div className="file-meta">
-                              <span>Uploaded by {file.uploadedBy?.name}</span>
-                              <span>•</span>
-                              <span>{(file.size / 1024).toFixed(2)} KB</span>
-                              <span>•</span>
-                              <span>{new Date(file.uploadedAt).toLocaleDateString()}</span>
+/* ═══════════════════════════════════════════════════════════
+   MEETUPS TAB
+═══════════════════════════════════════════════════════════ */
+function MeetupsTab({ groupId, isAdmin, currentUser, memberCount, meetups, meetupsLoading, onSchedule }) {
+    const [showPast, setShowPast] = useState(false);
+
+    const upcoming = meetups.filter((m) => !["Completed", "Cancelled"].includes(m.status));
+    const past = meetups.filter((m) => ["Completed", "Cancelled"].includes(m.status));
+
+    return (
+        <div className="meetups-tab-container fade-in">
+            {/* Header */}
+            <div className="mt-header">
+                <div>
+                    <h3 className="mt-title">Group Meetups</h3>
+                    <p className="mt-sub">
+                        Schedule hybrid meetups and poll the group in real time · {meetups.length} scheduled
+                    </p>
+                </div>
+                <button className="btn btn-primary btn-sm" onClick={onSchedule}>
+                    <Plus size={16} /> Schedule Meetup
+                </button>
+            </div>
+
+            {meetupsLoading && meetups.length === 0 ? (
+                <LoadingSpinner text="Loading meetups…" />
+            ) : meetups.length === 0 ? (
+                <div className="ft-empty">
+                    <div className="ft-empty-icon"><Calendar size={48} strokeWidth={1} /></div>
+                    <h4 className="ft-empty-title">No meetups yet</h4>
+                    <p className="ft-empty-sub">
+                        Schedule the group's first hybrid meetup and poll members for attendance
+                    </p>
+                    <button className="btn btn-primary" onClick={onSchedule}>
+                        <Plus size={16} /> Schedule First Meetup
+                    </button>
+                </div>
+            ) : (
+                <>
+                    {/* Upcoming */}
+                    {upcoming.length > 0 && (
+                        <>
+                            <div className="mt-section-label">Upcoming ({upcoming.length})</div>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                                {upcoming.map((m) => (
+                                    <MeetupCard key={m._id} meetup={m} isAdmin={isAdmin}
+                                        currentUserId={currentUser?._id} groupId={groupId} />
+                                ))}
                             </div>
-                          </div>
-                        </div>
-                        <div className="file-actions">
-                          <button
-                            onClick={() => handleDownloadFile(file._id, file.originalName)}
-                            className="btn btn-secondary btn-sm"
-                            aria-label={`Download ${file.originalName}`}
-                          >
-                            <Download size={16} />
-                            Download
-                          </button>
-                          {(file.uploadedBy?._id === user?._id || file.uploadedBy === user?._id || isAdmin) && (
-                            <button
-                              onClick={() => handleDeleteFile(file._id)}
-                              className="btn btn-danger btn-sm"
-                              aria-label={`Delete ${file.originalName}`}
-                            >
-                              <Trash2 size={16} />
+                        </>
+                    )}
+
+                    {/* Past (collapsed by default) */}
+                    {past.length > 0 && (
+                        <>
+                            <button className="mt-past-toggle" onClick={() => setShowPast((p) => !p)}>
+                                {showPast ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                {showPast ? "Hide" : "Show"} past meetups ({past.length})
                             </button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                            {showPast && (
+                                <div style={{ display: "flex", flexDirection: "column", gap: 10, opacity: .8 }}>
+                                    {past.map((m) => (
+                                        <MeetupCard key={m._id} meetup={m} isAdmin={isAdmin}
+                                            currentUserId={currentUser?._id} groupId={groupId} />
+                                    ))}
+                                </div>
+                            )}
+                        </>
+                    )}
+                </>
             )}
+        </div>
+    );
+}
 
-            {activeTab === "members" && (
-              <div className="members-container card fade-in" style={{ animationDelay: '200ms' }}>
-                <div className="card-header">
-                  <h3 className="card-title">Group Members</h3>
-                  <p className="card-description">
-                    {currentGroup.members?.length || 0} member{currentGroup.members?.length !== 1 ? 's' : ''}
-                  </p>
-                </div>
-                <div className="members-list">
-                  {currentGroup.members?.map((member, index) => {
-                    const memberUser = member.user;
-                    const isMemberAdmin = member.role === "admin" || 
-                                         currentGroup.admins?.some(a => a._id === memberUser?._id || a === memberUser?._id);
-                    const isCreator = currentGroup.creator?._id === memberUser?._id;
-                    
-                    return (
-                      <div 
-                        key={memberUser?._id || member.user} 
-                        className="member-item slide-in"
-                        style={{ animationDelay: `${index * 50}ms` }}
-                      >
-                        <div className="member-avatar">
-                          {memberUser?.profilePicture ? (
-                            <img src={memberUser.profilePicture} alt={memberUser.name} />
-                          ) : (
-                            <div className="avatar-placeholder">
-                              {memberUser?.name?.charAt(0).toUpperCase()}
-                            </div>
-                          )}
-                        </div>
-                        <div className="member-info">
-                          <div className="member-name">
-                            {memberUser?.name}
-                            {isCreator && (
-                              <span className="badge badge-warning">
-                                <Crown size={12} />
-                                Creator
-                              </span>
-                            )}
-                            {isMemberAdmin && !isCreator && (
-                              <span className="badge badge-primary">
-                                <Shield size={12} />
-                                Admin
-                              </span>
-                            )}
-                          </div>
-                          {memberUser?.email && (
-                            <div className="member-email">{memberUser.email}</div>
-                          )}
-                          {memberUser?.department && (
-                            <div style={{ 
-                              fontSize: 'var(--font-size-xs)',
-                              color: 'var(--color-text-tertiary)',
-                              marginTop: 'var(--spacing-xs)'
+/* ═══════════════════════════════════════════════════════════
+   MAIN GroupDetail PAGE
+═══════════════════════════════════════════════════════════ */
+const GroupDetail = () => {
+    const { groupId } = useParams();
+    const navigate = useNavigate();
+    const location = useLocation();
+    const dispatch = useDispatch();
+    const socket = getSocket();
+
+    const { currentGroup, isLoading: groupLoading } = useSelector((s) => s.groups);
+    const { user } = useSelector((s) => s.auth);
+    const meetupsState = useSelector((s) => s.meetups.byGroupId[groupId]);
+    const meetups = meetupsState?.items || [];
+
+    const searchParams = new URLSearchParams(location.search);
+    const [activeTab, setActiveTab] = useState(
+        location.state?.tab || searchParams.get("tab") || "chat"
+    );
+    const [showCreateMeetup, setShowCreateMeetup] = useState(false);
+
+    // ── Fetch on mount ────────────────────────────────────────
+    useEffect(() => {
+        dispatch(fetchGroupById(groupId));
+        dispatch(fetchGroupMeetups(groupId));
+        joinSocketRoom(groupId);
+        return () => {
+            leaveSocketRoom(groupId);
+        };
+    }, [dispatch, groupId]);
+
+    // ── Socket: real-time meetup updates ─────────────────────
+    useEffect(() => {
+        if (!socket) return;
+        const onCreated = (data) => dispatch(meetupCreatedRealtime(data));
+        const onChanged = (data) => dispatch(meetupStatusChangedRealtime(data));
+        const onVoted = (data) => dispatch(meetupVotedRealtime(data));
+        socket.on("group-meetup:created", onCreated);
+        socket.on("group-meetup:status-changed", onChanged);
+        socket.on("group-meetup:voted", onVoted);
+        return () => {
+            socket.off("group-meetup:created", onCreated);
+            socket.off("group-meetup:status-changed", onChanged);
+            socket.off("group-meetup:voted", onVoted);
+        };
+    }, [socket, dispatch]);
+
+    // ── Computed ──────────────────────────────────────────────
+    const isAdmin = !!(
+        currentGroup?.creator === user?._id ||
+        currentGroup?.creator?._id?.toString() === user?._id ||
+        currentGroup?.admins?.some((a) => (a._id || a)?.toString() === user?._id) ||
+        currentGroup?.members?.some((m) => {
+            const uid = m.user?._id || m.user;
+            return uid?.toString() === user?._id && m.role === "admin";
+        })
+    );
+    const memberCount = currentGroup?.members?.length || 0;
+    const isPrivate = currentGroup && !currentGroup.isPublic;
+    const activeMeetups = meetups.filter((m) => m.status === "Active").length;
+
+    // ── Handlers ──────────────────────────────────────────────
+    const handleLeave = async () => {
+        const ok = await confirmAction("Leave this group?", { confirmText: "Leave" });
+        if (!ok) return;
+        await dispatch(leaveGroupAction(groupId));
+        navigate("/groups");
+    };
+
+    const handleDelete = async () => {
+        const ok = await confirmAction("Delete this group? This cannot be undone.", { confirmText: "Delete", isDanger: true });
+        if (!ok) return;
+        await groupService.deleteGroup(groupId);
+        navigate("/groups");
+    };
+
+    // ── Loading / not found states ────────────────────────────
+    if (groupLoading && !currentGroup) return (
+        <div className="db-root" style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <LoadingSpinner text="Loading group…" />
+        </div>
+    );
+
+    if (!currentGroup) return (
+        <div className="db-root" style={{ minHeight: "100vh", padding: "2rem" }}>
+            <div style={{ maxWidth: 480, margin: "0 auto", textAlign: "center", paddingTop: "4rem" }}>
+                <AlertTriangle size={48} style={{ color: "var(--color-error)", marginBottom: "1rem" }} />
+                <h2 style={{ color: "var(--text)" }}>Group not found</h2>
+                <p style={{ color: "var(--text-dim)", marginBottom: "1.5rem" }}>
+                    This group may have been deleted or you don't have access.
+                </p>
+                <button className="btn btn-primary" onClick={() => navigate("/groups")}>
+                    <ArrowLeft size={16} /> Back to Groups
+                </button>
+            </div>
+        </div>
+    );
+
+    const tabs = [
+        { id: "chat", label: "Chat", Icon: MessageSquare, badge: 0 },
+        { id: "meetups", label: "Meetups", Icon: Calendar, badge: activeMeetups },
+        { id: "files", label: "Files", Icon: File, badge: 0 },
+        { id: "members", label: "Members", Icon: Users, badge: memberCount },
+    ];
+
+    // Upcoming meetups summary for sidebar
+    const upcomingMeetup = meetups.find((m) => ["Active", "Confirmed", "Draft"].includes(m.status));
+
+    return (
+        <div className="db-root gd-workspace">
+            {/* ── Sticky header ── */}
+            <div className="gd-header" style={{ top: 0 }}>
+                <button className="gd-back-btn" onClick={() => navigate("/groups")}>
+                    <ArrowLeft size={15} /> Groups
+                </button>
+
+                <div className="gd-header-info">
+                    <div className="gd-header-name">
+                        {currentGroup.name}
+                        {isPrivate && (
+                            <span style={{
+                                fontSize: 12, fontWeight: 600, padding: "2px 8px", borderRadius: 4,
+                                background: "rgba(245,158,11,.12)", color: "#fbbf24",
+                                border: "1px solid rgba(245,158,11,.25)",
                             }}>
-                              {memberUser.department}
-                              {memberUser.year && ` • Year ${memberUser.year}`}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+                                <Lock size={10} /> Private
+                            </span>
+                        )}
+                    </div>
+                    <div className="gd-header-meta">
+                        <span style={{ color: "var(--bio)", fontWeight: 600 }}>{memberCount} members</span>
+                        {currentGroup.subject && <span style={{ margin: "0 6px", color: "var(--text-dim)" }}>·</span>}
+                        {currentGroup.subject && <span>{currentGroup.subject}</span>}
+                        {currentGroup.courseCode && (
+                            <span style={{ marginLeft: 4, color: "var(--text-dim)" }}>({currentGroup.courseCode})</span>
+                        )}
+                    </div>
                 </div>
-              </div>
+
+                <div className="gd-header-actions">
+                    {isAdmin ? (
+                        <button className="btn btn-danger btn-sm" onClick={handleDelete}>
+                            <Trash2 size={14} /> Delete
+                        </button>
+                    ) : (
+                        <button className="btn btn-secondary btn-sm" onClick={handleLeave}>
+                            <LogOut size={14} /> Leave
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            {/* ── Body: main + sidebar ── */}
+            <div className="gd-body">
+                {/* ── Left: tabs + content ── */}
+                <div>
+                    {/* Tabs */}
+                    <div className="gd-tabs">
+                        {tabs.map((tab) => (
+                            <button key={tab.id}
+                                className={`gd-tab-btn ${activeTab === tab.id ? "active" : ""}`}
+                                onClick={() => setActiveTab(tab.id)}>
+                                <tab.Icon size={15} />
+                                <span>{tab.label}</span>
+                                {tab.badge > 0 && (
+                                    <span className="gd-tab-badge">{tab.badge}</span>
+                                )}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Tab content */}
+                    {activeTab === "chat" && (
+                        <ChatTab groupId={groupId} />
+                    )}
+
+                    {activeTab === "meetups" && (
+                        <MeetupsTab
+                            groupId={groupId}
+                            isAdmin={isAdmin}
+                            currentUser={user}
+                            memberCount={memberCount}
+                            meetups={meetups}
+                            meetupsLoading={meetupsState?.loading}
+                            onSchedule={() => setShowCreateMeetup(true)}
+                        />
+                    )}
+
+                    {activeTab === "files" && (
+                        <FilesTab
+                            groupId={groupId}
+                            currentUserId={user?._id}
+                            isAdmin={isAdmin}
+                        />
+                    )}
+
+                    {activeTab === "members" && (
+                        <MemberList
+                            group={currentGroup}
+                            currentUser={user}
+                            groupId={groupId}
+                            isAdmin={isAdmin}
+                        />
+                    )}
+                </div>
+
+                {/* ── Right: sidebar ── */}
+                <aside className="gd-sidebar">
+                    {/* Group info card */}
+                    <div className="gd-side-card">
+                        <div className="gd-side-title">
+                            <Users size={13} /> Group Info
+                        </div>
+                        <div className="gd-quick-stat">
+                            <span className="gd-quick-stat-label">Members</span>
+                            <span className="gd-quick-stat-val" style={{ color: "var(--bio)" }}>{memberCount}</span>
+                        </div>
+                        {currentGroup.subject && (
+                            <div className="gd-quick-stat">
+                                <span className="gd-quick-stat-label">Subject</span>
+                                <span className="gd-quick-stat-val">{currentGroup.subject}</span>
+                            </div>
+                        )}
+                        {currentGroup.courseCode && (
+                            <div className="gd-quick-stat">
+                                <span className="gd-quick-stat-label">Course</span>
+                                <span className="gd-quick-stat-val">{currentGroup.courseCode}</span>
+                            </div>
+                        )}
+                        <div className="gd-quick-stat">
+                            <span className="gd-quick-stat-label">Visibility</span>
+                            <span className="gd-quick-stat-val">
+                                {isPrivate ? "🔒 Private" : "🌐 Public"}
+                            </span>
+                        </div>
+                        {currentGroup.settings?.maxMembers && (
+                            <div className="gd-quick-stat">
+                                <span className="gd-quick-stat-label">Max Members</span>
+                                <span className="gd-quick-stat-val">{currentGroup.settings.maxMembers}</span>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Meetup quick summary */}
+                    <div className="gd-side-card">
+                        <div className="gd-side-title">
+                            <Calendar size={13} /> Meetups
+                        </div>
+                        <div className="gd-quick-stat">
+                            <span className="gd-quick-stat-label">Total</span>
+                            <span className="gd-quick-stat-val">{meetups.length}</span>
+                        </div>
+                        <div className="gd-quick-stat">
+                            <span className="gd-quick-stat-label">Active</span>
+                            <span className="gd-quick-stat-val" style={{ color: "#818cf8" }}>
+                                {meetups.filter((m) => m.status === "Active").length}
+                            </span>
+                        </div>
+                        <div className="gd-quick-stat">
+                            <span className="gd-quick-stat-label">Confirmed</span>
+                            <span className="gd-quick-stat-val" style={{ color: "#34d399" }}>
+                                {meetups.filter((m) => m.status === "Confirmed").length}
+                            </span>
+                        </div>
+                        {upcomingMeetup && (
+                            <div style={{
+                                marginTop: 10, padding: "8px 10px", borderRadius: "var(--r-md)",
+                                background: "rgba(99,102,241,.12)", border: "1px solid rgba(99,102,241,.25)",
+                            }}>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: "#a5b4fc", marginBottom: 3 }}>
+                                    NEXT MEETUP
+                                </div>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>
+                                    {upcomingMeetup.title}
+                                </div>
+                                <div style={{ fontSize: 12, color: "var(--text-dim)", marginTop: 2 }}>
+                                    <Clock size={10} style={{ display: "inline", marginRight: 3 }} />
+                                    {upcomingMeetup.time} · {new Date(upcomingMeetup.meetingDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                                </div>
+                            </div>
+                        )}
+                        <button className="btn btn-sm btn-secondary" style={{ width: "100%", marginTop: 10 }}
+                            onClick={() => { setActiveTab("meetups"); setShowCreateMeetup(true); }}>
+                            <Plus size={13} /> Schedule Meetup
+                        </button>
+                    </div>
+
+                    {/* Tags */}
+                    {currentGroup.tags?.length > 0 && (
+                        <div className="gd-side-card">
+                            <div className="gd-side-title">
+                                <span>Tags</span>
+                            </div>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                                {currentGroup.tags.map((tag, i) => (
+                                    <span key={i} style={{
+                                        display: "inline-block", padding: "3px 9px", fontSize: 11, fontWeight: 600,
+                                        background: "rgba(99,102,241,.12)", border: "1px solid rgba(99,102,241,.25)",
+                                        borderRadius: 4, color: "#a5b4fc",
+                                    }}>#{tag}</span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Description */}
+                    {currentGroup.description && (
+                        <div className="gd-side-card">
+                            <div className="gd-side-title">About</div>
+                            <p style={{ fontSize: 13, color: "var(--text-mid)", lineHeight: 1.65 }}>
+                                {currentGroup.description}
+                            </p>
+                        </div>
+                    )}
+                </aside>
+            </div>
+
+            {/* Create Meetup Modal */}
+            {showCreateMeetup && (
+                <CreateMeetupModal
+                    groupId={groupId}
+                    memberCount={memberCount}
+                    onClose={() => setShowCreateMeetup(false)}
+                />
             )}
-          </>
-        ) : (
-          <EmptyState
-            icon="🔍"
-            title="Group not found"
-            description="This group may have been deleted or you don't have access to it"
-            action={() => navigate("/groups")}
-            actionText="Back to Groups"
-          />
-        )}
-      </div>
-    </ProtectedRoute>
-  );
+        </div>
+    );
 };
 
 export default GroupDetail;

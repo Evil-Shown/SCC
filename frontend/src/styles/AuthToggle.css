@@ -619,17 +619,164 @@
 
 .form-input-modern.error,
 .form-select-modern.error {
-  border-color: #ef4444;
+  border-color: #22C55E;
 }
 
 .form-group-modern.error label {
-  color: #ef4444;
+  color: #22C55E;
 }
 
 .field-error {
   font-size: 12px;
-  color: #ef4444;
+  color: #22C55E;
   margin-top: 4px;
+}
+
+/* Custom Select Styles */
+.custom-select-container {
+  position: relative;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.custom-select-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
+.auth-container-modern[data-theme="dark"] .custom-select-label {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.custom-select-trigger {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 14px;
+  background: white;
+  color: #1f2937;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-height: 52px;
+}
+
+/* Dark mode overrides for select trigger */
+.auth-container-modern[data-theme="dark"] .custom-select-trigger {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.custom-select-trigger:hover {
+  border-color: #086247;
+}
+
+.custom-select-trigger.open {
+  border-color: #086247;
+  box-shadow: 0 0 0 4px rgba(8, 98, 71, 0.1);
+}
+
+.trigger-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.select-icon {
+  color: #6b7280;
+}
+
+.custom-select-trigger.placeholder span {
+  color: #9ca3af;
+}
+
+.chevron {
+  transition: transform 0.3s ease;
+  color: #6b7280;
+}
+
+.chevron.rotate {
+  transform: rotate(180deg);
+}
+
+.custom-select-options {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  overflow: hidden;
+  animation: slideDown 0.2s ease-out;
+}
+
+/* Dark mode overrides for dropdown list */
+.auth-container-modern[data-theme="dark"] .custom-select-options {
+  background: #1e293b;
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+
+.custom-option {
+  padding: 12px 16px;
+  font-size: 14px;
+  color: #4b5563;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.2s ease;
+}
+
+.auth-container-modern[data-theme="dark"] .custom-option {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* THE REQUESTED GREEN COLOR THING */
+.custom-option:hover {
+  background-color: #10b981; /* Emereld Green */
+  color: white;
+}
+
+.custom-option.selected {
+  background-color: #059669; /* Darker Green */
+  color: white;
+}
+
+.check-icon {
+  color: white;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.custom-select-container.disabled .custom-select-trigger {
+  background: #f3f4f6;
+  cursor: not-allowed;
 }
 
 /* Role Selector */

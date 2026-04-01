@@ -1,0 +1,59 @@
+.tt-editor-table-wrap {
+  overflow-x: auto;
+  border-radius: 16px;
+}
+
+.tt-editor-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: rgba(36, 50, 74, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+}
+
+.tt-editor-table thead th {
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--tt-amethyst);
+  background: rgba(168, 85, 247, 0.08);
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--tt-border-active);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+
+.tt-editor-table tbody td {
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  vertical-align: middle;
+  min-width: 120px;
+}
+
+.tt-editor-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.tt-editor-table td .form-input,
+.tt-editor-table td .form-select {
+  width: 100%;
+}
+
+.tt-editor-col-actions {
+  width: 110px;
+}
+
+.tt-editor-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.tt-editor-add-btn {
+  width: 100%;
+  display: inline-flex;
+  justify-content: center;
+  margin-top: 14px;
+}
+

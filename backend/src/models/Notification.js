@@ -8,7 +8,20 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ["kuppi_scheduled", "note_reaction", "note_comment", "general"],
+    enum: [
+      // Existing types
+      "kuppi_scheduled",
+      "note_reaction",
+      "note_comment",
+      "general",
+      // Group meetup types
+      "group_meetup_created",
+      "group_meetup_activated",
+      "group_meetup_confirmed",
+      "group_meetup_cancelled",
+      "group_meetup_completed",
+      "group_meetup_vote",
+    ],
     required: [true, "Notification type is required"]
   },
   title: {
@@ -27,7 +40,7 @@ const notificationSchema = new mongoose.Schema({
   },
   relatedModel: {
     type: String,
-    enum: ["Note", "KuppiPost", "Comment", "Reaction"]
+    enum: ["Note", "KuppiPost", "Comment", "Reaction", "Meeting", "Group"]
   },
   isRead: {
     type: Boolean,

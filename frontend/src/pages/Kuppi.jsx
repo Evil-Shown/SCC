@@ -9,7 +9,6 @@ import {
   Video,
   Download,
   Clock,
-  User,
   ArrowLeft,
   X,
   ChevronLeft,
@@ -19,7 +18,22 @@ import {
   AlertCircle,
   FileSpreadsheet,
   BookOpen,
+  Search,
+  Sparkles,
+  GraduationCap,
 } from "lucide-react";
+import { 
+  Modal, 
+  Button, 
+  Form, 
+  Grid, 
+  Input, 
+  TextArea, 
+  Select, 
+  Label, 
+  Icon,
+  Message 
+} from "semantic-ui-react";
 import {
   fetchKuppiPosts,
   createKuppiAction,
@@ -28,8 +42,6 @@ import {
   fetchApplicantsAction,
 } from "../features/kuppi/kuppiSlice";
 import { exportApplicants } from "../services/kuppiService";
-import LoadingSpinner from "../components/LoadingSpinner";
-import EmptyState from "../components/EmptyState";
 import ErrorMessage from "../components/ErrorMessage";
 import { notifyError, notifySuccess } from "../utils/toast";
 import "../styles/Kuppi.css";
@@ -38,17 +50,15 @@ const Kuppi = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
-  const { posts, loading, error, pagination } = useSelector(
-    (state) => state.kuppi
-  );
+  const { posts, loading, error, pagination } = useSelector((state) => state.kuppi);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showLinkModal, setShowLinkModal] = useState(null);
   const [showApplicantsModal, setShowApplicantsModal] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [activeTab, setActiveTab] = useState("all"); // all | mine
+  const [activeTab, setActiveTab] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
-  // Create form
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -57,12 +67,10 @@ const Kuppi = () => {
     meetingLink: "",
   });
   const [formError, setFormError] = useState("");
-
-  // Link form
   const [meetingLinkInput, setMeetingLinkInput] = useState("");
 
   const loadPosts = useCallback(() => {
-    const params = { page: currentPage, limit: 10 };
+    const params = { page: currentPage, limit: 12 };
     if (activeTab === "mine" && user?._id) {
       params.ownerId = user._id;
     }
@@ -76,9 +84,16 @@ const Kuppi = () => {
   const handleCreatePost = async (e) => {
     e.preventDefault();
     setFormError("");
-
+    
     if (!formData.title.trim() || !formData.description.trim() || !formData.eventDate) {
       setFormError("Title, description, and event date are required");
+      return;
+    }
+    
+    const selectedDate = new Date(formData.eventDate);
+    const now = new Date();
+    if (selectedDate <= now) {
+      setFormError("Please select a future date and time");
       return;
     }
 
@@ -89,11 +104,10 @@ const Kuppi = () => {
       eventDate: formData.eventDate,
       meetingLink: formData.meetingLink.trim(),
     }));
-
     if (!result.error) {
       setShowCreateModal(false);
       setFormData({ title: "", description: "", subject: "", eventDate: "", meetingLink: "" });
-      notifySuccess("Kuppi post created successfully!");
+      notifySuccess("Kuppi session created successfully!");
     } else {
       setFormError(result.payload || "Failed to create post");
       notifyError(result.payload || "Failed to create post");
@@ -111,9 +125,7 @@ const Kuppi = () => {
 
   const handleAddLink = async (postId) => {
     if (!meetingLinkInput.trim()) return;
-    const result = await dispatch(
-      addMeetingLinkAction({ postId, meetingLink: meetingLinkInput.trim() })
-    );
+    const result = await dispatch(addMeetingLinkAction({ postId, meetingLink: meetingLinkInput.trim() }));
     if (!result.error) {
       setShowLinkModal(null);
       setMeetingLinkInput("");
@@ -133,256 +145,267 @@ const Kuppi = () => {
       await exportApplicants(postId);
       notifySuccess("Excel file downloaded!");
     } catch (err) {
-      console.error("Export failed:", err);
       notifyError("Failed to export applicants");
     }
   };
 
-  const getStatusColor = (status) => {
+  const getStatusStyle = (status) => {
     switch (status) {
-      case "scheduled": return "status-scheduled";
-      case "completed": return "status-completed";
-      case "cancelled": return "status-cancelled";
-      default: return "status-pending";
+      case "scheduled": return { bg: "#10b981", text: "#ffffff" };
+      case "completed": return { bg: "#065f46", text: "#d1fae5" };
+      case "cancelled": return { bg: "#ef4444", text: "#ffffff" };
+      default: return { bg: "#34d399", text: "#064e3b" };
     }
   };
 
-  const getStatusLabel = (status) => {
-    switch (status) {
-      case "scheduled": return "Scheduled";
-      case "completed": return "Completed";
-      case "cancelled": return "Cancelled";
-      default: return "Pending";
-    }
-  };
+  const filteredPosts = posts.filter(post => 
+    post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    post.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    post.subject?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-  const subjects = [
-    "Mathematics", "Physics", "Chemistry", "Biology",
-    "Computer Science", "Engineering", "Business", "Economics",
-    "English", "History",
-  ];
+  const subjects = ["Mathematics", "Physics", "Chemistry", "Biology", "Computer Science", "Engineering", "Business", "Economics", "English", "History"];
 
   return (
-    <div className="kuppi-page">
-      {/* Header */}
-      <header className="kuppi-header">
-        <div className="kuppi-header-left">
-          <button onClick={() => navigate("/dashboard")} className="back-btn">
-            <ArrowLeft size={20} />
-          </button>
-          <div>
-            <h1>Kuppi Sessions</h1>
-            <p>Create and join peer tutoring sessions</p>
-          </div>
-        </div>
-        <div className="kuppi-header-actions">
-          <button
-            className="btn btn-primary"
-            onClick={() => setShowCreateModal(true)}
-          >
-            <Plus size={18} />
-            <span>Create Kuppi</span>
-          </button>
-        </div>
-      </header>
-
-      {/* Tabs */}
-      <div className="kuppi-tabs">
-        <button
-          className={`tab-btn ${activeTab === "all" ? "active" : ""}`}
-          onClick={() => { setActiveTab("all"); setCurrentPage(1); }}
-        >
-          All Sessions
-        </button>
-        <button
-          className={`tab-btn ${activeTab === "mine" ? "active" : ""}`}
-          onClick={() => { setActiveTab("mine"); setCurrentPage(1); }}
-        >
-          My Sessions
-        </button>
+    <div className="kuppi-container">
+      {/* Background Effects */}
+      <div className="kuppi-bg">
+        <div className="leaf leaf-1" />
+        <div className="leaf leaf-2" />
+        <div className="leaf leaf-3" />
       </div>
 
-      {/* Error */}
-      {error && <ErrorMessage message={error} onRetry={loadPosts} />}
-
-      {/* Loading */}
-      {loading && <LoadingSpinner text="Loading kuppi sessions..." />}
-
-      {/* Posts */}
-      {!loading && posts.length === 0 && (
-        <EmptyState
-          icon="🎓"
-          title="No kuppi sessions"
-          description={
-            activeTab === "mine"
-              ? "You haven't created any kuppi sessions yet"
-              : "No kuppi sessions available. Create one!"
-          }
-          action={() => setShowCreateModal(true)}
-          actionText="Create Kuppi"
-        />
-      )}
-
-      {!loading && posts.length > 0 && (
-        <>
-          <div className="kuppi-list">
-            {posts.map((post) => (
-              <KuppiCard
-                key={post._id}
-                post={post}
-                currentUserId={user?._id}
-                onApply={handleApply}
-                onAddLink={(postId) => {
-                  setShowLinkModal(postId);
-                  setMeetingLinkInput(post.meetingLink || "");
-                }}
-                onViewApplicants={handleViewApplicants}
-                onExport={handleExport}
-                getStatusColor={getStatusColor}
-                getStatusLabel={getStatusLabel}
-              />
-            ))}
+      {/* Hero Section */}
+      <section className="kuppi-hero">
+        <div className="kuppi-hero-content">
+          <button className="kuppi-back" onClick={() => navigate("/dashboard")}>
+            <ArrowLeft size={20} />
+          </button>
+          <div className="kuppi-hero-text">
+            <span className="kuppi-badge">
+              <Sparkles size={14} />
+              Peer Learning
+            </span>
+            <h1>Kuppi Sessions</h1>
+            <p>Learn together, grow together. Join or host peer tutoring sessions.</p>
           </div>
+          <button className="kuppi-create-btn" onClick={() => setShowCreateModal(true)}>
+            <Plus size={18} />
+            Create Session
+          </button>
+        </div>
+      </section>
 
-          {pagination && pagination.pages > 1 && (
-            <div className="kuppi-pagination">
-              <button
-                disabled={currentPage <= 1}
-                onClick={() => setCurrentPage((p) => p - 1)}
-              >
-                <ChevronLeft size={18} />
-              </button>
-              <span>Page {currentPage} of {pagination.pages}</span>
-              <button
-                disabled={currentPage >= pagination.pages}
-                onClick={() => setCurrentPage((p) => p + 1)}
-              >
-                <ChevronRight size={18} />
-              </button>
+      {/* Controls */}
+      <div className="kuppi-controls">
+        <div className="kuppi-search-box">
+          <Search size={18} />
+          <input
+            type="text"
+            placeholder="Search sessions..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        <div className="kuppi-tabs">
+          <Button.Group basic size="large">
+            <Button
+              active={activeTab === "all"}
+              onClick={() => { setActiveTab("all"); setCurrentPage(1); }}
+            >
+              All Sessions
+            </Button>
+            <Button
+              active={activeTab === "mine"}
+              onClick={() => { setActiveTab("mine"); setCurrentPage(1); }}
+            >
+              My Sessions
+            </Button>
+          </Button.Group>
+        </div>
+      </div>
+
+      {/* Content */}
+      <main className="kuppi-main">
+        {error && <ErrorMessage message={error} onRetry={loadPosts} />}
+
+        {loading ? (
+          <div className="kuppi-loading">
+            <div className="spinner" />
+            <span>Loading sessions...</span>
+          </div>
+        ) : filteredPosts.length === 0 ? (
+          <div className="kuppi-empty">
+            <div className="empty-icon">
+              <GraduationCap size={64} />
             </div>
-          )}
-        </>
-      )}
+            <h3>No sessions found</h3>
+            <p>{searchQuery ? "Try a different search term" : activeTab === "mine" ? "Create your first kuppi session!" : "Be the first to create a session!"}</p>
+            <button className="kuppi-create-btn" onClick={() => setShowCreateModal(true)}>
+              <Plus size={18} />
+              Create Session
+            </button>
+          </div>
+        ) : (
+          <>
+            <Grid columns={3} doubling stackable className="kuppi-grid">
+              {filteredPosts.map((post, idx) => (
+                <Grid.Column key={post._id}>
+                  <SessionCard
+                    post={post}
+                    user={user}
+                    index={idx}
+                    onApply={handleApply}
+                    onAddLink={setShowLinkModal}
+                    onViewApplicants={handleViewApplicants}
+                    onExport={handleExport}
+                    getStatusStyle={getStatusStyle}
+                    setMeetingLinkInput={setMeetingLinkInput}
+                  />
+                </Grid.Column>
+              ))}
+            </Grid>
+
+            {pagination && pagination.pages > 1 && (
+              <div className="kuppi-pagination">
+                <button disabled={currentPage <= 1} onClick={() => setCurrentPage(p => p - 1)}>
+                  <ChevronLeft size={24} />
+                </button>
+                <span>Page {currentPage} of {pagination.pages}</span>
+                <button disabled={currentPage >= pagination.pages} onClick={() => setCurrentPage(p => p + 1)}>
+                  <ChevronRight size={24} />
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </main>
 
       {/* Create Modal */}
-      {showCreateModal && (
-        <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
-          <div className="modal-content uiverse-glass" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>Create Kuppi Session</h2>
-              <button className="modal-close" onClick={() => setShowCreateModal(false)}>
-                <X size={20} />
-              </button>
-            </div>
-            <form onSubmit={handleCreatePost} className="kuppi-form">
-              {formError && <div className="form-error">{formError}</div>}
-              <div className="form-group">
-                <label>Title *</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Data Structures Revision Session"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  maxLength={200}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Description *</label>
-                <textarea
-                  placeholder="Describe what will be covered in this session..."
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  rows={3}
-                  required
-                />
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Subject</label>
-                  <select
-                    value={formData.subject}
-                    onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                  >
-                    <option value="">Select subject</option>
-                    {subjects.map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Event Date & Time *</label>
-                  <input
-                    type="datetime-local"
-                    value={formData.eventDate}
-                    onChange={(e) => setFormData({ ...formData, eventDate: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
-              <div className="form-group">
-                <label>Meeting Link (optional — add later)</label>
-                <input
-                  type="url"
-                  placeholder="https://meet.google.com/... or https://zoom.us/..."
-                  value={formData.meetingLink}
-                  onChange={(e) => setFormData({ ...formData, meetingLink: e.target.value })}
-                />
-              </div>
-              <div className="modal-actions">
-                <button type="button" className="btn btn-outline" onClick={() => setShowCreateModal(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={loading}>
-                  {loading ? "Creating..." : "Create Kuppi"}
-                </button>
-              </div>
-            </form>
+      <Modal
+        open={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        size="small"
+        className="kuppi-semantic-modal"
+      >
+        <Modal.Header>
+          <div className="modal-header-flex">
+            <span>Create New Session</span>
+            <Icon name="close" onClick={() => setShowCreateModal(false)} link />
           </div>
-        </div>
-      )}
+        </Modal.Header>
+        <Modal.Content>
+          <Form onSubmit={handleCreatePost} Error={!!formError}>
+            {formError && (
+              <Message error content={formError} />
+            )}
+            <Form.Field required>
+              <label>Title</label>
+              <Input
+                placeholder="e.g. Calculus Revision Session"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              />
+            </Form.Field>
+            <Form.Field required>
+              <label>Description</label>
+              <TextArea
+                placeholder="What will you cover in this session?"
+                value={formData.description}
+                onChange={(e, { value }) => setFormData({ ...formData, description: value })}
+                rows={3}
+              />
+            </Form.Field>
+            <Form.Group widths="equal">
+              <Form.Field>
+                <label>Subject</label>
+                <Select
+                  placeholder="Select Subject"
+                  options={subjects.map(s => ({ key: s, text: s, value: s }))}
+                  value={formData.subject}
+                  onChange={(e, { value }) => setFormData({ ...formData, subject: value })}
+                />
+              </Form.Field>
+              <Form.Field required>
+                <label>Date & Time</label>
+                <Input
+                  type="datetime-local"
+                  min={new Date().toISOString().slice(0, 16)}
+                  value={formData.eventDate}
+                  onChange={(e) => setFormData({ ...formData, eventDate: e.target.value })}
+                />
+              </Form.Field>
+            </Form.Group>
+            <Form.Field>
+              <label>Meeting Link (optional)</label>
+              <Input
+                icon="video"
+                iconPosition="left"
+                type="url"
+                placeholder="https://meet.google.com/..."
+                value={formData.meetingLink}
+                onChange={(e) => setFormData({ ...formData, meetingLink: e.target.value })}
+              />
+            </Form.Field>
+          </Form>
+        </Modal.Content>
+        <Modal.Actions>
+          <Button secondary onClick={() => setShowCreateModal(false)}>
+            Cancel
+          </Button>
+          <Button 
+            primary 
+            loading={loading} 
+            disabled={loading}
+            onClick={handleCreatePost}
+          >
+            Create Session
+          </Button>
+        </Modal.Actions>
+      </Modal>
 
-      {/* Add Meeting Link Modal */}
-      {showLinkModal && (
-        <div className="modal-overlay" onClick={() => setShowLinkModal(null)}>
-          <div className="modal-content uiverse-glass modal-sm" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>Add Meeting Link</h2>
-              <button className="modal-close" onClick={() => setShowLinkModal(null)}>
-                <X size={20} />
-              </button>
-            </div>
-            <div className="link-form">
-              <p className="link-form-info">
-                <AlertCircle size={16} />
-                All applicants will be notified via email and in-app notification.
-              </p>
-              <div className="form-group">
-                <label>Meeting Link</label>
-                <input
-                  type="url"
-                  placeholder="https://meet.google.com/..."
-                  value={meetingLinkInput}
-                  onChange={(e) => setMeetingLinkInput(e.target.value)}
-                />
-              </div>
-              <div className="modal-actions">
-                <button className="btn btn-outline" onClick={() => setShowLinkModal(null)}>
-                  Cancel
-                </button>
-                <button
-                  className="btn btn-primary"
-                  onClick={() => handleAddLink(showLinkModal)}
-                  disabled={!meetingLinkInput.trim()}
-                >
-                  <Video size={16} />
-                  Save & Notify
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Link Modal */}
+      <Modal
+        open={!!showLinkModal}
+        onClose={() => setShowLinkModal(null)}
+        size="mini"
+      >
+        <Modal.Header>Add Meeting Link</Modal.Header>
+        <Modal.Content>
+          <Message info icon>
+            <Icon name="info circle" />
+            <Message.Content>
+              Applicants will be notified automatically
+            </Message.Content>
+          </Message>
+          <Form>
+            <Form.Field>
+              <label>Meeting Link</label>
+              <Input
+                icon="linkify"
+                iconPosition="left"
+                type="url"
+                placeholder="https://meet.google.com/..."
+                value={meetingLinkInput}
+                onChange={(e) => setMeetingLinkInput(e.target.value)}
+              />
+            </Form.Field>
+          </Form>
+        </Modal.Content>
+        <Modal.Actions>
+          <Button basic onClick={() => setShowLinkModal(null)}>
+            Cancel
+          </Button>
+          <Button
+            primary
+            onClick={() => handleAddLink(showLinkModal)}
+            disabled={!meetingLinkInput.trim()}
+          >
+            <Icon name="video" />
+            Save & Notify
+          </Button>
+        </Modal.Actions>
+      </Modal>
 
       {/* Applicants Modal */}
       {showApplicantsModal && (
@@ -397,196 +420,222 @@ const Kuppi = () => {
   );
 };
 
-// Kuppi Card Component
-const KuppiCard = ({
-  post,
-  currentUserId,
-  onApply,
-  onAddLink,
-  onViewApplicants,
-  onExport,
-  getStatusColor,
-  getStatusLabel,
-}) => {
-  const isOwner = post.ownerId?._id === currentUserId || post.ownerId === currentUserId;
+
+const SessionCard = ({ post, user, index, onApply, onAddLink, onViewApplicants, onExport, getStatusStyle, setMeetingLinkInput }) => {
+  const isOwner = post.ownerId?._id === user?._id || post.ownerId === user?._id;
   const ownerName = post.ownerId?.name || "Unknown";
-  const ownerDept = post.ownerId?.department || "";
   const eventDate = new Date(post.eventDate);
   const isPast = eventDate < new Date();
-  const dateStr = eventDate.toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
-  const timeStr = eventDate.toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const status = getStatusStyle(post.status);
+
+  const formatDate = (date) => {
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  };
+
+  const timeLeft = () => {
+    const diff = eventDate - new Date();
+    if (diff < 0) return "Ended";
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const days = Math.floor(hours / 24);
+    if (days > 0) return `${days}d left`;
+    if (hours > 0) return `${hours}h left`;
+    return "Soon";
+  };
 
   return (
-    <div className={`kuppi-card card-shine hover-glow fade-in ${isPast ? "past" : ""}`}>
-      <div className="kuppi-card-top">
-        <div className="kuppi-card-info">
-          <div className="kuppi-author">
-            <div className="kuppi-avatar">
-              {post.ownerId?.profilePicture ? (
-                <img src={post.ownerId.profilePicture} alt={ownerName} />
-              ) : (
-                <span>{ownerName.charAt(0).toUpperCase()}</span>
-              )}
-            </div>
-            <div>
-              <span className="kuppi-author-name">{ownerName}</span>
-              {ownerDept && <span className="kuppi-meta">{ownerDept}</span>}
-            </div>
+    <div className="session-card" style={{ animationDelay: `${index * 0.05}s` }}>
+      <div className="card-glow" />
+      
+      <div className="card-header">
+        <div className="card-author">
+          <div className="author-avatar" title={ownerName}>
+            {post.ownerId?.profilePicture ? (
+              <img src={post.ownerId.profilePicture} alt={ownerName} />
+            ) : (
+              ownerName.charAt(0).toUpperCase()
+            )}
           </div>
-          <span className={`kuppi-status ${getStatusColor(post.status)}`}>
-            {getStatusLabel(post.status)}
-          </span>
+          <div className="author-info">
+            <span className="author-name">{ownerName}</span>
+            <span className="author-dept">{post.ownerId?.department || "Student"}</span>
+          </div>
         </div>
-
-        <h3 className="kuppi-title">{post.title}</h3>
-        <p className="kuppi-description">{post.description}</p>
-
-        <div className="kuppi-details">
-          <span className="kuppi-detail">
-            <Calendar size={15} /> {dateStr}
-          </span>
-          <span className="kuppi-detail">
-            <Clock size={15} /> {timeStr}
-          </span>
-          {post.subject && (
-            <span className="kuppi-detail">
-              <BookOpen size={15} /> {post.subject}
-            </span>
-          )}
-          <span className="kuppi-detail">
-            <Users size={15} /> {post.applicantsCount || 0} applicants
-          </span>
-        </div>
-
-        {post.meetingLink && (
-          <a
-            href={post.meetingLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="kuppi-meeting-link"
-          >
-            <Video size={16} />
-            Join Meeting
-            <ExternalLink size={14} />
-          </a>
-        )}
+        <Label style={{ background: status.bg, color: status.text }} size="small">
+          {post.status || "Pending"}
+        </Label>
       </div>
 
-      <div className="kuppi-card-actions">
-        {isOwner ? (
-          <>
+      <div className="card-body">
+        <h3 className="card-title">{post.title}</h3>
+        <p className="card-desc">{post.description}</p>
+      </div>
+
+      <div className="card-meta">
+        <div className="meta-item">
+          <Calendar size={16} />
+          <span>{formatDate(eventDate)}</span>
+        </div>
+        <div className="meta-item">
+          <BookOpen size={16} />
+          <span>{post.subject || "General"}</span>
+        </div>
+        <div className="meta-item time-left">
+          <Clock size={16} />
+          <span>{timeLeft()}</span>
+        </div>
+        <div className="meta-item">
+          <Users size={16} />
+          <span>{post.applicantsCount || 0} Joined</span>
+        </div>
+      </div>
+
+      {post.meetingLink && (
+        <Button 
+          as="a" 
+          href={post.meetingLink} 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          fluid 
+          color="blue"
+          className="meeting-btn-semantic"
+        >
+          <Icon name="video" />
+          Join Meeting
+          <Icon name="external alternate" style={{ marginLeft: '8px' }} />
+        </Button>
+      )}
+
+      {!isOwner && !isPast && !post._hasApplied && (
+        <Button 
+          fluid 
+          primary 
+          onClick={() => onApply(post._id)}
+          className="meeting-btn-semantic"
+        >
+          <Icon name="check circle" />
+          Join Session
+        </Button>
+      )}
+
+      {post._hasApplied && !isOwner && (
+        <Message success size="tiny" className="joined-message">
+          <Icon name="check circle" />
+          Successfully Joined
+        </Message>
+      )}
+
+      <div className="card-actions">
+        {isOwner && (
+          <Button.Group widths={3} size="tiny" basic>
             {!post.meetingLink && (
-              <button className="btn btn-sm btn-primary" onClick={() => onAddLink(post._id)}>
-                <LinkIcon size={14} />
-                Add Link
-              </button>
+              <Button 
+                onClick={() => { onAddLink(post._id); setMeetingLinkInput(post.meetingLink || ""); }}
+                title="Add Link"
+              >
+                <Icon name="linkify" />
+              </Button>
             )}
-            <button className="btn btn-sm btn-outline" onClick={() => onViewApplicants(post._id)}>
-              <Users size={14} />
-              Applicants ({post.applicantsCount || 0})
-            </button>
-            <button className="btn btn-sm btn-outline" onClick={() => onExport(post._id)}>
-              <FileSpreadsheet size={14} />
-              Export
-            </button>
-          </>
-        ) : (
-          <>
-            {!isPast && !post._hasApplied && (
-              <button className="btn btn-sm btn-primary" onClick={() => onApply(post._id)}>
-                <CheckCircle size={14} />
-                Apply
-              </button>
-            )}
-            {post._hasApplied && (
-              <span className="applied-badge">
-                <CheckCircle size={14} /> Applied
-              </span>
-            )}
-          </>
+            <Button 
+              onClick={() => onViewApplicants(post._id)}
+              title="View Applicants"
+            >
+              <Icon name="users" />
+            </Button>
+            <Button 
+              onClick={() => onExport(post._id)}
+              title="Export to Excel"
+            >
+              <Icon name="file excel" />
+            </Button>
+          </Button.Group>
         )}
       </div>
     </div>
   );
 };
 
-// Applicants Modal
 const ApplicantsModal = ({ postId, posts, onClose, onExport }) => {
   const { applicants, applicantsLoading } = useSelector((state) => state.kuppi);
   const postApplicants = applicants[postId] || [];
   const post = posts.find((p) => p._id === postId);
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content uiverse-glass modal-lg" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
+    <Modal open onClose={onClose} size="large">
+      <Modal.Header>
+        <div className="modal-header-flex">
           <div>
-            <h2>Applicants</h2>
-            {post && <p className="modal-subtitle">{post.title}</p>}
+            <Header as="h2">Session Applicants</Header>
+            {post && <p style={{ fontSize: '0.9rem', color: 'var(--color-text-tertiary)', fontWeight: 'normal' }}>{post.title}</p>}
           </div>
-          <button className="modal-close" onClick={onClose}>
-            <X size={20} />
-          </button>
+          <Icon name="close" onClick={onClose} link />
+        </div>
+      </Modal.Header>
+      <Modal.Content scrolling>
+        <div className="applicants-header-bar-semantic">
+          <Label color="blue" size="large">
+            <Icon name="users" /> {postApplicants.length} Applicants
+          </Label>
+          <Button primary onClick={() => onExport(postId)}>
+            <Icon name="file excel" /> Export Excel
+          </Button>
         </div>
 
-        <div className="applicants-toolbar">
-          <span className="applicant-count">{postApplicants.length} applicants</span>
-          <button className="btn btn-sm btn-primary" onClick={() => onExport(postId)}>
-            <Download size={14} />
-            Export to Excel
-          </button>
-        </div>
-
-        {applicantsLoading && <LoadingSpinner size="sm" text="Loading applicants..." />}
-
-        {!applicantsLoading && postApplicants.length === 0 && (
-          <div className="no-applicants">
-            <Users size={32} />
-            <p>No applicants yet</p>
+        {applicantsLoading ? (
+          <div className="kuppi-loading-semantic">
+            <Icon loading name="spinner" size="large" />
+            <span>Loading applicants...</span>
           </div>
-        )}
-
-        {!applicantsLoading && postApplicants.length > 0 && (
-          <div className="applicants-list">
-            <div className="applicant-table-header">
-              <span>#</span>
-              <span>Name</span>
-              <span>Email</span>
-              <span>Department</span>
-              <span>Applied</span>
-            </div>
-            {postApplicants.map((applicant, idx) => (
-              <div key={applicant._id} className="applicant-row">
-                <span className="applicant-num">{idx + 1}</span>
-                <span className="applicant-name">
-                  <div className="kuppi-avatar small">
-                    <span>{applicant.name?.charAt(0)?.toUpperCase() || "U"}</span>
-                  </div>
-                  {applicant.name}
-                </span>
-                <span className="applicant-email">{applicant.email}</span>
-                <span className="applicant-dept">
-                  {applicant.applicantId?.department || "—"}
-                </span>
-                <span className="applicant-date">
-                  {new Date(applicant.createdAt).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                  })}
-                </span>
-              </div>
-            ))}
+        ) : postApplicants.length === 0 ? (
+          <div className="no-applicants-semantic">
+            <Icon name="users" size="huge" disabled />
+            <Header as="h3">No applicants yet</Header>
           </div>
+        ) : (
+          <Table celled padded striped className="applicants-table-semantic">
+            <Table.Header>
+              <Table.Row>
+                <Table.HeaderCell width={1}>#</Table.HeaderCell>
+                <Table.HeaderCell>Name</Table.HeaderCell>
+                <Table.HeaderCell>Email</Table.HeaderCell>
+                <Table.HeaderCell>Department</Table.HeaderCell>
+                <Table.HeaderCell>Applied Date</Table.HeaderCell>
+              </Table.Row>
+            </Table.Header>
+
+            <Table.Body>
+              {postApplicants.map((applicant, idx) => (
+                <Table.Row key={applicant._id}>
+                  <Table.Cell>{idx + 1}</Table.Cell>
+                  <Table.Cell>
+                    <Header as="h4" image>
+                      <div className="row-avatar-semantic">
+                        {applicant.name?.charAt(0)?.toUpperCase() || "U"}
+                      </div>
+                      <Header.Content>
+                        {applicant.name}
+                        <Header.Subheader>Student</Header.Subheader>
+                      </Header.Content>
+                    </Header>
+                  </Table.Cell>
+                  <Table.Cell>{applicant.email}</Table.Cell>
+                  <Table.Cell>{applicant.applicantId?.department || "—"}</Table.Cell>
+                  <Table.Cell>
+                    {new Date(applicant.createdAt).toLocaleDateString("en-US", { 
+                      month: "short", 
+                      day: "numeric",
+                      year: "numeric"
+                    })}
+                  </Table.Cell>
+                </Table.Row>
+              ))}
+            </Table.Body>
+          </Table>
         )}
-      </div>
-    </div>
+      </Modal.Content>
+      <Modal.Actions>
+        <Button onClick={onClose}>Close</Button>
+      </Modal.Actions>
+    </Modal>
   );
 };
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { register, login, clearError } from "../features/auth/authSlice";
@@ -23,9 +23,122 @@ import {
   ChevronRight,
   UserCheck,
   Briefcase,
-  School
+  School,
+  ChevronDown
 } from "lucide-react";
 import "../styles/AuthToggle.css";
+
+const FACULTY_PREFIXES = {
+  "Faculty of Computing": "IT",
+  "Faculty of Engineering": "EN",
+  "Faculty of Business": "BM",
+  "Faculty of Medicine": "MD",
+  "Faculty of Law": "LW",
+  "Faculty of Architecture": "AR",
+  "Faculty of Humanities and Sciences": "HS"
+};
+
+const FACULTY_DATA = {
+  "Faculty of Computing": [
+    "Department of IT",
+    "Department of Cybersecurity",
+    "Department of Network Engineering",
+    "Department of Computer Science",
+    "Department of Data Science",
+    "Department of Software Engineering"
+  ],
+  "Faculty of Business": [
+    "Department of Management",
+    "Department of Accounting and Finance",
+    "Department of Marketing",
+    "Department of Human Resource Management",
+    "Department of Logistics and Supply Chain",
+    "Department of Economics"
+  ],
+  "Faculty of Engineering": [
+    "Department of Civil Engineering",
+    "Department of Electrical and Electronic Engineering",
+    "Department of Mechanical Engineering",
+    "Department of Mechatronics Engineering"
+  ],
+  "Faculty of Medicine": [
+    "Department of Anatomy",
+    "Department of Physiology",
+    "Department of Biochemistry",
+    "Department of Pathology",
+    "Department of Pharmacology"
+  ],
+  "Faculty of Law": [
+    "Department of Public and International Law",
+    "Department of Private and Comparative Law",
+    "Department of Commercial Law"
+  ],
+  "Faculty of Architecture": [
+    "Department of Architecture",
+    "Department of Quantity Surveying",
+    "Department of Town and Country Planning"
+  ],
+  "Faculty of Humanities and Sciences": [
+    "Department of English and Modern Languages",
+    "Department of Social Sciences",
+    "Department of Physical Education",
+    "Department of Mathematics and Statistics"
+  ]
+};
+
+const CustomSelect = ({ label, name, value, options, onChange, placeholder, disabled, icon: Icon }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSelect = (optionValue) => {
+    onChange({ target: { name, value: optionValue } });
+    setIsOpen(false);
+  };
+
+  const selectedOption = options.find(opt => opt.value === value);
+  const selectedLabel = selectedOption ? selectedOption.label : placeholder;
+
+  return (
+    <div className={`custom-select-container ${disabled ? 'disabled' : ''}`} ref={dropdownRef}>
+      {label && <label className="custom-select-label">{label}</label>}
+      <div 
+        className={`custom-select-trigger ${isOpen ? 'open' : ''} ${!value ? 'placeholder' : ''}`} 
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+      >
+        <div className="trigger-content">
+          {Icon && <Icon size={18} className="select-icon" />}
+          <span>{selectedLabel}</span>
+        </div>
+        <ChevronDown size={18} className={`chevron ${isOpen ? 'rotate' : ''}`} />
+      </div>
+      
+      {isOpen && (
+        <div className="custom-select-options">
+          {options.map((option) => (
+            <div 
+              key={option.value} 
+              className={`custom-option ${value === option.value ? 'selected' : ''}`}
+              onClick={() => handleSelect(option.value)}
+            >
+              <span className="option-text">{option.label}</span>
+              {value === option.value && <CheckCircle size={14} className="check-icon" />}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const AuthToggle = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -36,6 +149,7 @@ const AuthToggle = () => {
     confirmPassword: "",
     role: "student",
     studentId: "",
+    faculty: "",
     department: "",
     year: "",
     phone: "",
@@ -57,20 +171,22 @@ const AuthToggle = () => {
 
   const [justLoggedIn, setJustLoggedIn] = useState(false);
 
+  const { user } = useSelector((state) => state.auth);
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && user) {
+      const target = user.role === "admin" ? "/admin" : "/dashboard";
       if (justLoggedIn) {
         // Show success message briefly after fresh login/register
         const timer = setTimeout(() => {
-          navigate("/dashboard", { replace: true });
+          navigate(target, { replace: true });
         }, 1200);
         return () => clearTimeout(timer);
       } else {
-        // Already had a valid session — go straight to dashboard
-        navigate("/dashboard", { replace: true });
+        // Already had a valid session — go straight to correct dashboard
+        navigate(target, { replace: true });
       }
     }
-  }, [isAuthenticated, justLoggedIn, navigate]);
+  }, [isAuthenticated, justLoggedIn, navigate, user]);
 
   useEffect(() => {
     return () => {
@@ -78,8 +194,54 @@ const AuthToggle = () => {
     };
   }, [dispatch]);
 
+  const toggleMode = (mode) => {
+    setIsLogin(mode === "login");
+    setActiveTab(mode);
+    setValidationError("");
+    setSuccessMessage("");
+    setTouchedFields({});
+    setFormData({
+      email: "",
+      password: "",
+      name: "",
+      confirmPassword: "",
+      role: "student",
+      studentId: "",
+      faculty: "",
+      department: "",
+      year: "",
+      phone: "",
+      bio: ""
+    });
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
+    
+    // Restriction: Name should only contain letters and spaces
+    if (name === "name" && !/^[a-zA-Z\s]*$/.test(value)) {
+      return;
+    }
+
+    // Restriction: Phone number should only contain numbers, start with 0, and be max 10 digits
+    if (name === "phone") {
+      const numericValue = value.replace(/\D/g, "");
+      if (value.length > 0 && value[0] !== "0") return; // Must start with 0
+      if (numericValue.length > 10) return; // Exactly 10 digits
+      setFormData(prev => ({ ...prev, [name]: numericValue }));
+      return;
+    }
+
+    // Restriction: Reset department when faculty changes
+    if (name === "faculty") {
+      setFormData(prev => ({
+        ...prev,
+        faculty: value,
+        department: "" // Reset department
+      }));
+      return;
+    }
+
     setFormData(prev => ({
       ...prev,
       [name]: value
@@ -116,28 +278,12 @@ const AuthToggle = () => {
     return "#10b981";
   };
 
-  const toggleMode = (mode) => {
-    setIsLogin(mode === "login");
-    setActiveTab(mode);
-    setValidationError("");
-    setSuccessMessage("");
-    setTouchedFields({});
-    setFormData({
-      email: "",
-      password: "",
-      name: "",
-      confirmPassword: "",
-      role: "student",
-      studentId: "",
-      department: "",
-      year: "",
-      phone: "",
-      bio: ""
-    });
-  };
-
   const validateForm = () => {
     if (!isLogin) {
+      if (!formData.email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+        setValidationError("Please enter a valid email address");
+        return false;
+      }
       if (formData.password !== formData.confirmPassword) {
         setValidationError("Passwords don't match");
         return false;
@@ -150,8 +296,46 @@ const AuthToggle = () => {
         setValidationError("Full name is required");
         return false;
       }
-      if (formData.role === "student" && !formData.studentId) {
-        setValidationError("Student ID is required");
+      if (!/^[a-zA-Z\s]+$/.test(formData.name)) {
+        setValidationError("Name can only contain letters and spaces");
+        return false;
+      }
+
+      if (!formData.faculty) {
+        setValidationError("Please select your faculty");
+        return false;
+      }
+      if (!formData.department) {
+        setValidationError("Please select your department");
+        return false;
+      }
+
+      if (formData.role === "student") {
+        if (!formData.studentId) {
+          setValidationError("Student ID is required");
+          return false;
+        }
+
+        // Student ID Validation: Logic based on faculty prefixes
+        const expectedPrefix = FACULTY_PREFIXES[formData.faculty];
+        if (!formData.studentId.startsWith(expectedPrefix)) {
+          setValidationError(`Student ID for ${formData.faculty} must start with ${expectedPrefix}`);
+          return false;
+        }
+
+        if (!/^[a-zA-Z]{1,2}[0-9]+$/.test(formData.studentId)) {
+          setValidationError("Student ID must start with letters followed by numbers (no special characters)");
+          return false;
+        }
+
+        if (/^[0-9]/.test(formData.studentId)) {
+          setValidationError("Student ID cannot start with a number");
+          return false;
+        }
+      }
+
+      if (!formData.phone || !/^0\d{9}$/.test(formData.phone)) {
+        setValidationError("Phone number must be exactly 10 digits and start with 0");
         return false;
       }
     }
@@ -196,6 +380,7 @@ const AuthToggle = () => {
         if (formData.phone && formData.phone.trim()) userData.phone = formData.phone.trim();
         if (formData.bio && formData.bio.trim()) userData.bio = formData.bio.trim();
         if (formData.studentId && formData.studentId.trim()) userData.studentId = formData.studentId.trim();
+        if (formData.faculty && formData.faculty.trim()) userData.faculty = formData.faculty.trim();
         if (formData.department && formData.department.trim()) userData.department = formData.department.trim();
         if (formData.year) userData.year = parseInt(formData.year);
 
@@ -235,7 +420,7 @@ const AuthToggle = () => {
         <div className="auth-brand-modern">
           <div className="brand-content-modern">
             <div className="brand-logo">
-              <GraduationCap size={48} className="logo-icon" />
+              {/* Removed app icon as requested */}
               <span className="logo-text">Smart  Campus<span className="logo-highlight">   Companion</span></span>
             </div>
             
@@ -248,18 +433,7 @@ const AuthToggle = () => {
             </p>
 
             <div className="brand-stats">
-              <div className="stat-item">
-                <span className="stat-value">10k+</span>
-                <span className="stat-label">Active Students</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-value">500+</span>
-                <span className="stat-label">Faculty Members</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-value">24/7</span>
-                <span className="stat-label">Support</span>
-              </div>
+              {/* Stats removed as requested */}
             </div>
 
             <div className="brand-features-modern">
@@ -427,20 +601,41 @@ const AuthToggle = () => {
                     onClick={() => setFormData({...formData, role: 'teacher'})}
                   >
                     <Briefcase size={20} />
-                    <span>Faculty</span>
+                    <span>Lecturer</span>
                   </button>
                 </div>
               </div>
             )}
 
-            {/* Student Specific Fields */}
-            {!isLogin && formData.role === "student" && (
-              <div className="student-fields">
+            {!isLogin && (
+              <div className="registration-fields">
+                <CustomSelect
+                  label="Faculty"
+                  name="faculty"
+                  value={formData.faculty}
+                  options={Object.keys(FACULTY_DATA).map(faculty => ({ label: faculty, value: faculty }))}
+                  onChange={handleChange}
+                  disabled={isLoading}
+                  placeholder="Select Faculty"
+                  icon={School}
+                />
+
+                <CustomSelect
+                  label="Department"
+                  name="department"
+                  value={formData.department}
+                  options={formData.faculty ? FACULTY_DATA[formData.faculty].map(dept => ({ label: dept, value: dept })) : []}
+                  onChange={handleChange}
+                  disabled={isLoading || !formData.faculty}
+                  placeholder="Select Department"
+                  icon={BookOpen}
+                />
+
                 <div className="form-row-modern">
                   <div className="form-group-modern half">
                     <label htmlFor="studentId">
-                      <School size={18} />
-                      Student ID
+                      <User size={18} />
+                      {formData.role === 'student' ? 'Student ID' : 'Employee ID (Optional)'}
                     </label>
                     <input
                       type="text"
@@ -448,85 +643,57 @@ const AuthToggle = () => {
                       name="studentId"
                       value={formData.studentId}
                       onChange={handleChange}
-                      placeholder="e.g., STU2024001"
+                      placeholder={formData.role === 'student' && formData.faculty ? `${FACULTY_PREFIXES[formData.faculty]}23XXXXXX` : "e.g., ID123456"}
                       disabled={isLoading}
                       className="form-input-modern"
+                      required={formData.role === 'student'}
                     />
+                    {formData.role === 'student' && formData.faculty && (
+                      <span className="field-hint" style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '4px' }}>
+                        Must start with {FACULTY_PREFIXES[formData.faculty]}
+                      </span>
+                    )}
                   </div>
 
                   <div className="form-group-modern half">
-                    <label htmlFor="year">
-                      <Calendar size={18} />
-                      Year
-                    </label>
-                    <select
-                      id="year"
+                    <CustomSelect
+                      label="Year"
                       name="year"
                       value={formData.year}
+                      options={[
+                        { label: "1st Year", value: "1" },
+                        { label: "2nd Year", value: "2" },
+                        { label: "3rd Year", value: "3" },
+                        { label: "4th Year", value: "4" }
+                      ]}
                       onChange={handleChange}
-                      disabled={isLoading}
-                      className="form-select-modern"
-                    >
-                      <option value="">Select Year</option>
-                      <option value="1">1st Year</option>
-                      <option value="2">2nd Year</option>
-                      <option value="3">3rd Year</option>
-                      <option value="4">4th Year</option>
-                      <option value="5">5th Year</option>
-                    </select>
+                      disabled={isLoading || formData.role !== 'student'}
+                      placeholder={formData.role === 'student' ? "Select Year" : "N/A"}
+                      icon={Calendar}
+                    />
                   </div>
                 </div>
 
                 <div className="form-group-modern">
-                  <label htmlFor="department">Department</label>
+                  <label htmlFor="phone">
+                    <Phone size={18} />
+                    Phone Number
+                  </label>
                   <input
-                    type="text"
-                    id="department"
-                    name="department"
-                    value={formData.department}
+                    type="tel"
+                    id="phone"
+                    name="phone"
+                    value={formData.phone}
                     onChange={handleChange}
-                    placeholder="e.g., Computer Science"
+                    placeholder="0771234567"
                     disabled={isLoading}
                     className="form-input-modern"
+                    required
                   />
+                  <span className="field-hint" style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginTop: '4px' }}>
+                    Must be 10 digits starting with 0 (e.g., 0771234567)
+                  </span>
                 </div>
-              </div>
-            )}
-
-            {/* Faculty Specific Fields */}
-            {!isLogin && formData.role === "teacher" && (
-              <div className="form-group-modern">
-                <label htmlFor="department">Department</label>
-                <input
-                  type="text"
-                  id="department"
-                  name="department"
-                  value={formData.department}
-                  onChange={handleChange}
-                  placeholder="e.g., Computer Science"
-                  disabled={isLoading}
-                  className="form-input-modern"
-                />
-              </div>
-            )}
-
-            {/* Phone Number - Register Only */}
-            {!isLogin && (
-              <div className="form-group-modern">
-                <label htmlFor="phone">
-                  <Phone size={18} />
-                  Phone Number (Optional)
-                </label>
-                <input
-                  type="tel"
-                  id="phone"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  placeholder="+1 234 567 8900"
-                  disabled={isLoading}
-                  className="form-input-modern"
-                />
               </div>
             )}
 

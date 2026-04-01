@@ -102,3 +102,17 @@ export const refreshToken = async (refreshToken) => {
     data: response.data.data
   };
 };
+
+/**
+ * Delete user account
+ * Backend returns: { success, message }
+ */
+export const deleteAccount = async () => {
+  const response = await api.delete("/api/auth/account");
+  
+  if (!response.data.success) {
+    throw new Error(response.data.message || "Failed to delete account");
+  }
+  
+  return response.data;
+};

@@ -17,20 +17,38 @@ import fileRoutes from "./routes/fileRoutes.js";
 import notesRoutes from "./routes/notesRoutes.js";
 import kuppiRoutes from "./routes/kuppiRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
+import meetupRoutes from "./routes/meetupRoutes.js";
+import timetableRoutes from "./routes/timetableRoutes.js";
+import aiRoutes from "./routes/aiRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
+import { startMeetupCancellationJob } from "./jobs/meetupJobs.js";
 import examRoutes from "./routes/examRoutes.js";
-
-// --- අලුතින් එකතු කළ Study Pilot Routes ---
 import studyPilotRoutes from "./routes/studyPilotRoutes.js"; 
 
 
 const app = express();
 const server = http.createServer(app);
+app.locals.dbConnected = false;
+app.locals.dbError = null;
 
 // Middleware
+const allowedOrigins = [
+  process.env.CLIENT_URL || "http://localhost:5173",
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:5175",
+];
 app.use(cors({
-  origin: process.env.CLIENT_URL || "http://localhost:5173",
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   credentials: true
 }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -49,7 +67,7 @@ app.get("/", (req, res) => {
   });
 });
 
-// Registering Routes
+// API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/groups", groupRoutes);
 app.use("/api", messageRoutes);
@@ -57,9 +75,12 @@ app.use("/api", fileRoutes);
 app.use("/api", notesRoutes);
 app.use("/api", kuppiRoutes);
 app.use("/api", notificationRoutes);
+app.use("/api", meetupRoutes);
+app.use("/api", timetableRoutes);
+app.use("/api/ai", aiRoutes);
+app.use("/api/admin", adminRoutes);
 app.use('/api/exams', examRoutes);
 
-// --- අලුතින් එකතු කළ Study Pilot Route එක ලියාපදිංචි කිරීම ---
 app.use('/api/study-pilot', studyPilotRoutes);
 
 
@@ -130,56 +151,77 @@ io.on("connection", (socket) => {
 
 app.set("io", io);
 
-const startServer = async () => {
+const startJobs = async () => {
+  const archiveExpiredKuppiPostsJob = async () => {
+    try {
+      const now = new Date();
+      const result = await KuppiPost.updateMany(
+        {
+          isArchived: false,
+          eventDate: { $lt: now }
+        },
+        {
+          $set: {
+            isArchived: true,
+            archivedAt: now,
+            archivedReason: "event-expired"
+          }
+        }
+      );
+
+      if (result.modifiedCount > 0) {
+        console.log(`Archived ${result.modifiedCount} expired kuppi posts`);
+      }
+    } catch (error) {
+      console.error("Kuppi expiry job error:", error.message);
+    }
+  };
+
+  await archiveExpiredKuppiPostsJob();
+  setInterval(archiveExpiredKuppiPostsJob, 60 * 1000);
+
+  // Start meetup auto-cancellation job
+  startMeetupCancellationJob();
+};
+
+const initDb = async () => {
+  const requireDb =
+    process.env.REQUIRE_DB === "true" || (process.env.NODE_ENV || "development") === "production";
+  const retryMs = Number(process.env.DB_RETRY_MS || 30000);
+
   try {
     await connectDB();
-
-    const archiveExpiredKuppiPostsJob = async () => {
-      try {
-        const now = new Date();
-        const result = await KuppiPost.updateMany(
-          {
-            isArchived: false,
-            eventDate: { $lt: now }
-          },
-          {
-            $set: {
-              isArchived: true,
-              archivedAt: now,
-              archivedReason: "event-expired"
-            }
-          }
-        );
-
-        if (result.modifiedCount > 0) {
-          console.log(`Archived ${result.modifiedCount} expired kuppi posts`);
-        }
-      } catch (error) {
-        console.error("Kuppi expiry job error:", error.message);
-      }
-    };
-
-    await archiveExpiredKuppiPostsJob();
-    setInterval(archiveExpiredKuppiPostsJob, 60 * 1000);
-
-    const PORT = process.env.PORT || 5000;
-    server
-      .listen(PORT, () => {
-        console.log(`Server running on port ${PORT}`);
-        console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
-      })
-      .on("error", (err) => {
-        if (err.code === "EADDRINUSE") {
-          console.error(`Port ${PORT} is already in use. Kill the other process or change PORT in .env`);
-        } else {
-          console.error("Server error:", err.message);
-        }
-        process.exit(1);
-      });
+    app.locals.dbConnected = true;
+    app.locals.dbError = null;
+    console.log("Database connected.");
+    await startJobs();
   } catch (error) {
-    console.error(error.message);
-    process.exit(1);
+    app.locals.dbConnected = false;
+    app.locals.dbError = error?.message || String(error);
+
+    if (requireDb) {
+      console.error(app.locals.dbError);
+      process.exit(1);
+    }
+
+    console.error("DB connection failed; starting server without DB. It will keep retrying.");
+    setTimeout(initDb, retryMs);
   }
 };
+
+const PORT = process.env.PORT || 5000;
+server
+  .listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
+  })
+  .on("error", (err) => {
+    if (err.code === "EADDRINUSE") {
+      console.error(`Port ${PORT} is already in use. Kill the other process or change PORT in .env`);
+    } else {
+      console.error("Server error:", err.message);
+    }
+    process.exit(1);
+  });
 
 startServer();

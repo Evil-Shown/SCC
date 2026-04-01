@@ -1,8 +1,14 @@
+import { useLocation } from "react-router-dom";
 import { useTheme } from "../context/ThemeContext";
 
 const ThemeToggle = () => {
   const { theme, toggleTheme } = useTheme();
+  const location = useLocation();
   const isDark = theme === "dark";
+
+  // Hide toggle on auth pages
+  const isAuthPage = ["/auth", "/login", "/register"].includes(location.pathname);
+  if (isAuthPage) return null;
 
   return (
     <button

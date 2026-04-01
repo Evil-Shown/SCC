@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate, Link } from "react-router-dom";
 import {
@@ -6,17 +6,14 @@ import {
   Plus,
   Filter,
   ThumbsUp,
-  ThumbsDown,
   MessageSquare,
-  ExternalLink,
-  Tag,
-  Calendar,
-  User,
-  BookOpen,
   X,
   ChevronLeft,
   ChevronRight,
-  ArrowLeft,
+  Pin,
+  Link as LinkIcon,
+  Check,
+  FileText,
 } from "lucide-react";
 import {
   fetchNotes,
@@ -27,9 +24,8 @@ import {
   clearFilters,
   setSearchQuery,
 } from "../features/notes/notesSlice";
-import LoadingSpinner from "../components/LoadingSpinner";
-import EmptyState from "../components/EmptyState";
 import ErrorMessage from "../components/ErrorMessage";
+import "../styles/Dashboard.css";
 import "../styles/Notes.css";
 
 const Notes = () => {
@@ -39,27 +35,36 @@ const Notes = () => {
   const { notes, loading, error, pagination, filters, searchQuery } =
     useSelector((state) => state.notes);
 
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
+  const [showCreateDrawer, setShowCreateDrawer] = useState(false);
   const [localSearch, setLocalSearch] = useState(searchQuery || "");
   const [currentPage, setCurrentPage] = useState(1);
+  const [sortBy, setSortBy] = useState("newest");
+  const searchTimeoutRef = useRef(null);
 
-  // Create form state
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    onedriveLink: "",
-    tags: "",
-    subject: "",
-    year: "",
-  });
-  const [formError, setFormError] = useState("");
+  // Debounced search
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchTimeoutRef.current = setTimeout(() => {
+      dispatch(setSearchQuery(localSearch));
+      setCurrentPage(1);
+    }, 300);
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [localSearch, dispatch]);
 
   const loadNotes = useCallback(() => {
     const params = { page: currentPage, limit: 12 };
     if (filters.subject) params.subject = filters.subject;
     if (filters.year) params.year = filters.year;
     if (filters.tag) params.tag = filters.tag;
+    if (sortBy) params.sort = sortBy;
 
     if (localSearch.trim()) {
       params.q = localSearch.trim();
@@ -67,18 +72,11 @@ const Notes = () => {
     } else {
       dispatch(fetchNotes(params));
     }
-  }, [dispatch, currentPage, filters, localSearch]);
+  }, [dispatch, currentPage, filters, localSearch, sortBy]);
 
   useEffect(() => {
     loadNotes();
   }, [loadNotes]);
-
-  const handleSearch = (e) => {
-    e.preventDefault();
-    setCurrentPage(1);
-    dispatch(setSearchQuery(localSearch));
-    loadNotes();
-  };
 
   const handleFilterChange = (key, value) => {
     dispatch(setFilters({ [key]: value }));
@@ -88,49 +86,35 @@ const Notes = () => {
   const handleClearFilters = () => {
     dispatch(clearFilters());
     setLocalSearch("");
+    setSortBy("newest");
     setCurrentPage(1);
   };
 
-  const handleCreateNote = async (e) => {
-    e.preventDefault();
-    setFormError("");
-
-    if (!formData.title.trim() || !formData.description.trim()) {
-      setFormError("Title and description are required");
-      return;
-    }
-
-    const noteData = {
-      title: formData.title.trim(),
-      description: formData.description.trim(),
-      onedriveLink: formData.onedriveLink.trim(),
-      tags: formData.tags
-        .split(",")
-        .map((t) => t.trim())
-        .filter(Boolean),
-      subject: formData.subject.trim(),
-      year: formData.year ? Number(formData.year) : null,
-    };
-
+  const handleCreateNote = async (noteData) => {
     const result = await dispatch(createNoteAction(noteData));
-    if (!result.error) {
-      setShowCreateModal(false);
-      setFormData({
-        title: "",
-        description: "",
-        onedriveLink: "",
-        tags: "",
-        subject: "",
-        year: "",
-      });
-    } else {
-      setFormError(result.payload || "Failed to create note");
-    }
+    return result;
   };
 
   const handleReaction = (noteId, type) => {
     dispatch(reactToNoteAction({ noteId, type }));
   };
+
+  const hasActiveFilters = filters.subject || filters.year || filters.tag || localSearch;
+
+  const sortedNotes = [...notes].sort((a, b) => {
+    switch (sortBy) {
+      case "newest":
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      case "oldest":
+        return new Date(a.createdAt) - new Date(b.createdAt);
+      case "mostLiked":
+        return (b.reactionsCount?.like || 0) - (a.reactionsCount?.like || 0);
+      case "mostCommented":
+        return (b.commentsCount || 0) - (a.commentsCount || 0);
+      default:
+        return 0;
+    }
+  });
 
   const subjects = [
     "Mathematics",
@@ -147,365 +131,596 @@ const Notes = () => {
 
   return (
     <div className="notes-page">
-      {/* Header */}
-      <header className="notes-header">
-        <div className="notes-header-left">
-          <button onClick={() => navigate("/dashboard")} className="back-btn">
-            <ArrowLeft size={20} />
-          </button>
-          <div>
-            <h1>Notes Sharing</h1>
-            <p>Share and discover study materials</p>
+      {/* Decorative Background: Profile-style Orbs */}
+      <div className="pr-canvas" />
+
+      <div className="notes-container">
+        {/* Top Bar / Breadcrumbs */}
+        <div className="pr-topbar">
+          <div className="pr-topbar__left">
+            <button className="pr-back-btn" onClick={() => navigate(-1)} title="Go Back">
+              <ChevronLeft size={20} />
+            </button>
+            <div className="pr-topbar__breadcrumb">
+              <Link to="/dashboard">Dashboard</Link>
+              <ChevronRight size={16} />
+              <span className="pr-topbar__page">Knowledge Hub</span>
+            </div>
+          </div>
+          <div className="pr-topbar__meta">
+            <span>{pagination?.total || notes.length} Resources Available</span>
           </div>
         </div>
-        <div className="notes-header-actions">
-          <button
-            className="btn btn-primary"
-            onClick={() => setShowCreateModal(true)}
-          >
-            <Plus size={18} />
-            <span>Share Note</span>
-          </button>
-        </div>
-      </header>
 
-      {/* Search & Filters */}
-      <div className="notes-toolbar">
-        <form onSubmit={handleSearch} className="notes-search">
-          <Search size={18} className="search-icon" />
-          <input
-            type="text"
-            placeholder="Search notes by title, tags, description..."
-            value={localSearch}
-            onChange={(e) => setLocalSearch(e.target.value)}
-          />
-          {localSearch && (
+        {/* Modern Hero Section */}
+        <section className="notes-hero">
+          <div className="notes-hero-text">
+            <p className="notes-hero__role">Academic Repository</p>
+            <h1 className="notes-hero-title">Knowledge Hub</h1>
+            <p className="notes-hero-subtitle">
+              Access and contribute to a shared library of verified academic notes, 
+              research materials, and study guides.
+            </p>
+          </div>
+          <div className="notes-hero-actions">
             <button
-              type="button"
-              className="search-clear"
-              onClick={() => {
-                setLocalSearch("");
-                dispatch(setSearchQuery(""));
-                setCurrentPage(1);
+              className="btn-new-note"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowCreateDrawer(true);
               }}
             >
-              <X size={16} />
+              <Plus size={18} />
+              <span>Create Note</span>
             </button>
-          )}
-        </form>
-        <button
-          className={`filter-toggle ${showFilters ? "active" : ""}`}
-          onClick={() => setShowFilters(!showFilters)}
-        >
-          <Filter size={18} />
-          <span>Filters</span>
-          {(filters.subject || filters.year || filters.tag) && (
-            <span className="filter-badge">!</span>
-          )}
-        </button>
-      </div>
+          </div>
+        </section>
 
-      {showFilters && (
-        <div className="notes-filters fade-in">
-          <div className="filter-group">
-            <label>Subject</label>
+        {/* Modern Integrated Toolbar */}
+        <div className="notes-toolbar">
+          <div className="notes-toolbar__inner">
+            <div className="notes-search">
+              <Search size={18} className="search-icon" />
+              <input
+                type="text"
+                placeholder="Search by title, tags or content..."
+                value={localSearch}
+                onChange={(e) => setLocalSearch(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+              />
+              {localSearch && (
+                <button
+                  className="search-clear"
+                  onClick={(e) => { e.stopPropagation(); setLocalSearch(""); }}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--n-text-muted)', cursor: 'pointer', paddingRight: '1rem', borderRadius: '50%' }}
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
             <select
+              className="filter-chip"
               value={filters.subject}
               onChange={(e) => handleFilterChange("subject", e.target.value)}
             >
               <option value="">All Subjects</option>
               {subjects.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
+                <option key={s} value={s}>{s}</option>
               ))}
             </select>
-          </div>
-          <div className="filter-group">
-            <label>Year</label>
+
             <select
+              className="filter-chip"
               value={filters.year}
               onChange={(e) => handleFilterChange("year", e.target.value)}
             >
-              <option value="">All Years</option>
-              {[1, 2, 3, 4, 5, 6].map((y) => (
-                <option key={y} value={y}>
-                  Year {y}
-                </option>
+              <option value="">All Levels</option>
+              {[1, 2, 3, 4].map((y) => (
+                <option key={y} value={y}>Year {y}</option>
               ))}
             </select>
+
+            <select
+              className="filter-chip"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+            >
+              <option value="newest">Newest First</option>
+              <option value="mostLiked">Most Popular</option>
+              <option value="mostCommented">Best Discussed</option>
+            </select>
+
+            {hasActiveFilters && (
+              <button
+                className="filter-chip"
+                onClick={handleClearFilters}
+                style={{ color: 'var(--n-accent)' }}
+              >
+                Clear All
+              </button>
+            )}
           </div>
-          <button className="btn btn-outline btn-sm" onClick={handleClearFilters}>
-            Clear All
-          </button>
         </div>
-      )}
 
-      {/* Error */}
-      {error && <ErrorMessage message={error} onRetry={loadNotes} />}
+        {/* Error Handling */}
+        {error && <ErrorMessage message={error} onRetry={loadNotes} />}
 
-      {/* Loading */}
-      {loading && <LoadingSpinner text="Loading notes..." />}
-
-      {/* Notes Grid */}
-      {!loading && notes.length === 0 && (
-        <EmptyState
-          icon="📝"
-          title="No notes found"
-          description={
-            searchQuery
-              ? `No results for "${searchQuery}"`
-              : "Be the first to share study notes!"
-          }
-          action={() => setShowCreateModal(true)}
-          actionText="Share Note"
-        />
-      )}
-
-      {!loading && notes.length > 0 && (
-        <>
+        {/* Archive Loading Interface */}
+        {loading && (
           <div className="notes-grid">
-            {notes.map((note) => (
-              <NoteCard
-                key={note._id}
-                note={note}
-                currentUserId={user?._id}
-                onReaction={handleReaction}
-                onViewComments={() => navigate(`/notes/${note._id}`)}
-              />
+            {[...Array(6)].map((_, i) => (
+              <SkeletonCard key={i} />
             ))}
           </div>
+        )}
 
-          {/* Pagination */}
-          {pagination && pagination.pages > 1 && (
-            <div className="notes-pagination">
-              <button
-                disabled={currentPage <= 1}
-                onClick={() => setCurrentPage((p) => p - 1)}
-              >
-                <ChevronLeft size={18} />
-              </button>
-              <span>
-                Page {currentPage} of {pagination.pages}
-              </span>
-              <button
-                disabled={currentPage >= pagination.pages}
-                onClick={() => setCurrentPage((p) => p + 1)}
-              >
-                <ChevronRight size={18} />
-              </button>
+        {/* Archive Empty State */}
+        {!loading && notes.length === 0 && (
+          <div className="notes-empty-state">
+            <div className="empty-illustration">
+              <FileText size={48} className="empty-icon" />
+              <p>No resources found matching your criteria.</p>
             </div>
-          )}
-        </>
-      )}
+            {!localSearch && (
+              <button
+                className="btn-new-note"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setShowCreateDrawer(true);
+                }}
+              >
+                <Plus size={18} />
+                Create First Note
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Archive Manifest (Grid) */}
+        {!loading && notes.length > 0 && (
+          <>
+            <div className="notes-grid">
+              {sortedNotes.map((note) => (
+                <NoteCard
+                  key={note._id}
+                  note={note}
+                  currentUserId={user?._id}
+                  onReaction={handleReaction}
+                  onViewComments={() => navigate(`/notes/${note._id}`)}
+                />
+              ))}
+            </div>
+
+            {/* Pagination Controls */}
+            {pagination && pagination.pages > 1 && (
+              <div className="notes-pagination">
+                <button
+                  className="pagination-btn"
+                  disabled={currentPage <= 1}
+                  onClick={() => setCurrentPage((p) => p - 1)}
+                >
+                  <ChevronLeft size={18} />
+                </button>
+
+                <div className="pagination-pages">
+                  {[...Array(pagination.pages)].map((_, i) => {
+                    const page = i + 1;
+                    const isActive = page === currentPage;
+                    if (Math.abs(page - currentPage) > 2 && page !== 1 && page !== pagination.pages) return null;
+                    return (
+                      <button
+                        key={page}
+                        className={`pagination-page ${isActive ? "active" : ""}`}
+                        onClick={() => setCurrentPage(page)}
+                      >
+                        {page}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  className="pagination-btn"
+                  disabled={currentPage >= pagination.pages}
+                  onClick={() => setCurrentPage((p) => p + 1)}
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
       {/* Create Note Modal */}
-      {showCreateModal && (
-        <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
-          <div className="modal-content uiverse-glass" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>Share a Note</h2>
-              <button
-                className="modal-close"
-                onClick={() => setShowCreateModal(false)}
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <form onSubmit={handleCreateNote} className="note-form">
-              {formError && (
-                <div className="form-error">{formError}</div>
-              )}
-              <div className="form-group">
-                <label>Title *</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Data Structures — Linked Lists"
-                  value={formData.title}
-                  onChange={(e) =>
-                    setFormData({ ...formData, title: e.target.value })
-                  }
-                  maxLength={200}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Description *</label>
-                <textarea
-                  placeholder="Briefly describe the content of your notes..."
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  rows={3}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>OneDrive Link</label>
-                <input
-                  type="url"
-                  placeholder="https://onedrive.live.com/..."
-                  value={formData.onedriveLink}
-                  onChange={(e) =>
-                    setFormData({ ...formData, onedriveLink: e.target.value })
-                  }
-                />
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Subject</label>
-                  <select
-                    value={formData.subject}
-                    onChange={(e) =>
-                      setFormData({ ...formData, subject: e.target.value })
-                    }
-                  >
-                    <option value="">Select subject</option>
-                    {subjects.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Year</label>
-                  <select
-                    value={formData.year}
-                    onChange={(e) =>
-                      setFormData({ ...formData, year: e.target.value })
-                    }
-                  >
-                    <option value="">Select year</option>
-                    {[1, 2, 3, 4, 5, 6].map((y) => (
-                      <option key={y} value={y}>
-                        Year {y}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="form-group">
-                <label>Tags (comma separated)</label>
-                <input
-                  type="text"
-                  placeholder="e.g. algorithms, sorting, trees"
-                  value={formData.tags}
-                  onChange={(e) =>
-                    setFormData({ ...formData, tags: e.target.value })
-                  }
-                />
-              </div>
-              <div className="modal-actions">
-                <button
-                  type="button"
-                  className="btn btn-outline"
-                  onClick={() => setShowCreateModal(false)}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={loading}>
-                  {loading ? "Sharing..." : "Share Note"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <CreateNoteModal
+        isOpen={showCreateDrawer}
+        onClose={() => setShowCreateDrawer(false)}
+        onSubmit={handleCreateNote}
+        loading={loading}
+      />
     </div>
   );
 };
 
-// Note Card Component
+// Tactical Subcomponents
+const SkeletonCard = () => (
+  <div className="note-card skeleton">
+    <div className="skeleton-title" />
+    <div className="skeleton-body">
+      <div className="skeleton-line" />
+      <div className="skeleton-line short" />
+    </div>
+    <div className="skeleton-tags">
+      <div className="skeleton-tag" />
+      <div className="skeleton-tag" />
+    </div>
+    <div className="skeleton-footer">
+      <div className="skeleton-timestamp" />
+      <div className="skeleton-actions">
+        <div className="skeleton-action" />
+        <div className="skeleton-action" />
+      </div>
+    </div>
+  </div>
+);
+
 const NoteCard = ({ note, currentUserId, onReaction, onViewComments }) => {
-  const authorName = note.userId?.name || "Anonymous";
-  const authorDept = note.userId?.department || "";
-  const authorYear = note.userId?.year ? `Year ${note.userId.year}` : "";
-  const dateStr = new Date(note.createdAt).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  const [isPinned, setIsPinned] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handlePin = (e) => {
+    e.stopPropagation();
+    setIsPinned(!isPinned);
+  };
+
+  const handleCopyLink = async (e) => {
+    e.stopPropagation();
+    const link = `${window.location.origin}/notes/${note._id}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {}
+  };
+
+  const isLiked = note._userReaction === "like";
+  const likeCount = note.reactionsCount?.like || 0;
+  const commentCount = note.commentsCount || 0;
 
   return (
-    <div className="note-card card-shine hover-glow fade-in">
+    <div className={`note-card ${isPinned ? "pinned" : ""}`} onClick={onViewComments}>
       <div className="note-card-header">
-        <div className="note-author">
-          <div className="note-avatar">
-            {note.userId?.profilePicture ? (
-              <img src={note.userId.profilePicture} alt={authorName} />
-            ) : (
-              <span>{authorName.charAt(0).toUpperCase()}</span>
-            )}
-          </div>
-          <div>
-            <span className="note-author-name">{authorName}</span>
-            <span className="note-meta">
-              {[authorDept, authorYear].filter(Boolean).join(" · ")}
-            </span>
-          </div>
-        </div>
-        <span className="note-date">
-          <Calendar size={14} /> {dateStr}
-        </span>
+        <h3 className="note-title">{note.title}</h3>
+        {isPinned && <Pin size={16} color="var(--n-accent)" fill="currentColor" className="pin-icon" />}
       </div>
-
-      <h3 className="note-title">{note.title}</h3>
-      <p className="note-description">{note.description}</p>
-
-      {note.subject && (
-        <span className="note-subject-badge">
-          <BookOpen size={14} /> {note.subject}
-        </span>
-      )}
+      <p className="note-body">{note.description}</p>
 
       {note.tags && note.tags.length > 0 && (
         <div className="note-tags">
-          {note.tags.map((tag, i) => (
-            <span key={i} className="note-tag">
-              <Tag size={12} /> {tag}
-            </span>
+          {note.tags.slice(0, 3).map((tag, i) => (
+            <span key={i} className="note-tag">{tag}</span>
           ))}
         </div>
       )}
 
-      {note.onedriveLink && (
-        <a
-          href={note.onedriveLink}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="note-link"
-        >
-          <ExternalLink size={16} />
-          Open in OneDrive
-        </a>
-      )}
-
-      <div className="note-card-footer">
-        <div className="note-reactions">
+      <div className="note-footer">
+        <span className="note-author">By {note.userId?.name?.split(" ")[0] || "Scholar"}</span>
+        <div className="note-actions">
           <button
-            className={`reaction-btn ${note._userReaction === "like" ? "active-like" : ""}`}
-            onClick={() => onReaction(note._id, "like")}
+            className={`action-btn ${isLiked ? "active" : ""}`}
+            onClick={(e) => { e.stopPropagation(); onReaction(note._id, "like"); }}
+            title="Like"
           >
             <ThumbsUp size={16} />
-            <span>{note.reactionsCount?.likes || 0}</span>
+            {likeCount > 0 && <span className="action-count">{likeCount}</span>}
           </button>
-          <button
-            className={`reaction-btn ${note._userReaction === "dislike" ? "active-dislike" : ""}`}
-            onClick={() => onReaction(note._id, "dislike")}
-          >
-            <ThumbsDown size={16} />
-            <span>{note.reactionsCount?.dislikes || 0}</span>
+          <button className="action-btn" onClick={(e) => { e.stopPropagation(); onViewComments(); }} title="Comments">
+            <MessageSquare size={16} />
+            {commentCount > 0 && <span className="action-count">{commentCount}</span>}
+          </button>
+          <button className="action-btn" onClick={handleCopyLink} title="Copy Link">
+            {copied ? <Check size={16} color="var(--n-accent)" /> : <LinkIcon size={16} />}
+          </button>
+          <button className={`action-btn ${isPinned ? "active" : ""}`} onClick={handlePin} title="Pin">
+            <Pin size={16} fill={isPinned ? "currentColor" : "none"} />
           </button>
         </div>
-        <button className="comment-btn" onClick={onViewComments}>
-          <MessageSquare size={16} />
-          <span>{note.commentsCount || 0} Comments</span>
-        </button>
       </div>
     </div>
   );
 };
+
+const FACULTY_DATA = {
+  "Faculty of Computing": [
+    "Department of IT",
+    "Department of Cybersecurity",
+    "Department of Network Engineering",
+    "Department of Computer Science",
+    "Department of Data Science",
+    "Department of Software Engineering"
+  ],
+  "Faculty of Business": [
+    "Department of Management",
+    "Department of Accounting and Finance",
+    "Department of Marketing",
+    "Department of Human Resource Management",
+    "Department of Logistics and Supply Chain",
+    "Department of Economics"
+  ],
+  "Faculty of Engineering": [
+    "Department of Civil Engineering",
+    "Department of Electrical and Electronic Engineering",
+    "Department of Mechanical Engineering",
+    "Department of Mechatronics Engineering"
+  ],
+  "Faculty of Medicine": [
+    "Department of Anatomy",
+    "Department of Physiology",
+    "Department of Biochemistry",
+    "Department of Pathology",
+    "Department of Pharmacology"
+  ],
+  "Faculty of Law": [
+    "Department of Public and International Law",
+    "Department of Private and Comparative Law",
+    "Department of Commercial Law"
+  ],
+  "Faculty of Architecture": [
+    "Department of Architecture",
+    "Department of Quantity Surveying",
+    "Department of Town and Country Planning"
+  ],
+  "Faculty of Humanities and Sciences": [
+    "Department of English and Modern Languages",
+    "Department of Social Sciences",
+    "Department of Physical Education",
+    "Department of Mathematics and Statistics"
+  ]
+};
+
+const CreateNoteModal = ({ isOpen, onClose, onSubmit, loading }) => {
+  const [formData, setFormData] = useState({ 
+    title: "", 
+    description: "", 
+    onedriveLink: "", 
+    tags: "", 
+    faculty: "",
+    department: "",
+    subject: "",
+    year: "" 
+  });
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setFormData({ 
+        title: "", 
+        description: "", 
+        onedriveLink: "", 
+        tags: "", 
+        faculty: "",
+        department: "",
+        subject: "",
+        year: "" 
+      });
+      setErrors({});
+    }
+  }, [isOpen]);
+
+  const validateSubject = (value) => {
+    if (!value.trim()) return "Subject is required";
+    if (!/^[a-zA-Z\s]+$/.test(value)) return "Only letters and spaces allowed";
+    return "";
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    
+    if (name === "faculty") {
+      setFormData(prev => ({
+        ...prev,
+        faculty: value,
+        department: ""
+      }));
+    } else if (name === "subject") {
+      // Only allow letters and spaces
+      if (value === "" || /^[a-zA-Z\s]*$/.test(value)) {
+        setFormData(prev => ({ ...prev, [name]: value }));
+      }
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
+    
+    // Clear error when user types
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: "" }));
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    const newErrors = {
+      title: !formData.title.trim() ? "Title is required" : "",
+      description: !formData.description.trim() ? "Description is required" : "",
+      faculty: !formData.faculty ? "Please select a faculty" : "",
+      department: !formData.department ? "Please select a department" : "",
+      subject: validateSubject(formData.subject)
+    };
+    
+    setErrors(newErrors);
+    
+    if (Object.values(newErrors).some(err => err)) return;
+
+    setIsSubmitting(true);
+    const res = await onSubmit({
+      title: formData.title,
+      description: formData.description,
+      onedriveLink: formData.onedriveLink,
+      tags: formData.tags.split(",").map(t => t.trim()).filter(Boolean),
+      faculty: formData.faculty,
+      department: formData.department,
+      subject: formData.subject,
+      year: formData.year ? Number(formData.year) : null
+    });
+    setIsSubmitting(false);
+    if (!res.error) onClose();
+  };
+
+  if (!isOpen) return null;
+
+  const faculties = Object.keys(FACULTY_DATA);
+  const departments = formData.faculty ? FACULTY_DATA[formData.faculty] : [];
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-container" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <div>
+            <h2>Create New Resource</h2>
+            <p className="modal-subtitle">Share your knowledge with the campus community</p>
+          </div>
+          <button className="modal-close-btn" onClick={onClose}>
+            <X size={24} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="modal-form">
+          <div className="form-group">
+            <label>Title <span className="required">*</span></label>
+            <input 
+              type="text" 
+              name="title"
+              placeholder="e.g. Advanced Calculus Notes" 
+              value={formData.title} 
+              onChange={handleChange}
+              className={errors.title ? "error" : ""}
+            />
+            {errors.title && <span className="error-text">{errors.title}</span>}
+          </div>
+
+          <div className="form-group">
+            <label>Description <span className="required">*</span></label>
+            <textarea 
+              name="description"
+              placeholder="Briefly describe what this note covers..." 
+              rows={4} 
+              value={formData.description} 
+              onChange={handleChange}
+              className={errors.description ? "error" : ""}
+            />
+            {errors.description && <span className="error-text">{errors.description}</span>}
+          </div>
+
+          <div className="form-row">
+            <div className="form-group half">
+              <label>Faculty <span className="required">*</span></label>
+              <select 
+                name="faculty"
+                value={formData.faculty} 
+                onChange={handleChange}
+                className={errors.faculty ? "error" : ""}
+              >
+                <option value="">Select Faculty</option>
+                {faculties.map(f => <option key={f} value={f}>{f}</option>)}
+              </select>
+              {errors.faculty && <span className="error-text">{errors.faculty}</span>}
+            </div>
+            <div className="form-group half">
+              <label>Department <span className="required">*</span></label>
+              <select 
+                name="department"
+                value={formData.department} 
+                onChange={handleChange}
+                disabled={!formData.faculty}
+                className={errors.department ? "error" : ""}
+              >
+                <option value="">{formData.faculty ? "Select Department" : "Select Faculty First"}</option>
+                {departments.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+              {errors.department && <span className="error-text">{errors.department}</span>}
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group half">
+              <label>Subject <span className="required">*</span></label>
+              <input 
+                type="text" 
+                name="subject"
+                placeholder="e.g. Calculus, Physics" 
+                value={formData.subject} 
+                onChange={handleChange}
+                className={errors.subject ? "error" : ""}
+              />
+              {errors.subject && <span className="error-text">{errors.subject}</span>}
+              <span className="field-hint">Letters and spaces only</span>
+            </div>
+            <div className="form-group half">
+              <label>Year Level</label>
+              <select 
+                name="year"
+                value={formData.year} 
+                onChange={handleChange}
+              >
+                <option value="">Select Year</option>
+                {[1, 2, 3, 4].map(y => <option key={y} value={y}>Year {y}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label>Tags (Optional)</label>
+            <input 
+              type="text" 
+              name="tags"
+              placeholder="math, exam, 2024... (comma separated)" 
+              value={formData.tags} 
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>External Link (Optional)</label>
+            <input 
+              type="url" 
+              name="onedriveLink"
+              placeholder="Google Drive, OneDrive, Dropbox link..." 
+              value={formData.onedriveLink} 
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className="modal-actions">
+            <button type="button" className="btn-cancel" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn-submit" disabled={isSubmitting}>
+              {isSubmitting ? "Publishing..." : "Publish Resource"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+
+const ActiveFilterPill = ({ label, value, onRemove }) => (
+  <span className="active-filter-pill">
+    <span className="filter-label">{label}:</span>
+    <span className="filter-value">{value}</span>
+    <button
+      className="filter-remove"
+      onClick={onRemove}
+      aria-label={`Remove ${label} filter`}
+    >
+      <X size={12} />
+    </button>
+  </span>
+);
 
 export default Notes;

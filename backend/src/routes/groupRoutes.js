@@ -1,33 +1,40 @@
 import express from "express";
-import {
-  createGroup,
-  getGroups,
-  getGroup,
-  joinGroup,
-  leaveGroup,
-  updateGroup,
-  deleteGroup,
-  addMember,
-  removeMember
-} from "../controllers/groupController.js";
 import { authenticate } from "../middlewares/auth.js";
+import {
+    searchUsers,
+    getGroups,
+    getGroupById,
+    createGroup,
+    joinGroup,
+    leaveGroup,
+    updateGroup,
+    deleteGroup,
+    inviteMember,
+    addMember,
+    removeMemberController,
+} from "../controllers/groupController.js";
 
 const router = express.Router();
 
-// All routes require authentication
 router.use(authenticate);
 
-// Group CRUD
-router.post("/", createGroup);
-router.get("/", getGroups);
-router.get("/:id", getGroup);
-router.put("/:id", updateGroup);
-router.delete("/:id", deleteGroup);
+// User search (for invitations)
+router.get("/users/search", searchUsers);
 
-// Group membership
-router.post("/:id/join", joinGroup);
-router.post("/:id/leave", leaveGroup);
-router.post("/:id/members", addMember);
-router.delete("/:id/members/:memberId", removeMember);
+// Group CRUD
+router.get("/", getGroups);
+router.post("/", createGroup);
+router.get("/:groupId", getGroupById);
+router.put("/:groupId", updateGroup);
+router.delete("/:groupId", deleteGroup);
+
+// Membership
+router.post("/:groupId/join", joinGroup);
+router.post("/:groupId/leave", leaveGroup);
+router.post("/:groupId/invite", inviteMember);
+
+// Member management (admin)
+router.post("/:groupId/members", addMember);
+router.delete("/:groupId/members/:memberId", removeMemberController);
 
 export default router;

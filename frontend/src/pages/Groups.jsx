@@ -1,390 +1,511 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
-import { fetchGroups, createGroup, joinGroup, setFilters, clearError } from "../features/groups/groupSlice";
-import { setCurrentGroup } from "../features/chat/chatSlice";
-import { joinGroup as joinGroupSocket } from "../socket/socket";
-import { 
-  Plus, 
-  Search, 
-  Users, 
-  BookOpen, 
-  Tag, 
-  ArrowRight,
-  X,
-  Lock,
-  Unlock,
-  CheckCircle
+import { useNavigate, Link } from "react-router-dom";
+import {
+  fetchGroups, createGroup, joinGroup, setFilters, clearError,
+} from "../features/groups/groupSlice";
+import { logout } from "../features/auth/authSlice";
+import {
+  Plus, Search, Users, Lock, Globe, Tag, X,
+  SlidersHorizontal, Waves, LogOut, Home as HomeIcon,
+  Brain, BookMarked, Video, LayoutDashboard,
+  GraduationCap, Activity, Radio, Shield,
+  Filter, TrendingUp, Hash,
 } from "lucide-react";
 import LoadingSpinner from "../components/LoadingSpinner";
-import EmptyState from "../components/EmptyState";
-import ErrorMessage from "../components/ErrorMessage";
+import NotificationBell from "../components/NotificationBell";
+import GroupCard from "../components/groups/GroupCard";
+import { confirmAction } from "../utils/toast";
+import "../styles/Dashboard.css";
+import "../styles/Groups.css";
+import "../styles/GroupsExtra.css";
+import "../styles/Notifications.css";
 
-const Groups = () => {
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [createFormData, setCreateFormData] = useState({
-    name: "",
-    description: "",
-    subject: "",
-    courseCode: "",
-    tags: "",
-    isPublic: true,
-    allowMemberInvites: true,
-    maxMembers: 50
-  });
 
+/* ═══════════════════════════════════════════════════════════
+   CREATE GROUP MODAL
+═══════════════════════════════════════════════════════════ */
+function CreateGroupModal({ onClose }) {
   const dispatch = useDispatch();
-  const navigate = useNavigate();
-  const { groups, isLoading, error, filters } = useSelector((state) => state.groups);
-  const { user } = useSelector((state) => state.auth);
+  const [form, setForm] = useState({
+    name: "", description: "", subject: "", courseCode: "",
+    tags: "", isPublic: true, maxMembers: 30,
+  });
+  const [tagInput, setTagInput] = useState("");
+  const [tagList, setTagList] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
 
-  useEffect(() => {
-    dispatch(fetchGroups(filters));
-  }, [dispatch, filters]);
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
-  useEffect(() => {
-    return () => {
-      dispatch(clearError());
-    };
-  }, [dispatch]);
+  const addTag = () => {
+    const t = tagInput.trim();
+    if (t && !tagList.includes(t)) setTagList((prev) => [...prev, t]);
+    setTagInput("");
+  };
 
-  const handleCreateGroup = async (e) => {
+  const removeTag = (tag) => setTagList((prev) => prev.filter((t) => t !== tag));
+
+  const handleTagKey = (e) => {
+    if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addTag(); }
+  };
+
+  const submit = async (e) => {
     e.preventDefault();
-    const groupData = {
-      ...createFormData,
-      tags: createFormData.tags ? createFormData.tags.split(",").map(t => t.trim()) : []
-    };
-    
-    const result = await dispatch(createGroup(groupData));
-    if (createGroup.fulfilled.match(result)) {
-      setShowCreateModal(false);
-      setCreateFormData({
-        name: "",
-        description: "",
-        subject: "",
-        courseCode: "",
-        tags: "",
-        isPublic: true,
-        allowMemberInvites: true,
-        maxMembers: 50
-      });
-      navigate(`/groups/${result.payload._id}`);
-    }
-  };
-
-  const handleJoinGroup = async (groupId) => {
-    const result = await dispatch(joinGroup(groupId));
-    if (joinGroup.fulfilled.match(result)) {
-      joinGroupSocket(groupId);
-      dispatch(setCurrentGroup(groupId));
-      navigate(`/groups/${groupId}`);
-    }
-  };
-
-  const handleFilterChange = (key, value) => {
-    dispatch(setFilters({ [key]: value }));
-  };
-
-  const isMember = (group) => {
-    return group.members?.some(m => m.user?._id === user?._id || m.user === user?._id);
+    if (!form.name.trim()) return setErr("Group name is required");
+    setBusy(true); setErr("");
+    try {
+      // merge typed tag input with tag list
+      const allTags = [...tagList];
+      if (tagInput.trim()) allTags.push(tagInput.trim());
+      await dispatch(createGroup({ ...form, tags: allTags })).unwrap();
+      onClose();
+    } catch (e) { setErr(typeof e === "string" ? e : "Failed to create group"); }
+    finally { setBusy(false); }
   };
 
   return (
-    <div className="groups-container">
-      <div className="groups-header fade-in">
-        <div>
-          <h1>Study Groups</h1>
-          <p style={{ 
-            color: 'var(--color-text-secondary)', 
-            fontSize: 'var(--font-size-base)',
-            marginTop: 'var(--spacing-sm)'
-          }}>
-            Collaborate with peers and enhance your learning experience
-          </p>
+    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal-content scale-in" style={{ maxWidth: "540px" }} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2 style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <span style={{
+              width: 36, height: 36, borderRadius: 8,
+              background: "linear-gradient(135deg,#6366f1,#8b5cf6)",
+              display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+            }}>
+              <Users size={18} color="#fff" />
+            </span>
+            Create Study Group
+          </h2>
+          <button className="modal-close" onClick={onClose}><X size={20} /></button>
         </div>
-        <button 
-          className="btn btn-primary" 
-          onClick={() => setShowCreateModal(true)}
-        >
-          <Plus size={20} />
-          Create Group
-        </button>
-      </div>
 
-      <div className="groups-filters fade-in" style={{ animationDelay: '100ms' }}>
-        <div style={{ 
-          position: 'relative', 
-          flex: 1, 
-          minWidth: '250px' 
-        }}>
-          <Search 
-            size={18} 
-            style={{ 
-              position: 'absolute', 
-              left: 'var(--spacing-md)', 
-              top: '50%', 
-              transform: 'translateY(-50%)',
-              color: 'var(--color-gray-400)',
-              pointerEvents: 'none'
-            }} 
-          />
-          <input
-            type="text"
-            placeholder="Search by name, subject, or course code..."
-            value={filters.search}
-            onChange={(e) => handleFilterChange("search", e.target.value)}
-            className="filter-input"
-            style={{ paddingLeft: 'calc(var(--spacing-md) * 2.5)' }}
-          />
-        </div>
-        <label className="filter-checkbox">
-          <input
-            type="checkbox"
-            checked={filters.myGroups}
-            onChange={(e) => handleFilterChange("myGroups", e.target.checked)}
-          />
-          <span style={{ 
-            fontSize: 'var(--font-size-sm)', 
-            fontWeight: 'var(--font-weight-medium)',
-            color: 'var(--color-text-primary)'
-          }}>
-            My Groups Only
-          </span>
-        </label>
-      </div>
+        <div className="modal-body">
+          <form id="create-group-form" onSubmit={submit}
+            style={{ display: "flex", flexDirection: "column", gap: "var(--spacing-md)" }}>
 
-      {error && (
-        <ErrorMessage 
-          message={error} 
-          onRetry={() => dispatch(fetchGroups(filters))} 
-        />
-      )}
+            {/* Name */}
+            <div className="form-field" style={{ marginBottom: 0 }}>
+              <label className="form-label">Group Name *</label>
+              <input className="form-input" value={form.name}
+                onChange={(e) => set("name", e.target.value)}
+                placeholder="e.g. CS3020 Final Sprint" maxLength={80} required />
+            </div>
 
-      {isLoading ? (
-        <LoadingSpinner text="Loading groups..." />
-      ) : groups.length === 0 ? (
-        <EmptyState
-          icon="👥"
-          title="No study groups found"
-          description={filters.search || filters.myGroups 
-            ? "Try adjusting your filters or search terms"
-            : "Create your first study group and start collaborating!"}
-          action={() => setShowCreateModal(true)}
-          actionText="Create Your First Group"
-        />
-      ) : (
-        <div className="groups-grid">
-          {groups.map((group, index) => (
-            <div 
-              key={group._id} 
-              className="group-card card-shine hover-glow slide-in"
-              style={{ animationDelay: `${index * 50}ms` }}
-            >
-              <div className="group-header">
-                <div>
-                  <h3>{group.name}</h3>
-                  {group.subject && (
-                    <span className="group-subject">{group.subject}</span>
-                  )}
-                </div>
-                {!group.isPublic && (
-                  <Lock size={18} style={{ color: 'var(--color-gray-400)' }} />
-                )}
+            {/* Subject + Course */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--spacing-md)" }}>
+              <div className="form-field" style={{ marginBottom: 0 }}>
+                <label className="form-label">Subject</label>
+                <input className="form-input" value={form.subject}
+                  onChange={(e) => set("subject", e.target.value)}
+                  placeholder="Software Engineering" />
               </div>
-              
-              {group.description && (
-                <p className="group-description">{group.description}</p>
-              )}
-              
-              <div className="group-meta">
-                <span className="group-meta-item">
-                  <Users size={16} />
-                  {group.members?.length || 0} members
-                </span>
-                {group.courseCode && (
-                  <span className="group-meta-item">
-                    <BookOpen size={16} />
-                    {group.courseCode}
-                  </span>
-                )}
+              <div className="form-field" style={{ marginBottom: 0 }}>
+                <label className="form-label">Course Code</label>
+                <input className="form-input" value={form.courseCode}
+                  onChange={(e) => set("courseCode", e.target.value)}
+                  placeholder="CS3020" />
               </div>
-              
-              {group.tags && group.tags.length > 0 && (
-                <div className="group-tags">
-                  {group.tags.map((tag, idx) => (
-                    <span key={idx} className="tag">
-                      <Tag size={12} />
-                      {tag}
+            </div>
+
+            {/* Description */}
+            <div className="form-field" style={{ marginBottom: 0 }}>
+              <label className="form-label">Description</label>
+              <textarea className="form-textarea" value={form.description}
+                onChange={(e) => set("description", e.target.value)}
+                placeholder="What will this group work on?" rows={3}
+                style={{ resize: "vertical" }} />
+            </div>
+
+            {/* Tags */}
+            <div className="form-field" style={{ marginBottom: 0 }}>
+              <label className="form-label">Tags</label>
+              <div style={{ display: "flex", gap: 6 }}>
+                <input className="form-input" value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={handleTagKey}
+                  placeholder="algorithms, exam… (Enter to add)"
+                  style={{ flex: 1 }} />
+                <button type="button" className="btn btn-secondary btn-sm" onClick={addTag}>
+                  Add
+                </button>
+              </div>
+              {tagList.length > 0 && (
+                <div className="cgm-tags-preview">
+                  {tagList.map((t) => (
+                    <span key={t} className="cgm-tag-chip">
+                      #{t}
+                      <button type="button" onClick={() => removeTag(t)}
+                        style={{ background: "none", border: "none", cursor: "pointer", color: "inherit", padding: "0 0 0 3px", lineHeight: 1 }}>
+                        ✕
+                      </button>
                     </span>
                   ))}
                 </div>
               )}
-              
-              <div className="group-actions">
-                {isMember(group) ? (
-                  <button
-                    className="btn btn-primary"
-                    onClick={() => {
-                      dispatch(setCurrentGroup(group._id));
-                      navigate(`/groups/${group._id}`);
-                    }}
-                  >
-                    <CheckCircle size={18} />
-                    Open Group
-                    <ArrowRight size={18} />
-                  </button>
-                ) : (
-                  <button
-                    className="btn btn-secondary"
-                    onClick={() => handleJoinGroup(group._id)}
-                  >
-                    <Plus size={18} />
-                    Join Group
-                  </button>
-                )}
+            </div>
+
+            {/* Visibility + Max members */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--spacing-md)" }}>
+              <div className="form-field" style={{ marginBottom: 0 }}>
+                <label className="form-label">Visibility</label>
+                <div style={{ display: "flex", gap: 6 }}>
+                  {[
+                    { val: true, label: "Public", Icon: Globe },
+                    { val: false, label: "Private", Icon: Lock },
+                  ].map(({ val, label, Icon }) => (
+                    <button key={label} type="button"
+                      onClick={() => set("isPublic", val)}
+                      style={{
+                        flex: 1, padding: "8px 4px", borderRadius: "var(--radius-md)",
+                        cursor: "pointer", fontWeight: 600, fontSize: "12px",
+                        border: `2px solid ${form.isPublic === val ? "var(--color-primary-500)" : "var(--color-border)"}`,
+                        background: form.isPublic === val ? "rgba(99,102,241,.12)" : "var(--color-bg-primary)",
+                        color: form.isPublic === val ? "var(--color-primary-500)" : "var(--color-text-secondary)",
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                      }}>
+                      <Icon size={13} /> {label}
+                    </button>
+                  ))}
+                </div>
+                <span className="form-hint" style={{ marginTop: 5 }}>
+                  {form.isPublic ? "Anyone can discover and join" : "Invite-only"}
+                </span>
+              </div>
+
+              <div className="form-field" style={{ marginBottom: 0 }}>
+                <label className="form-label">Max Members ({form.maxMembers})</label>
+                <input type="range" min={2} max={200} value={form.maxMembers}
+                  onChange={(e) => set("maxMembers", parseInt(e.target.value))}
+                  style={{ width: "100%", marginTop: 8, accentColor: "var(--color-primary-500)" }} />
+                <span className="form-hint">{form.maxMembers} students maximum</span>
               </div>
             </div>
-          ))}
-        </div>
-      )}
 
-      {showCreateModal && (
-        <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
-          <div className="modal-content uiverse-glass scale-in" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>Create New Study Group</h2>
-              <button 
-                className="modal-close" 
-                onClick={() => setShowCreateModal(false)}
-                aria-label="Close modal"
-              >
-                <X size={20} />
+            {err && <p style={{ color: "var(--color-error)", fontSize: "var(--font-size-sm)", margin: 0 }}>{err}</p>}
+          </form>
+        </div>
+
+        <div className="modal-actions">
+          <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button type="submit" form="create-group-form" className="btn btn-primary" disabled={busy}>
+            {busy ? "Creating…" : <><Plus size={16} /> Create Group</>}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MAIN GROUPS PAGE
+═══════════════════════════════════════════════════════════ */
+const PRESET_TAGS = ["Projects", "Exams", "Labs", "Assignments", "Research"];
+
+const Groups = () => {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { groups, isLoading, error, filters } = useSelector((s) => s.groups);
+  const { user, isAuthenticated } = useSelector((s) => s.auth);
+
+  const [showCreate, setShowCreate] = useState(false);
+  const [localSearch, setLocalSearch] = useState(filters.search || "");
+  const [joining, setJoining] = useState({});
+  const [activeTag, setActiveTag] = useState(null);
+
+
+  useEffect(() => { if (!isAuthenticated) navigate("/"); }, [isAuthenticated, navigate]);
+
+  useEffect(() => {
+    dispatch(fetchGroups({ search: filters.search, myGroups: filters.myGroups }));
+  }, [dispatch, filters.search, filters.myGroups]);
+
+  const handleSearch = useCallback((e) => {
+    const val = e.target.value;
+    setLocalSearch(val);
+    dispatch(setFilters({ search: val }));
+  }, [dispatch]);
+
+  const handleJoin = async (groupId) => {
+    setJoining((p) => ({ ...p, [groupId]: true }));
+    try {
+      await dispatch(joinGroup(groupId)).unwrap();
+      navigate(`/groups/${groupId}`);
+    } catch (e) { console.error(e); }
+    finally { setJoining((p) => ({ ...p, [groupId]: false })); }
+  };
+
+  const handleLogout = async () => {
+    const confirmed = await confirmAction("Are you sure you want to log out?", { confirmText: "Log out" });
+    if (!confirmed) return;
+    dispatch(logout());
+    navigate("/");
+  };
+
+  // Computed stats
+  const myGroupCount = groups.filter((g) => g.members?.some((m) => {
+    const uid = m.user?._id || m.user;
+    return uid?.toString() === user?._id;
+  })).length;
+  const publicCount = groups.filter((g) => g.isPublic).length;
+
+  // Filter by active tag (client-side)
+  const displayGroups = activeTag
+    ? groups.filter((g) => g.tags?.some((t) => t.toLowerCase().includes(activeTag.toLowerCase())))
+    : groups;
+
+  const navLinks = [
+    { icon: <HomeIcon size={14} />, label: "Home", path: "/" },
+    { icon: <LayoutDashboard size={14} />, label: "Dashboard", path: "/dashboard" },
+    { icon: <Brain size={14} />, label: "Timetable", path: "/timetable" },
+    { icon: <BookMarked size={14} />, label: "Notes", path: "/notes" },
+    { icon: <Video size={14} />, label: "Kuppi", path: "/kuppi" },
+    { icon: <Users size={14} />, label: "Groups", path: "/groups", active: true },
+  ];
+
+  if (!user) return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: "#010810", color: "#2a9d8f", fontFamily: "Inter, sans-serif" }}>
+      Loading...
+    </div>
+  );
+
+  return (
+    <div className="db-root dashboard-page">
+
+      <div className="db-layout">
+        {/* ── Navbar ── */}
+        <header className="dashboard-header">
+          <div className="dashboard-header__inner">
+            <Link to="/dashboard" className="dashboard-logo">
+              <span className="dashboard-logo__text">User Dashboard</span>
+            </Link>
+
+            <nav className="dashboard-nav">
+              {navLinks.map((l, i) => (
+                <Link
+                  key={i}
+                  to={l.path}
+                  className={`dashboard-nav__link ${l.active ? "active" : ""}`}
+                  style={{ "--i": i }}
+                >
+                  {l.icon}
+                  <span>{l.label}</span>
+                </Link>
+              ))}
+            </nav>
+
+            <div className="dashboard-actions" style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+              <NotificationBell />
+              <button className="dashboard-profile-btn" onClick={() => navigate("/profile")}>
+                <span className="dashboard-avatar">{user?.name?.charAt(0) || "U"}</span>
+                <span className="dashboard-profile-name">{user?.name?.split(" ")[0] || "User"}</span>
               </button>
-            </div>
-            
-            <div className="modal-body">
-              <form onSubmit={handleCreateGroup} id="create-group-form">
-                <div className="form-field">
-                  <label className="form-label">
-                    Group Name <span style={{ color: 'var(--color-error)' }}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={createFormData.name}
-                    onChange={(e) => setCreateFormData({ ...createFormData, name: e.target.value })}
-                    className="form-input"
-                    placeholder="e.g., CS50 Study Group"
-                  />
-                </div>
-                
-                <div className="form-field">
-                  <label className="form-label">Description</label>
-                  <textarea
-                    value={createFormData.description}
-                    onChange={(e) => setCreateFormData({ ...createFormData, description: e.target.value })}
-                    className="form-textarea"
-                    rows="3"
-                    placeholder="Describe the purpose of your study group..."
-                    style={{ resize: 'vertical' }}
-                  />
-                </div>
-                
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-md)' }}>
-                  <div className="form-field">
-                    <label className="form-label">Subject</label>
-                    <input
-                      type="text"
-                      value={createFormData.subject}
-                      onChange={(e) => setCreateFormData({ ...createFormData, subject: e.target.value })}
-                      className="form-input"
-                      placeholder="e.g., Computer Science"
-                    />
-                  </div>
-                  <div className="form-field">
-                    <label className="form-label">Course Code</label>
-                    <input
-                      type="text"
-                      value={createFormData.courseCode}
-                      onChange={(e) => setCreateFormData({ ...createFormData, courseCode: e.target.value })}
-                      className="form-input"
-                      placeholder="e.g., CS50"
-                    />
-                  </div>
-                </div>
-                
-                <div className="form-field">
-                  <label className="form-label">Tags (comma-separated)</label>
-                  <input
-                    type="text"
-                    value={createFormData.tags}
-                    onChange={(e) => setCreateFormData({ ...createFormData, tags: e.target.value })}
-                    className="form-input"
-                    placeholder="study, exam, project, assignment"
-                  />
-                  <span className="form-hint">Help others find your group with relevant tags</span>
-                </div>
-                
-                <div className="form-field">
-                  <label 
-                    style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: 'var(--spacing-sm)',
-                      cursor: 'pointer',
-                      padding: 'var(--spacing-md)',
-                      background: 'var(--color-bg-secondary)',
-                      borderRadius: 'var(--radius-lg)',
-                      border: '1px solid var(--color-border)',
-                      transition: 'all var(--transition-fast)'
-                    }}
-                    className="checkbox-wrapper"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={createFormData.isPublic}
-                      onChange={(e) => setCreateFormData({ ...createFormData, isPublic: e.target.checked })}
-                      style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--color-primary-600)' }}
-                    />
-                    {createFormData.isPublic ? <Unlock size={18} /> : <Lock size={18} />}
-                    <span style={{ 
-                      fontSize: 'var(--font-size-sm)', 
-                      fontWeight: 'var(--font-weight-medium)' 
-                    }}>
-                      Public Group
-                    </span>
-                    <span style={{ 
-                      fontSize: 'var(--font-size-xs)',
-                      color: 'var(--color-text-tertiary)',
-                      marginLeft: 'auto'
-                    }}>
-                      {createFormData.isPublic ? 'Anyone can join' : 'Invite only'}
-                    </span>
-                  </label>
-                </div>
-              </form>
-            </div>
-            
-            <div className="modal-actions">
-              <button 
-                type="button" 
-                className="btn btn-secondary" 
-                onClick={() => setShowCreateModal(false)}
-              >
-                Cancel
-              </button>
-              <button 
-                type="submit" 
-                form="create-group-form"
-                className="btn btn-primary"
-              >
-                <Plus size={18} />
-                Create Group
+              <button className="dashboard-logout-btn" onClick={handleLogout}>
+                <LogOut size={20} strokeWidth={2.4} />
               </button>
             </div>
           </div>
+        </header>
+
+        {/* ── Page body: sidebar + main ── */}
+        <div style={{ display: "flex", position: "relative", zIndex: 10 }}>
+
+          {/* ── LEFT SIDEBAR ── */}
+          <div className="grp-sidebar" style={{ paddingTop: 20 }}>
+            {/* Quick stats */}
+            <div className="grp-sidebar-section">
+              <div className="grp-sidebar-title">Overview</div>
+              <div className="grp-sidebar-stat">
+                <span className="grp-sidebar-stat-label">Total Groups</span>
+                <span className="grp-sidebar-stat-val" style={{ color: "var(--bio)" }}>{groups.length}</span>
+              </div>
+              <div className="grp-sidebar-stat">
+                <span className="grp-sidebar-stat-label">My Groups</span>
+                <span className="grp-sidebar-stat-val" style={{ color: "#818cf8" }}>{myGroupCount}</span>
+              </div>
+              <div className="grp-sidebar-stat">
+                <span className="grp-sidebar-stat-label">Public</span>
+                <span className="grp-sidebar-stat-val" style={{ color: "#34d399" }}>{publicCount}</span>
+              </div>
+              <div className="grp-sidebar-stat">
+                <span className="grp-sidebar-stat-label">Private</span>
+                <span className="grp-sidebar-stat-val" style={{ color: "#fbbf24" }}>{groups.length - publicCount}</span>
+              </div>
+            </div>
+
+            {/* Filters */}
+            <div className="grp-sidebar-section">
+              <div className="grp-sidebar-title">Filters</div>
+              <button
+                className={`grp-toggle-btn ${filters.myGroups ? "active" : ""}`}
+                style={{ width: "100%", marginBottom: 10 }}
+                onClick={() => dispatch(setFilters({ myGroups: !filters.myGroups }))}
+              >
+                <Shield size={14} />
+                {filters.myGroups ? "My Groups" : "All Groups"}
+              </button>
+            </div>
+
+            {/* Tag chips */}
+            <div className="grp-sidebar-section">
+              <div className="grp-sidebar-title">Browse by Tag</div>
+              <div className="grp-tag-chips">
+                {PRESET_TAGS.map((tag) => (
+                  <button key={tag}
+                    className={`grp-tag-chip ${activeTag === tag ? "active" : ""}`}
+                    onClick={() => setActiveTag(activeTag === tag ? null : tag)}>
+                    #{tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* CTA */}
+            <button className="grp-create-btn" style={{ width: "100%" }} onClick={() => setShowCreate(true)}>
+              <Plus size={16} /> Create Group
+            </button>
+          </div>
+
+          {/* ── MAIN AREA ── */}
+          <main className="grp-main-area">
+            {/* Page heading */}
+            <div className="grp-page-heading" style={{ animation: "riseIn .65s .05s ease both" }}>
+              <h1 className="grp-page-title">Study & Project Groups</h1>
+              <p className="grp-page-sub">
+                Collaborate on projects, coordinate kuppi sessions, and schedule hybrid meetups — all in one place.
+              </p>
+            </div>
+
+            {/* Stats row (mobile/tablet — desktop sees sidebar) */}
+            <section className="db-stats" style={{ animation: "riseIn .65s .15s ease both" }}>
+              <div className="db-stat hover-glow" style={{ "--ac": "#2a9d8f" }}>
+                <div className="db-stat__icon"><Users size={16} /></div>
+                <div>
+                  <div className="db-stat__val">{groups.length}</div>
+                  <div className="db-stat__lbl">Available</div>
+                </div>
+              </div>
+              <div className="db-stat hover-glow" style={{ "--ac": "#818cf8" }}>
+                <div className="db-stat__icon"><Shield size={16} /></div>
+                <div>
+                  <div className="db-stat__val">{myGroupCount}</div>
+                  <div className="db-stat__lbl">My Groups</div>
+                </div>
+              </div>
+              <div className="db-stat hover-glow" style={{ "--ac": "#34d399" }}>
+                <div className="db-stat__icon"><Globe size={16} /></div>
+                <div>
+                  <div className="db-stat__val">{publicCount}</div>
+                  <div className="db-stat__lbl">Public</div>
+                </div>
+              </div>
+              <div className="db-stat hover-glow" style={{ "--ac": "#fbbf24" }}>
+                <div className="db-stat__icon"><Lock size={16} /></div>
+                <div>
+                  <div className="db-stat__val">{groups.length - publicCount}</div>
+                  <div className="db-stat__lbl">Private</div>
+                </div>
+              </div>
+            </section>
+
+            {/* Filter + action row */}
+            <div className="grp-top-row" style={{ animation: "riseIn .65s .22s ease both" }}>
+              {/* Search */}
+              <div className="grp-search-bar">
+                <Search size={15} className="grp-search-bar-icon" />
+                <input
+                  value={localSearch}
+                  onChange={handleSearch}
+                  placeholder="Search groups by name, subject, or course…"
+                />
+              </div>
+
+              {/* My groups toggle */}
+              <button
+                className={`grp-toggle-btn ${filters.myGroups ? "active" : ""}`}
+                onClick={() => dispatch(setFilters({ myGroups: !filters.myGroups }))}
+              >
+                <Filter size={14} />
+                {filters.myGroups ? "My Groups" : "All Groups"}
+              </button>
+
+              {/* Create button */}
+              <button className="grp-create-btn" onClick={() => setShowCreate(true)}>
+                <Plus size={16} /> Create Group
+              </button>
+            </div>
+
+            {/* Error banner */}
+            {error && (
+              <div className="alert alert-error" style={{ animation: "riseIn .3s ease both" }}>
+                <span>{error}</span>
+                <button className="btn btn-sm btn-ghost" onClick={() => dispatch(clearError())}>
+                  <X size={15} />
+                </button>
+              </div>
+            )}
+
+            {/* Content */}
+            <div style={{ animation: "riseIn .65s .3s ease both" }}>
+              {isLoading && <LoadingSpinner text="Loading groups…" />}
+
+              {/* Empty state */}
+              {!isLoading && displayGroups.length === 0 && (
+                <div className="grp-empty">
+                  <div className="grp-empty__icon"><Users size={52} strokeWidth={1} /></div>
+                  <h3 className="grp-empty__title">
+                    {filters.myGroups ? "You haven't joined any groups yet" : "No groups found"}
+                  </h3>
+                  <p className="grp-empty__sub">
+                    {filters.myGroups
+                      ? "Create a group or browse public groups to join"
+                      : "Be the first — create a study group and start collaborating!"}
+                  </p>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
+                    <button className="grp-create-btn" onClick={() => setShowCreate(true)}>
+                      <Plus size={16} /> Create Group
+                    </button>
+                    {filters.myGroups && (
+                      <button className="grp-toggle-btn" onClick={() => dispatch(setFilters({ myGroups: false }))}>
+                        <Users size={14} /> Browse All
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Group cards grid */}
+              {!isLoading && displayGroups.length > 0 && (
+                <>
+                  <div className="grp-section-head-row" style={{ marginBottom: 12 }}>
+                    <span className="grp-section-label">
+                      {filters.myGroups ? "My Groups" : activeTag ? `#${activeTag}` : "All Study Groups"}
+                    </span>
+                    <span className="grp-count-badge">
+                      {displayGroups.length} group{displayGroups.length !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                  <div className="grp-cards-grid">
+                    {displayGroups.map((group) => (
+                      <GroupCard
+                        key={group._id}
+                        group={group}
+                        currentUserId={user?._id}
+                        onJoin={handleJoin}
+                        onOpen={(id) => navigate(`/groups/${id}`)}
+                        joining={joining}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </main>
         </div>
-      )}
+      </div>
+
+      {showCreate && <CreateGroupModal onClose={() => setShowCreate(false)} />}
     </div>
   );
 };

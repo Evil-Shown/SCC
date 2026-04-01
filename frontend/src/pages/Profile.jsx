@@ -1,16 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
-import { logout, fetchUserProfile, updateUserProfile } from "../features/auth/authSlice";
+import { logout, fetchUserProfile, updateUserProfile, deleteUserAccount } from "../features/auth/authSlice";
 import {
-  Brain, BookMarked, Users, Calendar, GraduationCap, LogOut,
+  BookMarked, Users, Calendar, GraduationCap, LogOut,
   Settings, User as UserIcon, Home as HomeIcon, Video, Activity,
   Shield, LayoutDashboard, Mail, MapPin, Github, Twitter, Linkedin,
   Edit3, Clock, Globe, Trash2, CheckCircle2, Archive, Sparkles, X,
-  ChevronRight, Dot,
+  ChevronRight, AlertTriangle, ShieldAlert, ArrowLeft,
 } from "lucide-react";
 import NotificationBell from "../components/NotificationBell";
-import { useProfileAuroraBackground } from "../hooks/useProfileAuroraBackground";
 import "../styles/Dashboard.css";
 import "../styles/Notifications.css";
 import "../styles/Profile.css";
@@ -21,48 +20,32 @@ const TABS = ["overview", "activity", "settings"];
 
 /* ── Animated number counter ─────────────────────────────────────────── */
 const Counter = ({ value }) => {
-  const [display, setDisplay] = useState(0);
-  useEffect(() => {
-    if (value === 0) return;
-    let current = 0;
-    const step = Math.max(1, Math.floor(value / 30));
-    const timer = setInterval(() => {
-      current = Math.min(current + step, value);
-      setDisplay(current);
-      if (current >= value) clearInterval(timer);
-    }, 30);
-    return () => clearInterval(timer);
-  }, [value]);
-  return <span>{display}</span>;
+  return <span>{value}</span>;
 };
 
 const Profile = () => {
   const { user, isAuthenticated, isLoading } = useSelector((s) => s.auth);
-  const dispatch   = useDispatch();
-  const navigate   = useNavigate();
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const canvasWrapRef = useRef(null);
-  const [canvasReady, setCanvasReady] = useState(false);
-  useProfileAuroraBackground(canvasWrapRef, canvasReady);
-
-  const [activeTab, setActiveTab]         = useState("overview");
-  const [isEditOpen, setIsEditOpen]       = useState(false);
-  const [isSaving, setIsSaving]           = useState(false);
-  const [saveError, setSaveError]         = useState("");
+  const [activeTab, setActiveTab] = useState("overview");
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [form, setForm] = useState({ name: "", bio: "", location: "", website: "", github: "", twitter: "", linkedin: "", department: "", year: "", phone: "" });
 
-  const [kuppiLogs, setKuppiLogs]           = useState([]);
-  const [logsLoading, setLogsLoading]       = useState(false);
-  const [logsError, setLogsError]           = useState("");
+  const [kuppiLogs, setKuppiLogs] = useState([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [logsError, setLogsError] = useState("");
 
   const navLinks = [
-    { icon: <HomeIcon size={16} />,       label: "Home",      path: "/" },
+    { icon: <HomeIcon size={16} />, label: "Home", path: "/" },
     { icon: <LayoutDashboard size={16} />, label: "Dashboard", path: "/dashboard" },
-    { icon: <BookMarked size={16} />,      label: "Notes",     path: "/notes" },
-    { icon: <Video size={16} />,           label: "Kuppi",     path: "/kuppi" },
-    { icon: <Users size={16} />,           label: "Groups",    path: "/groups" },
-    { icon: <UserIcon size={16} />,        label: "Profile",   path: "/profile" },
+    { icon: <BookMarked size={16} />, label: "Notes", path: "/notes" },
+    { icon: <Video size={16} />, label: "Kuppi", path: "/kuppi" },
+    { icon: <Users size={16} />, label: "Groups", path: "/groups" },
+    { icon: <UserIcon size={16} />, label: "Profile", path: "/profile" },
   ];
 
   useEffect(() => { if (!isAuthenticated) navigate("/login"); }, [isAuthenticated, navigate]);
@@ -89,8 +72,8 @@ const Profile = () => {
   }, [isAuthenticated]);
 
   const summary = useMemo(() => {
-    const total    = kuppiLogs.length;
-    const active   = kuppiLogs.filter((l) => !l.isArchived).length;
+    const total = kuppiLogs.length;
+    const active = kuppiLogs.filter((l) => !l.isArchived).length;
     const archived = kuppiLogs.filter((l) => l.isArchived).length;
     const upcoming = kuppiLogs.filter((l) => {
       const d = new Date(l.eventDate);
@@ -145,7 +128,24 @@ const Profile = () => {
     const ok = await confirmAction("Sign out of Smart Campus?", { confirmText: "Sign out" });
     if (!ok) return;
     dispatch(logout());
-    navigate("/login");
+    navigate("/");
+  };
+
+  const handleDeleteAccount = async () => {
+    const ok = await confirmAction(
+      "Are you absolutely sure? This will permanently delete your account and all associated data. This action cannot be undone.",
+      { confirmText: "Delete Account", danger: true }
+    );
+    if (!ok) return;
+
+    try {
+      await dispatch(deleteUserAccount()).unwrap();
+      dispatch(logout());
+      navigate("/");
+      notifySuccess("Account deleted successfully");
+    } catch (error) {
+      notifyError(error?.message || "Failed to delete account");
+    }
   };
 
   const fmtDate = (d) => {
@@ -155,8 +155,6 @@ const Profile = () => {
   };
 
   const fmtUrl = (v) => (!v ? "" : v.startsWith("http") ? v : `https://${v}`);
-
-  const setCanvasRef = (node) => { canvasWrapRef.current = node; setCanvasReady(Boolean(node)); };
 
   if (!user || isLoading) {
     return (
@@ -171,123 +169,122 @@ const Profile = () => {
 
   return (
     <div className="pr-root">
-      {/* Canvas background */}
-      <div className="pr-canvas" ref={setCanvasRef} />
+      {/* Lightweight CSS background */}
+      <div className="pr-canvas" />
 
-      {/* ── SIDEBAR ────────────────────────────────────────────────────── */}
-      <nav className="pr-nav">
-        <Link to="/dashboard" className="pr-nav__brand">
-          <GraduationCap size={20} />
-        </Link>
-
-        <div className="pr-nav__links">
-          {navLinks.map((lnk) => (
-            <Link
-              key={lnk.path}
-              to={lnk.path}
-              className={`pr-nav__link${lnk.path === "/profile" ? " pr-nav__link--on" : ""}`}
-              title={lnk.label}
-            >
-              {lnk.icon}
-            </Link>
-          ))}
-        </div>
-
-        <div className="pr-nav__foot">
-          <NotificationBell />
-          <button className="pr-nav__out" onClick={handleLogout} title="Sign out">
-            <LogOut size={15} />
-          </button>
-        </div>
-      </nav>
 
       {/* ── MAIN ───────────────────────────────────────────────────────── */}
       <main className="pr-main">
 
-        {/* HEADER BAR */}
-        <header className="pr-topbar">
-          <div className="pr-topbar__breadcrumb">
-            <span>Smart Campus</span>
-            <ChevronRight size={14} />
-            <span className="pr-topbar__page">Profile</span>
+        {/* TOP BAR / BREADCRUMBS */}
+        <div className="pr-topbar">
+          <div className="pr-topbar__left">
+            <button className="pr-back-btn" onClick={() => navigate(-1)} title="Go Back">
+              <ArrowLeft size={20} />
+            </button>
+            <div className="pr-topbar__breadcrumb">
+              <Link to="/dashboard">Dashboard</Link>
+              <ChevronRight size={16} />
+              <span className="pr-topbar__page">My Profile</span>
+            </div>
           </div>
           <div className="pr-topbar__meta">
-            <span className="pr-online-dot" />
-            <span>{user.email}</span>
+            <div className="pr-online-dot" />
+            <span>Active Session</span>
           </div>
-        </header>
+        </div>
 
-        {/* PROFILE HERO */}
+        {/* HERO SECTION */}
         <section className="pr-hero">
-          {/* Avatar + name */}
           <div className="pr-hero__id">
-            <div className="pr-avatar">
-              {user.profilePicture
-                ? <img src={user.profilePicture} alt={user.name} />
-                : <span>{user.name?.charAt(0).toUpperCase()}</span>}
-              <div className="pr-avatar__ring" />
+            <div className="pr-avatar-wrap">
+              <div className="pr-avatar">
+                {user.profilePicture
+                  ? <img src={user.profilePicture} alt={user.name} />
+                  : <span>{user.name?.charAt(0).toUpperCase()}</span>}
+              </div>
+              <div className="pr-avatar-badge"><CheckCircle2 size={14} /></div>
             </div>
 
             <div className="pr-hero__text">
-              <p className="pr-hero__role">{user.role || "Student"} · {user.department || "No department"}</p>
+              <p className="pr-hero__role">{user.role || "Student"} • {user.department || "No department"}</p>
               <h1 className="pr-hero__name">{user.name}</h1>
-
               {user.bio && <p className="pr-hero__bio">{user.bio}</p>}
-
               <div className="pr-hero__chips">
-                <span className="pr-chip"><Mail size={12} />{user.email}</span>
-                {user.location && <span className="pr-chip"><MapPin size={12} />{user.location}</span>}
-                {user.studentId && <span className="pr-chip"><Shield size={12} />#{user.studentId}</span>}
-                <span className="pr-chip"><Calendar size={12} />Since {new Date(user.createdAt || Date.now()).getFullYear()}</span>
+                <span className="pr-chip"><MapPin size={12} /> {user.location || "On Campus"}</span>
+                {user.studentId && <span className="pr-chip"><Shield size={12} /> #{user.studentId}</span>}
+                <span className="pr-chip"><Calendar size={12} /> Joined {new Date(user.createdAt || Date.now()).getFullYear()}</span>
               </div>
             </div>
           </div>
 
-          {/* Actions + socials */}
-          <div className="pr-hero__actions">
-            <div className="pr-socials">
-              {user.website  && <a href={fmtUrl(user.website)}  target="_blank" rel="noopener noreferrer" className="pr-social" title="Website"><Globe size={15} /></a>}
-              {user.github   && <a href={fmtUrl(user.github)}   target="_blank" rel="noopener noreferrer" className="pr-social" title="GitHub"><Github size={15} /></a>}
-              {user.twitter  && <a href={fmtUrl(user.twitter)}  target="_blank" rel="noopener noreferrer" className="pr-social" title="Twitter"><Twitter size={15} /></a>}
-              {user.linkedin && <a href={fmtUrl(user.linkedin)} target="_blank" rel="noopener noreferrer" className="pr-social" title="LinkedIn"><Linkedin size={15} /></a>}
+          <div className="pr-hero__side">
+            <div className="pr-score-card">
+              <div className="pr-score-label">Engagement Score</div>
+              <div className="pr-score-val">84<span>/100</span></div>
+              <div className="pr-score-bar"><div className="pr-score-fill" style={{ width: "84%" }} /></div>
             </div>
-            <button className="pr-btn-edit" onClick={openEdit}>
-              <Edit3 size={14} /> Edit Profile
-            </button>
+            <div className="pr-hero__actions">
+              <div className="pr-socials">
+                {user.website && <a href={fmtUrl(user.website)} target="_blank" rel="noopener noreferrer" className="pr-social"><Globe size={15} /></a>}
+                {user.github && <a href={fmtUrl(user.github)} target="_blank" rel="noopener noreferrer" className="pr-social"><Github size={15} /></a>}
+                {user.linkedin && <a href={fmtUrl(user.linkedin)} target="_blank" rel="noopener noreferrer" className="pr-social"><Linkedin size={15} /></a>}
+              </div>
+              <button className="pr-btn-edit" onClick={openEdit}>
+                <Edit3 size={14} /> Edit Profile
+              </button>
+            </div>
           </div>
         </section>
 
-        {/* STAT ROW */}
-        <div className="pr-stats">
-          {[
-            { icon: <Video size={16} />,        label: "Published",  value: summary.total,    c: "teal"  },
-            { icon: <CheckCircle2 size={16} />,  label: "Active",     value: summary.active,   c: "green" },
-            { icon: <Archive size={16} />,       label: "Archived",   value: summary.archived, c: "amber" },
-            { icon: <Sparkles size={16} />,      label: "Upcoming",   value: summary.upcoming, c: "indigo" },
-          ].map(({ icon, label, value, c }) => (
-            <div key={label} className={`pr-stat pr-stat--${c}`}>
-              <div className="pr-stat__icon">{icon}</div>
-              <div className="pr-stat__val"><Counter value={value} /></div>
-              <div className="pr-stat__lbl">{label}</div>
+        {/* STAT GRID */}
+        <section className="pr-stats">
+          <div className="pr-stat pr-stat--teal">
+            <div className="pr-stat__glow" />
+            <div className="pr-stat__icon"><Video size={20} /></div>
+            <div className="pr-stat__content">
+              <div className="pr-stat__val"><Counter value={summary.total} /></div>
+              <div className="pr-stat__lbl">Kuppi Sessions</div>
             </div>
-          ))}
-        </div>
+          </div>
+          <div className="pr-stat pr-stat--green">
+            <div className="pr-stat__glow" />
+            <div className="pr-stat__icon"><Activity size={20} /></div>
+            <div className="pr-stat__content">
+              <div className="pr-stat__val"><Counter value={summary.active} /></div>
+              <div className="pr-stat__lbl">Active Posts</div>
+            </div>
+          </div>
+          <div className="pr-stat pr-stat--amber">
+            <div className="pr-stat__glow" />
+            <div className="pr-stat__icon"><Clock size={20} /></div>
+            <div className="pr-stat__content">
+              <div className="pr-stat__val"><Counter value={summary.upcoming} /></div>
+              <div className="pr-stat__lbl">Upcoming</div>
+            </div>
+          </div>
+          <div className="pr-stat pr-stat--indigo">
+            <div className="pr-stat__glow" />
+            <div className="pr-stat__icon"><Archive size={20} /></div>
+            <div className="pr-stat__content">
+              <div className="pr-stat__val"><Counter value={summary.archived} /></div>
+              <div className="pr-stat__lbl">Completed</div>
+            </div>
+          </div>
+        </section>
 
         {/* TABS */}
-        <div className="pr-tabs">
-          {[
-            { id: "overview",  label: "Overview",  icon: <UserIcon size={14} /> },
-            { id: "activity",  label: "Activity",  icon: <Activity size={14} /> },
-            { id: "settings",  label: "Settings",  icon: <Settings size={14} /> },
-          ].map((t) => (
-            <button
-              key={t.id}
-              className={`pr-tab${activeTab === t.id ? " pr-tab--on" : ""}`}
-              onClick={() => setActiveTab(t.id)}
-            >
-              {t.icon}{t.label}
-            </button>
-          ))}
+        <div className="pr-tabs-wrap">
+          <div className="pr-tabs">
+            {TABS.map((t) => (
+              <button key={t} className={`pr-tab ${activeTab === t ? "pr-tab--on" : ""}`} onClick={() => setActiveTab(t)}>
+                {t === "overview" && <LayoutDashboard size={16} />}
+                {t === "activity" && <Activity size={16} />}
+                {t === "settings" && <Settings size={16} />}
+                <span>{t}</span>
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* CONTENT PANEL */}
@@ -304,11 +301,6 @@ const Profile = () => {
                   <div className="pr-fact"><Video size={13} />{summary.total} total sessions</div>
                   <div className="pr-fact"><Activity size={13} />{summary.active} currently active</div>
                   <div className="pr-fact"><Calendar size={13} />Member since {new Date(user.createdAt || Date.now()).getFullYear()}</div>
-                </div>
-                <div className="pr-focus-tags">
-                  <span className="pr-tag"><Brain size={12} />Smart Learning</span>
-                  <span className="pr-tag"><Users size={12} />Collaboration</span>
-                  <span className="pr-tag"><BookMarked size={12} />Knowledge Sharing</span>
                 </div>
               </div>
 
@@ -388,35 +380,63 @@ const Profile = () => {
             </div>
           )}
 
-          {/* ── SETTINGS ── */}
+          {/* ── SETTINGS (DANGER ZONE) ── */}
           {activeTab === "settings" && (
-            <div className="pr-settings">
-              <h3 className="pr-settings__title">Profile Information</h3>
-              <div className="pr-settings__table">
-                {[
-                  { label: "Name",       value: user.name },
-                  { label: "Department", value: user.department },
-                  { label: "Year",       value: user.year },
-                  { label: "Phone",      value: user.phone },
-                  { label: "Location",   value: user.location },
-                  { label: "Bio",        value: user.bio },
-                  { label: "Website",    value: user.website },
-                  { label: "GitHub",     value: user.github },
-                  { label: "Twitter",    value: user.twitter },
-                  { label: "LinkedIn",   value: user.linkedin },
-                ].map(({ label, value }) => (
-                  <div key={label} className="pr-settings__row">
-                    <span className="pr-settings__key">{label}</span>
-                    <span className="pr-settings__val">{value || <em className="pr-nil">Not set</em>}</span>
+            <div className="pr-settings pr-panel">
+              <div className="pr-danger-zone">
+                <div className="pr-danger-header">
+                  <div className="pr-danger-badge">
+                    <ShieldAlert size={20} />
+                    <span>Danger Zone</span>
                   </div>
-                ))}
-              </div>
-              <div className="pr-settings__actions">
-                <button className="pr-btn-edit" onClick={openEdit}><Edit3 size={14} /> Edit Details</button>
-                <button className="pr-btn-logout" onClick={handleLogout}><LogOut size={14} /> Sign Out</button>
+                  <h3 className="pr-danger-title">Security & Account Privacy</h3>
+                </div>
+
+                <div className="pr-caution-card">
+                  <div className="pr-caution-icon-wrap">
+                    <AlertTriangle size={32} className="pulse-danger" />
+                  </div>
+                  <div className="pr-caution-content">
+                    <h4>Critical Warning</h4>
+                    <p>
+                      Deleting your account is a <strong>permanent</strong> and irreversible action.
+                      Once confirmed, all your data will be scrubbed from our systems immediately.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pr-impact-list">
+                  <div className="pr-impact-item" style={{ animationDelay: "0.1s" }}>
+                    <div className="pr-impact-bullet" />
+                    <div className="pr-impact-text">All your published <strong>Kuppi sessions</strong> and posts will be deleted.</div>
+                  </div>
+                  <div className="pr-impact-item" style={{ animationDelay: "0.2s" }}>
+                    <div className="pr-impact-bullet" />
+                    <div className="pr-impact-text">Your <strong>personal notes</strong> and resource contributions will be removed.</div>
+                  </div>
+                  <div className="pr-impact-item" style={{ animationDelay: "0.3s" }}>
+                    <div className="pr-impact-bullet" />
+                    <div className="pr-impact-text">Access to <strong>study groups</strong> and community discussions will be revoked.</div>
+                  </div>
+                  <div className="pr-impact-item" style={{ animationDelay: "0.4s" }}>
+                    <div className="pr-impact-bullet" />
+                    <div className="pr-impact-text">Your <strong>profile history</strong>, badges, and reputation points will be lost.</div>
+                  </div>
+                </div>
+
+                <div className="pr-danger-footer">
+                  <div className="pr-danger-check">
+                    <Trash2 size={16} color="var(--danger)" />
+                    <p>This action cannot be undone. Please proceed with extreme caution.</p>
+                  </div>
+                  <button className="pr-btn-delete-final shake-hover" onClick={handleDeleteAccount}>
+                    <span>Delete Permanently</span>
+                  </button>
+                </div>
               </div>
             </div>
           )}
+
         </div>
       </main>
 
