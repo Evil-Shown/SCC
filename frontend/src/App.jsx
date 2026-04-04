@@ -105,10 +105,9 @@ function App() {
   };
 
   return (
-    <Provider store={store}>
-      <AuthInitializer>
-        <ThemeProvider>
-          <Router>
+    <AuthInitializer>
+      <ThemeProvider>
+        <Router>
             <div className="app">
               <Toaster
                 position="top-right"
@@ -248,7 +247,6 @@ function App() {
           </Router>
         </ThemeProvider>
       </AuthInitializer>
-    </Provider>
   );
 }
 
