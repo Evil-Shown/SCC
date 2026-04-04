@@ -29,16 +29,19 @@ const groupSchema = new mongoose.Schema(
 
 // Check if a user is a member of this group
 groupSchema.methods.isMember = function (userId) {
+    const id = userId?.toString();
     return this.members.some(
-        (m) => m.user.toString() === userId.toString()
+        (m) => (m.user?._id || m.user)?.toString() === id
     );
 };
 
 // Check if a user is an admin of this group
 groupSchema.methods.isAdmin = function (userId) {
+    const id = userId?.toString();
     return (
-        this.creator?.toString() === userId.toString() ||
-        this.admins.some((a) => a.toString() === userId.toString())
+        (this.creator?._id || this.creator)?.toString() === id ||
+        this.admins.some((a) => (a?._id || a)?.toString() === id) ||
+        this.members.some((m) => (m.user?._id || m.user)?.toString() === id && m.role === "admin")
     );
 };
 
@@ -51,8 +54,9 @@ groupSchema.methods.addMember = function (userId, role = "member") {
 
 // Remove a member from this group
 groupSchema.methods.removeMember = function (userId) {
+    const id = userId?.toString();
     this.members = this.members.filter(
-        (m) => m.user.toString() !== userId.toString()
+        (m) => (m.user?._id || m.user)?.toString() !== id
     );
 };
 

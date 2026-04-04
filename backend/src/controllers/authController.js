@@ -1,5 +1,8 @@
 import User from "../models/User.js";
 import { generateAccessToken, generateRefreshToken, verifyToken } from "../utils/jwt.js";
+import crypto from "crypto";
+import { google } from "googleapis";
+import { getGoogleOAuthClient, getGoogleOAuthScopes, getClientAppUrl } from "../config/googleOAuth.js";
 
 /**
  * Register a new user
@@ -9,7 +12,7 @@ export const register = async (req, res) => {
   try {
     const {
       name,
-      email,
+      email: rawEmail,
       password,
       role,
       studentId,
@@ -23,6 +26,8 @@ export const register = async (req, res) => {
       twitter,
       linkedin
     } = req.body;
+
+    const email = String(rawEmail || "").trim().toLowerCase();
 
     // Check if user already exists with email
     const existingEmail = await User.findOne({ email });
@@ -119,14 +124,135 @@ export const register = async (req, res) => {
 };
 
 /**
+ * Start Google OAuth login/register flow
+ * GET /api/auth/google/start
+ */
+export const startGoogleAuth = async (req, res) => {
+  try {
+    const mode = req.query.mode === "register" ? "register" : "login";
+    const oauthClient = getGoogleOAuthClient(req);
+    const state = Buffer.from(JSON.stringify({ mode }), "utf8").toString("base64url");
+
+    const url = oauthClient.generateAuthUrl({
+      access_type: "online",
+      prompt: "select_account",
+      scope: getGoogleOAuthScopes(),
+      state,
+      include_granted_scopes: true,
+    });
+
+    return res.redirect(url);
+  } catch (error) {
+    console.error("Google auth start error:", error.message);
+    const clientUrl = getClientAppUrl();
+    return res.redirect(`${clientUrl}/auth/google/callback#google_error=start_failed`);
+  }
+};
+
+/**
+ * Google OAuth callback
+ * GET /api/auth/google/callback
+ */
+export const handleGoogleAuthCallback = async (req, res) => {
+  try {
+    const { code, state } = req.query;
+    const clientUrl = getClientAppUrl();
+
+    if (!code) {
+      return res.redirect(`${clientUrl}/auth/google/callback#google_error=missing_code`);
+    }
+
+    const oauthClient = getGoogleOAuthClient(req);
+    const { tokens } = await oauthClient.getToken(code);
+
+    if (!tokens?.access_token) {
+      return res.redirect(`${clientUrl}/auth/google/callback#google_error=no_access_token`);
+    }
+
+    oauthClient.setCredentials(tokens);
+
+    const oauth2 = google.oauth2({ version: "v2", auth: oauthClient });
+    const { data: profile } = await oauth2.userinfo.get();
+
+    const googleId = profile?.id || "";
+    const email = String(profile?.email || "").trim().toLowerCase();
+    const name = String(profile?.name || profile?.given_name || "Google User").trim();
+    const avatar = profile?.picture || "";
+    const mode = (() => {
+      try {
+        if (!state) return "login";
+        const decoded = JSON.parse(Buffer.from(String(state), "base64url").toString("utf8"));
+        return decoded?.mode === "register" ? "register" : "login";
+      } catch {
+        return "login";
+      }
+    })();
+
+    if (!email) {
+      return res.redirect(`${clientUrl}/auth/google/callback#google_error=missing_email`);
+    }
+
+    let user = await User.findOne({ $or: [{ googleId }, { email }] });
+    const isNewUser = !user;
+
+    if (!user) {
+      user = new User({
+        name,
+        email,
+        password: crypto.randomBytes(32).toString("hex"),
+        role: "student",
+        profilePicture: avatar,
+        isVerified: Boolean(profile?.verified_email),
+        authProvider: "google",
+        googleId,
+        googleEmail: email,
+      });
+    } else {
+      if (!user.googleId) user.googleId = googleId;
+      if (!user.googleEmail) user.googleEmail = email;
+      if (!user.profilePicture && avatar) user.profilePicture = avatar;
+      if (!user.isVerified && profile?.verified_email) user.isVerified = true;
+      if (!user.authProvider || user.authProvider === "local") user.authProvider = "google";
+      if (!user.name && name) user.name = name;
+    }
+
+    await user.save();
+
+    const accessToken = generateAccessToken(user._id);
+    const refreshToken = generateRefreshToken(user._id);
+
+    user.refreshTokens.push({ token: refreshToken });
+    await user.save();
+
+    const userResponse = user.toJSON();
+    const payload = new URLSearchParams({
+      accessToken,
+      refreshToken,
+      user: JSON.stringify(userResponse),
+      mode,
+      googleNewUser: isNewUser ? "1" : "0"
+    });
+
+    return res.redirect(`${clientUrl}/auth/google/callback#${payload.toString()}`);
+  } catch (error) {
+    console.error("Google auth callback error:", error?.response?.data || error.message);
+    return res.redirect(`${getClientAppUrl()}/auth/google/callback#google_error=callback_failed`);
+  }
+};
+
+/**
  * Login user
  * POST /api/auth/login
  */
 export const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const email = String(req.body.email || "").trim().toLowerCase();
+    const password =
+      req.body.password !== undefined && req.body.password !== null
+        ? String(req.body.password)
+        : "";
 
-    // Find user with password field
+    // Find user with password field (email normalized to match schema lowercase)
     const user = await User.findOne({ email }).select("+password");
 
     if (!user) {

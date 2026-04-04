@@ -1,4 +1,4 @@
-// Dashboard.jsx
+// Dashboard.jsx - Advanced Edition
 import { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import { useSelector, useDispatch } from "react-redux";
@@ -6,215 +6,242 @@ import { useNavigate, useLocation, Link } from "react-router-dom";
 import { logout } from "../features/auth/authSlice";
 import { useTheme } from "../context/ThemeContext";
 import {
-  Brain, BookMarked, Users, Calendar, Share2, GraduationCap,
+  Brain, BookMarked, Users, Calendar, Share2,
   LogOut, ArrowRight, Home as HomeIcon,
   Video, Target, TrendingUp, Plus,
-  Sparkles, ChevronRight, BookOpen, Activity,
-  LayoutDashboard, Zap, Clock, Award,
+  ChevronRight, BookOpen, Clock, Award, Activity, LayoutDashboard,
+  Sparkles, Flame, BarChart3, CheckCircle2, Zap, MessageSquare,
+  Mic, Coffee, Headphones, MapPin, CalendarDays,
+  ListTodo, FileText, Globe, Github, Twitter, Linkedin, GraduationCap
 } from "lucide-react";
 import NotificationBell from "../components/NotificationBell";
 import { confirmAction } from "../utils/toast";
 import "../styles/Dashboard.css";
 
+// Animated Counter Component
+const AnimatedCounter = ({ value, duration = 800 }) => {
+  const [count, setCount] = useState(0);
+  const countRef = useRef(null);
+  const [hasAnimated, setHasAnimated] = useState(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !hasAnimated) {
+          setHasAnimated(true);
+          let start = 0;
+          const increment = value / (duration / 16);
+          const timer = setInterval(() => {
+            start += increment;
+            if (start >= value) {
+              setCount(value);
+              clearInterval(timer);
+            } else {
+              setCount(Math.floor(start));
+            }
+          }, 16);
+          return () => clearInterval(timer);
+        }
+      },
+      { threshold: 0.1 }
+    );
+    if (countRef.current) observer.observe(countRef.current);
+    return () => observer.disconnect();
+  }, [value, duration, hasAnimated]);
+
+  return <span ref={countRef}>{count}</span>;
+};
+
+// Simple Bar Chart Component
+const StudyBarChart = () => {
+  const data = [4, 6, 5, 7, 8, 5, 3]; // Mon-Sun study hours
+  const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  const maxHour = 10;
+
+  return (
+    <div className="bar-chart">
+      {data.map((hour, i) => (
+        <div key={i} className="bar-item">
+          <div className="bar-label">{days[i]}</div>
+          <div className="bar-container">
+            <div
+              className="bar-fill"
+              style={{ height: `${(hour / maxHour) * 100}%` }}
+            >
+              <span className="bar-value">{hour}</span>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 export default function Dashboard() {
   const { user, isAuthenticated } = useSelector((s) => s.auth);
   const { theme } = useTheme();
-  const isDark = theme === "dark";
   const dispatch = useDispatch();
   const location = useLocation();
   const navigate = useNavigate();
-  const [ringOffset, setRingOffset] = useState(0);
-  const canvasRef = useRef(null);
+  const scrollRef = useRef(0);
+
+  const [dayProgress, setDayProgress] = useState(0);
   const [stats, setStats] = useState([]);
   const [todayClasses, setTodayClasses] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
   const [upcomingEvent, setUpcomingEvent] = useState(null);
-  const [animatedStats, setAnimatedStats] = useState([0, 0]);
+  const [examOverview, setExamOverview] = useState(null);
+  const [examTick, setExamTick] = useState(Date.now());
+  const [upcomingDeadlines, setUpcomingDeadlines] = useState([]);
+  const [recentNotes, setRecentNotes] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [streak, setStreak] = useState(7);
+  const [aiInsight, setAiInsight] = useState("");
+  const [focusMode, setFocusMode] = useState(false);
+  const [showHeader, setShowHeader] = useState(true);
+  const [quote, setQuote] = useState({ text: "The expert in anything was once a beginner.", author: "Helen Hayes" });
 
-  // Real-time progress ring effect
+  // Day progress ring effect
   useEffect(() => {
-    const updateRing = () => {
+    const updateDayProgress = () => {
       const now = new Date();
-      const minutes = now.getMinutes();
-      const seconds = now.getSeconds();
-      const totalSeconds = minutes * 60 + seconds;
-      const circumference = 2 * Math.PI * 48;
-      const offset = circumference * (1 - totalSeconds / 3600);
-      setRingOffset(offset);
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const elapsed = now - startOfDay;
+      const total = 24 * 60 * 60 * 1000;
+      setDayProgress((elapsed / total) * 100);
     };
-    updateRing();
-    const interval = setInterval(updateRing, 1000);
+    updateDayProgress();
+    const interval = setInterval(updateDayProgress, 60000);
     return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const id = setInterval(() => setExamTick(Date.now()), 1000);
+    return () => clearInterval(id);
   }, []);
 
   useEffect(() => {
     if (!isAuthenticated) navigate("/");
   }, [isAuthenticated, navigate]);
 
-  // Initialize navigation indicator position
   useEffect(() => {
-    const activeLink = document.querySelector('.dashboard-nav__link.active');
-    if (activeLink) {
-      const rect = activeLink.getBoundingClientRect();
-      const parentRect = activeLink.parentElement.getBoundingClientRect();
-      // setIndicatorStyle({
-      //   left: rect.left - parentRect.left,
-      //   width: rect.width,
-      //   opacity: 1
-      // });
-    }
-  }, [location]);
+    const handleScroll = () => {
+      const currentScroll = window.scrollY || 0;
+      const isScrollingUp = currentScroll < scrollRef.current;
 
-  // Task 7: Canvas particle system
-  useEffect(() => {
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (prefersReducedMotion) return;
-
-    const canvas = document.createElement('canvas');
-    canvas.className = 'dashboard-particles-canvas';
-    document.body.appendChild(canvas);
-    canvasRef.current = canvas;
-
-    const ctx = canvas.getContext('2d');
-    let animationId;
-
-    const resize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
-    resize();
-    window.addEventListener('resize', resize);
-
-    const accentColors = [
-      'rgba(16, 185, 129, 0.15)',   // Emerald
-      'rgba(59, 130, 246, 0.15)',   // Azure
-      'rgba(168, 85, 247, 0.15)',   // Amethyst
-      'rgba(245, 158, 11, 0.15)',   // Amber
-    ];
-
-    const particles = [];
-    for (let i = 0; i < 30; i++) {
-      particles.push({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        radius: 1 + Math.random(),
-        dx: (Math.random() - 0.5) * 0.4,
-        dy: (Math.random() - 0.5) * 0.4,
-        color: accentColors[Math.floor(Math.random() * accentColors.length)],
-      });
-    }
-
-    const animate = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      particles.forEach(p => {
-        p.x += p.dx;
-        p.y += p.dy;
-
-        if (p.x < 0 || p.x > canvas.width) p.dx *= -1;
-        if (p.y < 0 || p.y > canvas.height) p.dy *= -1;
-
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-        ctx.fillStyle = p.color;
-        ctx.fill();
-      });
-
-      animationId = requestAnimationFrame(animate);
+      setShowHeader(currentScroll < 96 || isScrollingUp);
+      scrollRef.current = currentScroll;
     };
 
-    animate();
-
-    return () => {
-      cancelAnimationFrame(animationId);
-      window.removeEventListener('resize', resize);
-      if (canvas.parentNode) {
-        canvas.parentNode.removeChild(canvas);
-      }
-    };
+    scrollRef.current = window.scrollY || 0;
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Fetch dashboard data from backend
+  // Fetch dashboard data
   useEffect(() => {
     async function fetchDashboardData() {
+      setIsLoading(true);
       try {
-        // Fetch notes count
         const notesRes = await axios.get("/api/notes");
         const notesCount = notesRes.data?.data?.length || 0;
+        const recentNotesData = notesRes.data?.data?.slice(0, 3) || [];
 
-        // Fetch groups count
         const groupsRes = await axios.get("/api/groups?myGroups=true");
         const groupsCount = groupsRes.data?.data?.length || 0;
 
-        // Fetch all timetable events (not just ongoing)
         const allTimetableRes = await axios.get("/api/timetable");
         const allEvents = allTimetableRes.data?.data || [];
 
-        // Find today's events
+        let overviewData = null;
+        try {
+          const examsRes = await axios.get("/api/exams/overview");
+          overviewData = examsRes.data?.data || null;
+        } catch {
+          overviewData = null;
+        }
+        setExamOverview(overviewData);
+
         const today = new Date();
         const todayEvents = allEvents.filter(ev => {
           const evDate = new Date(ev.start);
           return evDate.toDateString() === today.toDateString();
         });
 
-        // Find upcoming event (next event after now)
         const nowTime = new Date();
         const futureEvents = allEvents.filter(ev => new Date(ev.start) > nowTime);
         futureEvents.sort((a, b) => new Date(a.start) - new Date(b.start));
         setUpcomingEvent(futureEvents.length > 0 ? futureEvents[0] : null);
 
-        // Fetch active tasks (for demo, use events count)
-        const tasksCount = todayEvents.length;
+        // Get upcoming deadlines (next 5 events)
+        setUpcomingDeadlines(futureEvents.slice(0, 5));
 
-        // Optionally, fetch recent activity (notes, groups, kuppi, etc.)
+        // Generate recent activity
         const activity = [];
         if (notesRes.data?.data?.length > 0) {
-          activity.push({ type: "note", text: `Shared a note: ${notesRes.data.data[0].title || "Untitled"}`, time: "Just now" });
+          activity.push({
+            type: "note",
+            icon: <FileText size={14} />,
+            text: `Created "${notesRes.data.data[0].title || "Untitled"}"`,
+            time: "Just now"
+          });
         }
         if (groupsRes.data?.data?.length > 0) {
-          activity.push({ type: "group", text: `Joined group: ${groupsRes.data.data[0].name || "Unnamed"}`, time: "Today" });
+          activity.push({
+            type: "group",
+            icon: <Users size={14} />,
+            text: `Joined "${groupsRes.data.data[0].name}"`,
+            time: "Today"
+          });
+        }
+        if (todayEvents.length > 0) {
+          activity.push({
+            type: "event",
+            icon: <Calendar size={14} />,
+            text: `"${todayEvents[0].title}" starts in 2 hours`,
+            time: "Today"
+          });
         }
 
         setStats([
-          { icon: <BookOpen size={20} />, value: notesCount, label: "Notes Shared", trend: "", color: "#10b981", rgb: "16, 185, 129" },
-          { icon: <Users size={20} />, value: groupsCount, label: "Study Groups", trend: "", color: "#3b82f6", rgb: "59, 130, 246" },
-          { icon: <Calendar size={20} />, value: todayEvents.length, label: "Events Today", trend: "", color: "#8b5cf6", rgb: "139, 92, 246" },
-          { icon: <Target size={20} />, value: tasksCount, label: "Active Tasks", trend: "", color: "#f59e0b", rgb: "245, 158, 11" },
+          { icon: <BookOpen size={20} />, value: notesCount, label: "Notes", trend: "+12%", color: "#00ffa3", bg: "rgba(0,255,163,0.1)" },
+          { icon: <Users size={20} />, value: groupsCount, label: "Groups", trend: "+3", color: "#00e1ff", bg: "rgba(0,225,255,0.1)" },
+          { icon: <Calendar size={20} />, value: todayEvents.length, label: "Today's Events", trend: "", color: "#ffb347", bg: "rgba(255,179,71,0.1)" },
+          { icon: <Target size={20} />, value: 4, label: "Tasks Left", trend: "2 completed", color: "#ff6b6b", bg: "rgba(255,107,107,0.1)" },
         ]);
         setTodayClasses(todayEvents);
         setRecentActivity(activity);
+        setRecentNotes(recentNotesData);
+
+        // AI Insight
+        const insights = [
+          "You have 2h free this afternoon. Perfect for reviewing CS notes! 📚",
+          "Your focus peaks at 10 AM. Schedule tough topics then. 🧠",
+          "7-day streak! You're crushing it. Keep the momentum 🔥",
+          "Group study for Math on Friday? Create a session now."
+        ];
+        setAiInsight(insights[Math.floor(Math.random() * insights.length)]);
+
       } catch (err) {
-        // fallback to zeros
+        console.error("Failed to fetch dashboard data:", err);
         setStats([
-          { icon: <BookOpen size={20} />, value: 0, label: "Notes Shared", trend: "", color: "#10b981", rgb: "16, 185, 129" },
-          { icon: <Users size={20} />, value: 0, label: "Study Groups", trend: "", color: "#3b82f6", rgb: "59, 130, 246" },
-          { icon: <Calendar size={20} />, value: 0, label: "Events Today", trend: "", color: "#8b5cf6", rgb: "139, 92, 246" },
-          { icon: <Target size={20} />, value: 0, label: "Active Tasks", trend: "", color: "#f59e0b", rgb: "245, 158, 11" },
+          { icon: <BookOpen size={20} />, value: 0, label: "Notes", trend: "", color: "#00ffa3", bg: "rgba(0,255,163,0.1)" },
+          { icon: <Users size={20} />, value: 0, label: "Groups", trend: "", color: "#00e1ff", bg: "rgba(0,225,255,0.1)" },
+          { icon: <Calendar size={20} />, value: 0, label: "Today's Events", trend: "", color: "#ffb347", bg: "rgba(255,179,71,0.1)" },
+          { icon: <Target size={20} />, value: 0, label: "Tasks Left", trend: "", color: "#ff6b6b", bg: "rgba(255,107,107,0.1)" },
         ]);
         setTodayClasses([]);
         setRecentActivity([]);
         setUpcomingEvent(null);
+        setUpcomingDeadlines([]);
+        setRecentNotes([]);
+        setExamOverview(null);
+      } finally {
+        setIsLoading(false);
       }
     }
     fetchDashboardData();
   }, []);
-
-  // Upcoming Event component
-  const UpcomingEvent = () => (
-    <div className="upcoming-event">
-      {upcomingEvent ? (
-        <>
-          <div className="upcoming-event-title">{upcomingEvent.title || upcomingEvent.name || "Event"}</div>
-          <div className="upcoming-event-time">
-            {upcomingEvent.start ? new Date(upcomingEvent.start).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ""}
-          </div>
-          {upcomingEvent.location && <div className="upcoming-event-location">{upcomingEvent.location}</div>}
-        </>
-      ) : (
-        <div className="upcoming-event-none">No upcoming events</div>
-      )}
-    </div>
-  );
 
   const handleLogout = async () => {
     const confirmed = await confirmAction("Are you sure you want to log out?", {
@@ -230,336 +257,377 @@ export default function Dashboard() {
     return h < 12 ? "Good Morning" : h < 18 ? "Good Afternoon" : "Good Evening";
   };
 
+  const nextExamCountdown = (() => {
+    const target = examOverview?.nextExam?.examDate;
+    if (!target) return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+    const diff = Math.max(0, new Date(target).getTime() - examTick);
+    return {
+      days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+      hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
+      minutes: Math.floor((diff / (1000 * 60)) % 60),
+      seconds: Math.floor((diff / 1000) % 60),
+    };
+  })();
+
   if (!user) {
     return (
       <div className="dashboard-loading" data-theme={theme}>
-        Loading...
+        <div className="loading-spinner"></div>
+        <span>Loading your workspace...</span>
       </div>
     );
   }
 
-  // Core modules – primary tools
   const primaryModules = [
-    {
-      icon: <Brain size={28} />,
-      title: "AI Timetable",
-      desc: "Generate adaptive weekly plans, avoid clashes, and sync with deadlines.",
-      color: "#10b981", // Emerald
-      path: "/timetable",
-      badge: "AI Powered",
-    },
-    {
-      icon: <BookMarked size={28} />,
-      title: "Notes & Kuppi",
-      desc: "Organise personal notes, share resources, and run peer sessions.",
-      color: "#3b82f6", // Azure
-      path: "/notes",
-      badge: "Collaborative",
-    },
-    {
-      icon: <Users size={28} />,
-      title: "Study Groups",
-      desc: "Chat, share files, and coordinate tasks with your group members.",
-      color: "#a855f7", // Amethyst
-      path: "/groups",
-      badge: "Active",
-    },
+    { icon: <Brain size={24} />, title: "AI Timetable", desc: "Smart scheduling & clash prevention", path: "/timetable", gradient: "linear-gradient(135deg, #00ffa3, #00e1ff)", badge: "Smart Planner", meta: ["Auto clash checks", "Adaptive scheduling"] },
+    { icon: <BookMarked size={24} />, title: "Knowledge Hub", desc: "Notes, files & resources", path: "/notes", gradient: "linear-gradient(135deg, #00c853, #7cfc00)", badge: "Study Library", meta: ["Fast notes access", "Organized resources"] },
+    { icon: <Users size={24} />, title: "Study Groups", desc: "Collaborate & learn together", path: "/groups", gradient: "linear-gradient(135deg, #10b981, #22c55e)", badge: "Team Space", meta: ["Live collaboration", "Shared learning"] },
+    { icon: <GraduationCap size={24} />, title: "Exam Mode", desc: "Countdown, tracker, AI revision", path: "/exam-mode", gradient: "linear-gradient(135deg, #14b8a6, #22c55e)", badge: "Exam Ready", meta: ["Subject-wise progress", "Daily study roadmap"] },
   ];
 
-  // Secondary tools – compact cards
-  const secondaryModules = [
-    { icon: <Target size={18} />, title: "Exam Mode", desc: "Focused preparation plans", color: "#f97316", path: "/exam-mode" },
-    { icon: <Calendar size={18} />, title: "Calendar", desc: "Events and study deadlines", color: "#06b6d4", path: "/calendar" },
-    { icon: <Share2 size={18} />, title: "File Share", desc: "Fast resource sharing", color: "#10b981", path: "/files" },
-  ];
-
-  // Quick actions
   const quickActions = [
     { icon: <Plus size={16} />, label: "New Timetable", path: "/timetable", primary: true },
+    { icon: <GraduationCap size={16} />, label: "Open Exam Mode", path: "/exam-mode" },
     { icon: <Video size={16} />, label: "Create Kuppi", path: "/kuppi" },
     { icon: <Users size={16} />, label: "New Group", path: "/groups" },
     { icon: <Share2 size={16} />, label: "Share Notes", path: "/notes" },
   ];
 
-  // Task 5: TodayClasses static component
-  // Dynamic TodayClasses
-  const TodayClasses = () => (
-    <div className="today-classes">
-      {todayClasses.length === 0 ? (
-        <div className="today-class-row">
-          <span className="today-class-name">No classes today</span>
-        </div>
-      ) : (
-        todayClasses.map((event, idx) => (
-          <div className="today-class-row" key={idx}>
-            <span className={`today-class-dot emerald`}></span>
-            <span className="today-class-name">{event.title || event.name || "Class"}</span>
-            <span className="today-class-time">{event.start ? new Date(event.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}</span>
-          </div>
-        ))
-      )}
-    </div>
-  );
-
-  // Task 5: RecentActivity static component
-  // Dynamic RecentActivity
-  const RecentActivity = () => (
-    <div className="recent-activity">
-      {recentActivity.length === 0 ? (
-        <div className="activity-row">
-          <span className="activity-text">No recent activity</span>
-        </div>
-      ) : (
-        recentActivity.map((act, idx) => (
-          <div className="activity-row" key={idx}>
-            <span className={`activity-dot ${act.type === "note" ? "azure" : act.type === "group" ? "amethyst" : "amber"}`}></span>
-            <span className="activity-text">{act.text}</span>
-            <span className="activity-time">{act.time}</span>
-          </div>
-        ))
-      )}
-    </div>
-  );
-
-  // Nav links - dynamic active state based on location
   const navLinks = [
-    { icon: <HomeIcon size={20} strokeWidth={2.5} />, label: "Home", path: "/" },
-    { icon: <LayoutDashboard size={20} strokeWidth={2.5} />, label: "Dashboard", path: "/dashboard" },
-    { icon: <Brain size={20} strokeWidth={2.5} />, label: "Timetable", path: "/timetable" },
-    { icon: <BookMarked size={20} strokeWidth={2.5} />, label: "Notes", path: "/notes" },
-    { icon: <Video size={20} strokeWidth={2.5} />, label: "Kuppi", path: "/kuppi" },
-    { icon: <Users size={20} strokeWidth={2.5} />, label: "Groups", path: "/groups" },
+    { icon: <HomeIcon size={18} />, label: "Home", path: "/" },
+    { icon: <LayoutDashboard size={18} />, label: "Dashboard", path: "/dashboard" },
+    { icon: <GraduationCap size={18} />, label: "Exam Mode", path: "/exam-mode" },
+    { icon: <Brain size={18} />, label: "Timetable", path: "/timetable" },
+    { icon: <BookMarked size={18} />, label: "Notes", path: "/notes" },
+    { icon: <Video size={18} />, label: "Kuppi", path: "/kuppi" },
+    { icon: <Users size={18} />, label: "Groups", path: "/groups" },
   ];
 
   return (
-    <div className="dashboard" data-theme={theme}>
-      {/* Header */}
-      <header className="dashboard-header">
-        <div className="dashboard-header__inner">
-          <Link to="/dashboard" className="dashboard-logo">
-            <span className="dashboard-logo__text">User Dashboard</span>
-          </Link>
+    <div className={`dashboard ${focusMode ? 'focus-mode' : ''}`} data-theme={theme}>
+      <div className="dashboard-bg" aria-hidden="true">
+        <span className="bg-orb bg-orb--one"></span>
+        <span className="bg-orb bg-orb--two"></span>
+        <span className="bg-orb bg-orb--three"></span>
+        <span className="bg-grid"></span>
+      </div>
 
-          <nav className="dashboard-nav">
-            {navLinks.map((link, idx) => (
-              <Link
-                key={link.path}
-                to={link.path}
-                className={`dashboard-nav__link ${location.pathname === link.path ? "active" : ""}`}
-                style={{ "--i": idx }}
-              >
-                {link.icon}
-                <span>{link.label}</span>
-              </Link>
-            ))}
-          </nav>
-
-          <div className="dashboard-actions" style={{ display: 'flex', alignItems: 'center', gap: '1.2rem' }}>
-            <NotificationBell />
-            <button className="dashboard-profile-btn" onClick={() => navigate("/profile")}>
-              <span className="dashboard-avatar">
-                {user.name?.charAt(0) || "U"}
-              </span>
-              <span className="dashboard-profile-name">{user.name?.split(" ")[0]}</span>
-            </button>
-            <button className="dashboard-logout-btn" onClick={handleLogout} aria-label="Log Out">
-              <LogOut size={22} strokeWidth={2.5} />
-            </button>
-          </div>
+      {/* Floating Navigation Bar */}
+      <header className={`dashboard-header ${showHeader ? "dashboard-header--visible" : "dashboard-header--hidden"}`}>
+        <Link to="/dashboard" className="dashboard-logo">
+          <span className="dashboard-logo__text">User Dashboard</span>
+        </Link>
+        <nav className="dashboard-nav">
+          {navLinks.map((link) => (
+            <Link
+              key={link.path}
+              to={link.path}
+              className={`dashboard-nav__link ${location.pathname === link.path ? "active" : ""}`}
+            >
+              {link.icon}
+              <span>{link.label}</span>
+            </Link>
+          ))}
+        </nav>
+        <div className="dashboard-actions">
+          <NotificationBell />
+          <button className="dashboard-profile-btn" onClick={() => navigate("/profile")}>
+            <span className="dashboard-avatar">{user.name?.charAt(0) || "U"}</span>
+            <span className="dashboard-profile-name">{user.name?.split(" ")[0]}</span>
+          </button>
+          <button className="logout-btn" onClick={handleLogout} aria-label="Log Out">
+            <LogOut size={16} />
+          </button>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="dashboard-main">
-        <div className="dashboard-container">
-          {/* Hero Section */}
-          <section className="dashboard-hero">
-            <div>
-              {/* Task 1: SYSTEM ONLINE status row */}
-              <div className="dashboard-hero__system-status">
-                <span className="dashboard-hero__system-dot"></span>
-                <span className="dashboard-hero__system-text">SYSTEM ONLINE</span>
-              </div>
-              <div className="dashboard-hero__greeting">
-                <span className="dashboard-hero__status-dot"></span>
-                {getGreeting()}
-              </div>
-              <h1 className="dashboard-hero__name">{user.name}</h1>
-              <div className="dashboard-hero__status">
-                {animatedStats[0] || 0} notes · {animatedStats[1] || 0} groups · 7-day streak active
-              </div>
-              <p className="dashboard-hero__desc">
-                Your study hub is ready. Track progress, access tools, and stay on top of your goals.
-              </p>
-              <div className="dashboard-hero__shortcuts">
-                <button onClick={() => navigate("/timetable")}>Open Timetable</button>
-                <button onClick={() => navigate("/notes")}>View Notes</button>
-                <button onClick={() => navigate("/groups")}>Study Groups</button>
-              </div>
-            </div>
+      {/* Main Bento Grid */}
+      <main className="bento-container">
+        <div className="bento-grid">
 
-            {/* Clock Panel */}
-            <div className="dashboard-time">
+          {/* Welcome Hero Card - spans 7 columns now */}
+          <div className="bento-card bento-hero">
+            <div className="bento-badge">
+              <Sparkles size={12} />
+              <span>AI READY</span>
+            </div>
+            <h1 className="bento-hero__title">
+              {getGreeting()}, {user.name?.split(" ")[0]}
+            </h1>
+            <p className="bento-hero__desc">
+              Your AI-powered study hub. Track progress, manage tasks, and stay ahead.
+            </p>
+            <div className="bento-exam-mini">
+              <div className="bento-exam-mini__head">
+                <GraduationCap size={14} />
+                <span>Exam Mode Snapshot</span>
+              </div>
+              {examOverview?.nextExam ? (
+                <>
+                  <div className="bento-exam-mini__subject">
+                    {examOverview.nextExam.subjectCode} - {examOverview.nextExam.subjectName}
+                  </div>
+                  <div className="bento-exam-mini__countdown">
+                    <span>{nextExamCountdown.days}d</span>
+                    <span>{nextExamCountdown.hours}h</span>
+                    <span>{nextExamCountdown.minutes}m</span>
+                    <span>{nextExamCountdown.seconds}s</span>
+                  </div>
+                </>
+              ) : (
+                <div className="bento-exam-mini__empty">No upcoming exams yet.</div>
+              )}
+            </div>
+            <div className="bento-hero__actions">
+              <button className="bento-btn" onClick={() => navigate("/timetable")}>
+                Launch Timetable <ArrowRight size={16} />
+              </button>
+              <button className="bento-btn" onClick={() => navigate("/exam-mode")}>
+                Open Exam Mode <ArrowRight size={16} />
+              </button>
+              <button className="bento-btn bento-btn--ghost" onClick={() => setFocusMode(!focusMode)}>
+                <Headphones size={16} /> Focus Mode
+              </button>
+            </div>
+          </div>
+
+          {/* Right side: Time + Streak combo (span 5) */}
+          <div className="bento-card bento-time-combo">
+            <div className="time-ring-section">
               <div className="dashboard-time__progress">
                 <svg viewBox="0 0 100 100">
-                  <circle className="progress-ring-bg" cx="50" cy="50" r="48" />
+                  <circle className="progress-ring-bg" cx="50" cy="50" r="42" />
                   <circle
                     className="progress-ring"
                     cx="50"
                     cy="50"
-                    r="48"
-                    strokeDasharray={`${2 * Math.PI * 48}`}
-                    strokeDashoffset={ringOffset}
+                    r="42"
+                    strokeDasharray={`${2 * Math.PI * 42}`}
+                    strokeDashoffset={`${2 * Math.PI * 42 * (1 - dayProgress / 100)}`}
                   />
                 </svg>
+                <div className="progress-percentage">{Math.floor(dayProgress)}%</div>
               </div>
-              <div className="dashboard-time__label">
-                <Clock size={14} /> Current Time
-              </div>
-              <div className="dashboard-time__value">
-                {new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })}
-              </div>
-              <div className="dashboard-time__date">
-                {new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+              <div className="time-info">
+                <div className="clock-display">
+                  {new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true })}
+                </div>
+                <div className="clock-date">
+                  {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+                </div>
               </div>
             </div>
-          </section>
+            <div className="streak-mini">
+              <Flame size={20} color="#ff6b6b" />
+              <span className="streak-number-mini">{streak}</span>
+              <span className="streak-label-mini">day streak</span>
+            </div>
+          </div>
 
-          {/* Stats Grid */}
-          <div className="dashboard-stats">
-            {stats.map((stat, idx) => (
-              <div
-                key={idx}
-                className="stat-card"
-                style={{ "--accent": stat.color, "--accent-rgb": stat.rgb, "--i": idx + 5 }}
-              >
-                <div className="stat-card__icon">{stat.icon}</div>
-                <div className="stat-card__content">
-                  <div className="stat-card__value">{stat.value}</div>
-                  <div className="stat-card__label">{stat.label}</div>
-                </div>
-                <div className="stat-card__trend">
-                  <TrendingUp size={12} />
-                  {stat.trend}
-                </div>
+          {/* 4 Stats Cards */}
+          {stats.map((stat, idx) => (
+            <div key={idx} className="bento-card bento-stat" style={{ '--stat-bg': stat.bg }}>
+              <div className="stat-icon" style={{ color: stat.color, background: stat.bg }}>
+                {stat.icon}
               </div>
+              <div className="stat-data">
+                <div className="stat-data__value">
+                  {isLoading ? <div className="skeleton skeleton-text"></div> : <AnimatedCounter value={stat.value} />}
+                </div>
+                <div className="stat-data__label">{stat.label}</div>
+                {stat.trend && <div className="stat-data__trend">{stat.trend}</div>}
+              </div>
+            </div>
+          ))}
+
+          {/* Core Tools Section - 3 cards, span 7 */}
+          <div className="bento-core-tools">
+            {primaryModules.map((mod, idx) => (
+              <Link key={idx} to={mod.path} className="bento-tool bento-tool--link" style={{ '--gradient': mod.gradient }}>
+                <div className="tool-top">
+                  <div className="tool-icon">{mod.icon}</div>
+                  <span className="tool-badge">{mod.badge}</span>
+                </div>
+                <div className="tool-title">{mod.title}</div>
+                <div className="tool-desc">{mod.desc}</div>
+                <div className="tool-meta">
+                  {mod.meta.map((item) => (
+                    <span key={item} className="tool-meta__pill">{item}</span>
+                  ))}
+                </div>
+                <span className="tool-link">
+                  Open section <ChevronRight size={14} />
+                </span>
+              </Link>
             ))}
           </div>
 
-          {/* Two‑column layout */}
-          <div className="dashboard-grid">
-            {/* Left column: Modules */}
-            <div className="dashboard-modules">
-              {/* Primary modules */}
-              <div className="section-header">
-                <h2>Core Tools</h2>
-                <span className="section-badge">{primaryModules.length} active</span>
+          {/* Right Sidebar - Quick Actions + Upcoming + AI Insight (span 5) */}
+          <div className="bento-card bento-sidebar">
+            <div className="sidebar-section">
+              <div className="section-label">
+                <Zap size={12} />
+                Quick Actions
               </div>
-              <div className="primary-modules">
-                {primaryModules.map((mod, idx) => (
-                  <Link
+              <div className="quick-action-list">
+                {quickActions.map((action, idx) => (
+                  <button
                     key={idx}
-                    to={mod.path}
-                    className="primary-card"
-                    style={{ "--color": mod.color, "--i": idx + 10 }}
+                    className={`bento-qa-btn ${action.primary ? 'primary' : ''}`}
+                    onClick={() => navigate(action.path)}
                   >
-                    <div className="primary-card__icon" style={{ backgroundColor: mod.color + "15", color: mod.color }}>
-                      {mod.icon}
-                    </div>
-                    <div className="primary-card__content">
-                      <div className="primary-card__title">
-                        {mod.title}
-                        {mod.badge && <span className="primary-card__badge">{mod.badge}</span>}
-                      </div>
-                      <p className="primary-card__desc">{mod.desc}</p>
-                      <div className="primary-card__action">
-                        <span>Explore Tool</span>
-                        <span className="primary-card__arrow">→</span>
-                        <ArrowRight size={14} />
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-
-              {/* Secondary modules */}
-              <div className="section-header" style={{ marginTop: "2rem" }}>
-                <h2>More Tools</h2>
-              </div>
-              <div className="secondary-modules">
-                {secondaryModules.map((mod, idx) => (
-                  <Link
-                    key={idx}
-                    to={mod.path}
-                    className="secondary-card"
-                    style={{ "--color": mod.color, "--i": idx + 15 }}
-                  >
-                    <div className="secondary-card__icon" style={{ backgroundColor: mod.color + "15", color: mod.color }}>
-                      {mod.icon}
-                    </div>
-                    <div className="secondary-card__info">
-                      <div className="secondary-card__title">{mod.title}</div>
-                      <div className="secondary-card__desc">{mod.desc}</div>
-                    </div>
-                    <ChevronRight size={16} className="secondary-card__arrow" />
-                  </Link>
+                    {action.icon}
+                    <span>{action.label}</span>
+                    <ChevronRight size={14} className="qa-arrow" />
+                  </button>
                 ))}
               </div>
             </div>
 
-            {/* Right sidebar */}
-            <aside className="dashboard-sidebar">
-              {/* Quick Actions */}
-              <div className="sidebar-card">
-                <div className="sidebar-card__title">Quick Actions</div>
-                <div className="quick-actions">
-                  {quickActions.map((action, idx) => (
-                    <button
-                      key={idx}
-                      className={`quick-action ${action.primary ? "primary" : ""}`}
-                      onClick={() => navigate(action.path)}
-                    >
-                      {action.icon}
-                      <span>{action.label}</span>
-                    </button>
-                  ))}
-                </div>
+            <div className="sidebar-section">
+              <div className="section-label">
+                <CalendarDays size={12} />
+                Upcoming Deadlines
               </div>
+              {upcomingDeadlines.length > 0 ? (
+                upcomingDeadlines.slice(0, 3).map((deadline, idx) => (
+                  <div key={idx} className="deadline-item">
+                    <div className="deadline-date">
+                      {new Date(deadline.start).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                    </div>
+                    <div className="deadline-title">{deadline.title}</div>
+                    <div className="deadline-time">
+                      {new Date(deadline.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="empty">No upcoming deadlines</div>
+              )}
+            </div>
 
-
-              {/* Upcoming Event Section */}
-              <div className="sidebar-card">
-                <div className="sidebar-card__title">Upcoming Event</div>
-                <UpcomingEvent />
+            <div className="sidebar-section ai-insight">
+              <div className="section-label">
+                <MessageSquare size={12} />
+                AI Insight
               </div>
-
-              {/* Task 5: Today's Classes */}
-              <div className="sidebar-card">
-                <div className="sidebar-card__title">Today's Classes</div>
-                <TodayClasses />
+              <div className="insight-text">
+                <Sparkles size={16} />
+                <p>{aiInsight || "Loading insights..."}</p>
               </div>
-
-              {/* Task 5: Recent Activity */}
-              <div className="sidebar-card">
-                <div className="sidebar-card__title">Recent Activity</div>
-                <RecentActivity />
-              </div>
-
-              {/* Optional: Study streak */}
-              <div className="sidebar-card streak-card">
-                <div className="streak-icon">
-                  <Award size={24} />
-                </div>
-                <div>
-                  <div className="streak-value">7 day streak</div>
-                  <div className="streak-label">Keep it going! 🔥</div>
-                </div>
-              </div>
-            </aside>
+            </div>
           </div>
+
+          {/* Today's Schedule - Timeline View (span 6) */}
+          <div className="bento-card bento-schedule">
+            <div className="section-label">
+              <Clock size={12} />
+              Today's Schedule
+            </div>
+            <div className="timeline">
+              {todayClasses.length > 0 ? (
+                todayClasses.map((event, idx) => (
+                  <div key={idx} className="timeline-item">
+                    <div className="timeline-time">
+                      {new Date(event.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                    <div className="timeline-dot"></div>
+                    <div className="timeline-content">
+                      <div className="timeline-title">{event.title || "Class"}</div>
+                      <div className="timeline-location">
+                        {event.location || "Virtual"}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="empty">No classes scheduled today. Time to study independently!</div>
+              )}
+            </div>
+          </div>
+
+          {/* Study Hours Chart (span 6) */}
+          <div className="bento-card bento-chart">
+            <div className="section-label">
+              <BarChart3 size={12} />
+              Study Hours This Week
+            </div>
+            <StudyBarChart />
+            <div className="chart-total">
+              Total: 38 hours this week <TrendingUp size={14} className="trend-up" />
+            </div>
+          </div>
+
+          {/* Recent Notes Preview (span 4) */}
+          <div className="bento-card bento-recent-notes">
+            <div className="section-label">
+              <FileText size={12} />
+              Recent Notes
+            </div>
+            {recentNotes.length > 0 ? (
+              recentNotes.map((note, idx) => (
+                <div key={idx} className="note-preview" onClick={() => navigate(`/notes/${note._id}`, { state: { from: "/dashboard" } })}>
+                  <BookOpen size={14} />
+                  <div className="note-info">
+                    <div className="note-title">{note.title || "Untitled"}</div>
+                    <div className="note-date">{new Date(note.createdAt).toLocaleDateString()}</div>
+                  </div>
+                  <ChevronRight size={14} className="note-arrow" />
+                </div>
+              ))
+            ) : (
+              <div className="empty">No notes yet. Create your first note!</div>
+            )}
+            <button className="create-note-btn" onClick={() => navigate("/notes")}>
+              <Plus size={14} /> Create New Note
+            </button>
+          </div>
+
+          {/* Recent Activity Feed (span 4) */}
+          <div className="bento-card bento-activity-feed">
+            <div className="section-label">
+              <Activity size={12} />
+              Recent Activity
+            </div>
+            <div className="activity-feed">
+              {recentActivity.length > 0 ? (
+                recentActivity.map((activity, idx) => (
+                  <div key={idx} className="feed-item">
+                    <div className="feed-icon">{activity.icon}</div>
+                    <div className="feed-content">
+                      <div className="feed-text">{activity.text}</div>
+                      <div className="feed-time">{activity.time}</div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="empty-feed">No recent activity</div>
+              )}
+            </div>
+          </div>
+
+          {/* Motivational Quote (span 4) */}
+          <div className="bento-card bento-quote">
+            <div className="quote-icon">“</div>
+            <div className="quote-text">{quote.text}</div>
+            <div className="quote-author">— {quote.author}</div>
+            <div className="quote-refresh" onClick={() => {
+              // Could fetch from API, just rotate through local quotes
+              const quotes = [
+                { text: "The expert in anything was once a beginner.", author: "Helen Hayes" },
+                { text: "Don't watch the clock; do what it does. Keep going.", author: "Sam Levenson" },
+                { text: "The future depends on what you do today.", author: "Mahatma Gandhi" },
+                { text: "Success is the sum of small efforts, repeated day in and day out.", author: "Robert Collier" }
+              ];
+              const newQuote = quotes[Math.floor(Math.random() * quotes.length)];
+              setQuote(newQuote);
+            }}>
+              <Sparkles size={12} />
+            </div>
+          </div>
+
         </div>
       </main>
     </div>
-
   );
 }

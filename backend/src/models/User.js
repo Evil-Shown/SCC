@@ -21,6 +21,25 @@ const userSchema = new mongoose.Schema({
     minlength: 6,
     select: false // Don't return password by default
   },
+  authProvider: {
+    type: String,
+    enum: ["local", "google"],
+    default: "local"
+  },
+  googleId: {
+    type: String,
+    unique: true,
+    sparse: true,
+    select: false
+  },
+  googleEmail: {
+    type: String,
+    lowercase: true,
+    trim: true,
+    unique: true,
+    sparse: true,
+    select: false
+  },
   role: {
     type: String,
     enum: ["student", "teacher", "admin"],
@@ -140,7 +159,10 @@ userSchema.pre("save", async function() {
 
 // Method to compare password
 userSchema.methods.comparePassword = async function(candidatePassword) {
-  return await bcrypt.compare(candidatePassword, this.password);
+  if (candidatePassword == null || this.password == null) {
+    return false;
+  }
+  return await bcrypt.compare(String(candidatePassword), this.password);
 };
 
 // Method to get public profile

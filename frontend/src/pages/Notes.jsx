@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   Search,
   Plus,
-  Filter,
+  Sparkles,
+  SlidersHorizontal,
   ThumbsUp,
   MessageSquare,
   X,
@@ -14,6 +15,7 @@ import {
   Link as LinkIcon,
   Check,
   FileText,
+  CalendarDays,
 } from "lucide-react";
 import {
   fetchNotes,
@@ -100,6 +102,9 @@ const Notes = () => {
   };
 
   const hasActiveFilters = filters.subject || filters.year || filters.tag || localSearch;
+  const totalResources = pagination?.total || notes.length;
+  const totalDiscussions = notes.reduce((acc, item) => acc + (item.commentsCount || 0), 0);
+  const totalLikes = notes.reduce((acc, item) => acc + (item.reactionsCount?.like || 0), 0);
 
   const sortedNotes = [...notes].sort((a, b) => {
     switch (sortBy) {
@@ -135,50 +140,71 @@ const Notes = () => {
       <div className="pr-canvas" />
 
       <div className="notes-container">
-        {/* Top Bar / Breadcrumbs */}
-        <div className="pr-topbar">
-          <div className="pr-topbar__left">
-            <button className="pr-back-btn" onClick={() => navigate(-1)} title="Go Back">
+        <section className="notes-hero notes-hero--kuppi">
+          <div className="notes-hero-content">
+            <button
+              className="notes-hero-back"
+              onClick={() => navigate("/dashboard")}
+              title="Go Back"
+            >
               <ChevronLeft size={20} />
             </button>
-            <div className="pr-topbar__breadcrumb">
-              <Link to="/dashboard">Dashboard</Link>
-              <ChevronRight size={16} />
-              <span className="pr-topbar__page">Knowledge Hub</span>
-            </div>
-          </div>
-          <div className="pr-topbar__meta">
-            <span>{pagination?.total || notes.length} Resources Available</span>
-          </div>
-        </div>
 
-        {/* Modern Hero Section */}
-        <section className="notes-hero">
-          <div className="notes-hero-text">
-            <p className="notes-hero__role">Academic Repository</p>
-            <h1 className="notes-hero-title">Knowledge Hub</h1>
-            <p className="notes-hero-subtitle">
-              Access and contribute to a shared library of verified academic notes, 
-              research materials, and study guides.
-            </p>
-          </div>
-          <div className="notes-hero-actions">
-            <button
-              className="btn-new-note"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setShowCreateDrawer(true);
-              }}
-            >
-              <Plus size={18} />
-              <span>Create Note</span>
-            </button>
+            <div className="notes-hero-main">
+              <div className="notes-hero-text">
+                <p className="notes-hero__role">Academic Repository</p>
+                <h1 className="notes-hero-title">Knowledge Hub</h1>
+                <p className="notes-hero-subtitle">
+                  Discover high-quality notes, structured references, and collaborative insight from your community.
+                </p>
+              </div>
+
+              <div className="notes-hero-metrics">
+                <div className="hero-metric-card">
+                  <span className="hero-metric-label">Resources</span>
+                  <strong className="hero-metric-value">{totalResources}</strong>
+                </div>
+                <div className="hero-metric-card">
+                  <span className="hero-metric-label">Discussions</span>
+                  <strong className="hero-metric-value">{totalDiscussions}</strong>
+                </div>
+                <div className="hero-metric-card">
+                  <span className="hero-metric-label">Helpful Votes</span>
+                  <strong className="hero-metric-value">{totalLikes}</strong>
+                </div>
+              </div>
+            </div>
+
+            <div className="notes-hero-actions">
+              <button
+                className="btn-new-note"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setShowCreateDrawer(true);
+                }}
+              >
+                <Plus size={18} />
+                <span>Create Note</span>
+              </button>
+            </div>
           </div>
         </section>
 
-        {/* Modern Integrated Toolbar */}
-        <div className="notes-toolbar">
+        <div className="notes-insight-strip notes-insight-strip--kuppi">
+          <span>
+            <Sparkles size={16} />
+            Curated by students and faculty with practical exam-focused context.
+          </span>
+          <span>
+            <CalendarDays size={16} />
+            Updated in real-time as new resources are published.
+          </span>
+        </div>
+
+        <div className="notes-controls notes-controls--kuppi">
+          <div className="notes-controls-meta">{totalResources} resources available</div>
+
           <div className="notes-toolbar__inner">
             <div className="notes-search">
               <Search size={18} className="search-icon" />
@@ -199,6 +225,8 @@ const Notes = () => {
                 </button>
               )}
             </div>
+
+            <div className="toolbar-divider" />
 
             <select
               className="filter-chip"
@@ -234,10 +262,10 @@ const Notes = () => {
 
             {hasActiveFilters && (
               <button
-                className="filter-chip"
+                className="filter-chip filter-chip-clear"
                 onClick={handleClearFilters}
-                style={{ color: 'var(--n-accent)' }}
               >
+                <SlidersHorizontal size={14} />
                 Clear All
               </button>
             )}
@@ -289,7 +317,7 @@ const Notes = () => {
                   note={note}
                   currentUserId={user?._id}
                   onReaction={handleReaction}
-                  onViewComments={() => navigate(`/notes/${note._id}`)}
+                  onViewComments={() => navigate(`/notes/${note._id}`, { state: { from: "/notes" } })}
                 />
               ))}
             </div>
@@ -393,11 +421,24 @@ const NoteCard = ({ note, currentUserId, onReaction, onViewComments }) => {
 
   return (
     <div className={`note-card ${isPinned ? "pinned" : ""}`} onClick={onViewComments}>
-      <div className="note-card-header">
-        <h3 className="note-title">{note.title}</h3>
-        {isPinned && <Pin size={16} color="var(--n-accent)" fill="currentColor" className="pin-icon" />}
+      <div className="note-context-row">
+        {note.subject && <span className="note-context-chip">{note.subject}</span>}
+        {note.year && <span className="note-context-chip muted">Year {note.year}</span>}
       </div>
-      <p className="note-body">{note.description}</p>
+
+      <div className="note-card-body">
+        <div className="note-card-header">
+          <h3 className="note-title">{note.title}</h3>
+          {isPinned && <Pin size={16} color="var(--n-accent)" fill="currentColor" className="pin-icon" />}
+        </div>
+
+        <p className="note-body">{note.description}</p>
+
+        <div className="note-card-info">
+          {note.department && <span className="note-info-chip">{note.department}</span>}
+          {note.faculty && <span className="note-info-chip muted">{note.faculty}</span>}
+        </div>
+      </div>
 
       {note.tags && note.tags.length > 0 && (
         <div className="note-tags">
@@ -408,7 +449,10 @@ const NoteCard = ({ note, currentUserId, onReaction, onViewComments }) => {
       )}
 
       <div className="note-footer">
-        <span className="note-author">By {note.userId?.name?.split(" ")[0] || "Scholar"}</span>
+        <div className="note-meta-stack">
+          <span className="note-author">By {note.userId?.name?.split(" ")[0] || "Scholar"}</span>
+          <span className="note-date-meta">{new Date(note.createdAt).toLocaleDateString()}</span>
+        </div>
         <div className="note-actions">
           <button
             className={`action-btn ${isLiked ? "active" : ""}`}

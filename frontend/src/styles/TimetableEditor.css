@@ -1,59 +1,121 @@
+/* ---------------------------------------------- 
+   TIMETABLE EDITOR — PROFESSIONAL REGISTRY
+   Forest Noir / Lumière Aesthetics
+   ---------------------------------------------- */
+
 .tt-editor-table-wrap {
+  width: 100%;
   overflow-x: auto;
-  border-radius: 16px;
+  border-radius: var(--tt-radius-md, 18px);
+  background: var(--tt-bg-card, rgba(12, 26, 20, 0.4));
+  border: 1px solid var(--tt-border, rgba(0, 255, 163, 0.08));
+  box-shadow: var(--tt-shadow, none);
 }
 
 .tt-editor-table {
   width: 100%;
-  border-collapse: separate;
+  border-collapse: collapse;
   border-spacing: 0;
-  background: rgba(36, 50, 74, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 16px;
+  min-width: 900px; /* Ensure columns don't crush */
+  table-layout: fixed;
 }
 
 .tt-editor-table thead th {
   text-align: left;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--tt-amethyst);
-  background: rgba(168, 85, 247, 0.08);
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--tt-border-active);
+  font-size: 0.7rem;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  white-space: nowrap;
+  letter-spacing: 0.15em;
+  color: var(--tt-text-muted, #64748b);
+  background: rgba(0, 0, 0, 0.2);
+  padding: 1.25rem 1rem;
+  border-bottom: 2px solid var(--tt-border, rgba(0, 255, 163, 0.1));
 }
 
-.tt-editor-table tbody td {
-  padding: 10px 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+.tt-editor-table tbody tr {
+  transition: background 0.2s ease;
+}
+
+.tt-editor-table tbody tr:hover {
+  background: rgba(0, 255, 163, 0.03);
+}
+
+.tt-editor-table td {
+  padding: 0.75rem 0.5rem;
+  border-bottom: 1px solid var(--tt-border, rgba(255, 255, 255, 0.03));
   vertical-align: middle;
-  min-width: 120px;
 }
 
-.tt-editor-table tbody tr:last-child td {
+.tt-editor-table tr:last-child td {
   border-bottom: none;
 }
 
-.tt-editor-table td .form-input,
-.tt-editor-table td .form-select {
+/* Registry Inputs */
+.tt-editor-table .tt-input,
+.tt-editor-table .tt-select {
   width: 100%;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 0.6rem 0.8rem;
+  color: var(--tt-text-primary, white);
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
 }
 
-.tt-editor-col-actions {
-  width: 110px;
+.tt-editor-table .tt-input:focus,
+.tt-editor-table .tt-select:focus {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--tt-accent, #00ffa3);
+  box-shadow: 0 0 0 4px rgba(0, 255, 163, 0.1);
+  outline: none;
 }
 
-.tt-editor-actions {
-  text-align: right;
-  white-space: nowrap;
+.tt-editor-table .tt-select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 30px;
 }
 
-.tt-editor-add-btn {
-  width: 100%;
-  display: inline-flex;
-  justify-content: center;
-  margin-top: 14px;
+/* Light Mode Specific Overrides */
+[data-theme="light"] .tt-editor-table-wrap {
+  background: #ffffff;
+  border-color: rgba(16, 185, 129, 0.2);
 }
+
+[data-theme="light"] .tt-editor-table thead th {
+  background: #f8fafc;
+  color: #64748b;
+  border-bottom-color: #f1f5f9;
+}
+
+[data-theme="light"] .tt-editor-table tbody tr:hover {
+  background: #f0fdfa;
+}
+
+[data-theme="light"] .tt-editor-table .tt-input,
+[data-theme="light"] .tt-editor-table .tt-select {
+  background: #f1f5f9;
+  color: #1e293b;
+  border-color: #e2e8f0;
+}
+
+[data-theme="light"] .tt-editor-table .tt-input:focus,
+[data-theme="light"] .tt-editor-table .tt-select:focus {
+  background: #ffffff;
+  border-color: #10b981;
+}
+
+/* Column Widths */
+.tt-editor-table th:nth-child(1), .tt-editor-table td:nth-child(1) { width: 25%; }
+.tt-editor-table th:nth-child(2), .tt-editor-table td:nth-child(2) { width: 15%; }
+.tt-editor-table th:nth-child(3), .tt-editor-table td:nth-child(3) { width: 20%; }
+.tt-editor-table th:nth-child(4), .tt-editor-table td:nth-child(4) { width: 20%; }
+.tt-editor-table th:nth-child(5), .tt-editor-table td:nth-child(5) { width: 15%; }
+.tt-editor-table th:nth-child(6), .tt-editor-table td:nth-child(6) { width: 5%; }
+
 

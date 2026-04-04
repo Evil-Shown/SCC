@@ -104,6 +104,12 @@ const Notifications = () => {
   };
 
   const hasNotifications = Object.values(groupedNotifications).some(group => group.length > 0);
+  const summaryCards = [
+    { label: "Unread", value: unreadCount, hint: unreadCount > 0 ? "Needs attention" : "All clear", accent: "summary-unread" },
+    { label: "Today", value: groupedNotifications.today.length, hint: "Fresh updates", accent: "summary-today" },
+    { label: "This Week", value: groupedNotifications.thisWeek.length + groupedNotifications.yesterday.length, hint: "Recent activity", accent: "summary-week" },
+    { label: "Total", value: notifications.length, hint: "All notifications", accent: "summary-total" },
+  ];
 
   return (
     <div className="notifications-page">
@@ -142,6 +148,18 @@ const Notifications = () => {
           )}
         </div>
       </header>
+
+      {!loading && (
+        <section className="notifications-summary" aria-label="Notification summary">
+          {summaryCards.map((card) => (
+            <article key={card.label} className={`summary-card ${card.accent}`}>
+              <span className="summary-label">{card.label}</span>
+              <strong className="summary-value">{card.value}</strong>
+              <span className="summary-hint">{card.hint}</span>
+            </article>
+          ))}
+        </section>
+      )}
 
       {/* Filter bar */}
       {showFilters && (

@@ -6,7 +6,9 @@ import {
   logout,
   getMe,
   updateProfile,
-  deleteAccount
+  deleteAccount,
+  startGoogleAuth,
+  handleGoogleAuthCallback
 } from "../controllers/authController.js";
 import { authenticate } from "../middlewares/auth.js";
 import { validateRegister, validateLogin } from "../middlewares/validation.js";
@@ -14,6 +16,8 @@ import { validateRegister, validateLogin } from "../middlewares/validation.js";
 const router = express.Router();
 
 // Public routes
+router.get("/google/start", startGoogleAuth);
+router.get("/google/callback", handleGoogleAuthCallback);
 router.post("/register", validateRegister, register);
 router.post("/login", validateLogin, login);
 router.post("/refresh", refreshAccessToken);

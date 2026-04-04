@@ -26,8 +26,8 @@ const ExamLogin = () => {
 
             if (response.data.success) {
                 // Exam Mode එකට අදාළව Token එක වෙනම තබාගැනීම හෝ සාමාන්‍ය Token එකම යාවත්කාලීන කිරීම
-                localStorage.setItem('accessToken', response.data.data.accessToken);
-                localStorage.setItem('refreshToken', response.data.data.refreshToken);
+                sessionStorage.setItem('accessToken', response.data.data.accessToken);
+                sessionStorage.setItem('refreshToken', response.data.data.refreshToken);
                 localStorage.setItem('user', JSON.stringify(response.data.data.user));
 
                 // සාර්ථකව ලොග් වූ පසු Exam Mode Main Page එකට Redirect කිරීම

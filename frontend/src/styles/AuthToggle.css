@@ -467,17 +467,18 @@
 /* Social Login */
 .social-login {
   display: flex;
+  flex-direction: column;
   gap: 12px;
   margin-bottom: 30px;
 }
 
 .social-btn {
-  flex: 1;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  padding: 12px;
+  padding: 12px 14px;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   background: white;
@@ -500,13 +501,52 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-.social-btn.google:hover { color: #ea4335; }
-.social-btn.github:hover { color: #333; }
-.social-btn.linkedin:hover { color: #0077b5; }
+.social-btn--primary {
+  border: 1px solid rgba(8, 98, 71, 0.24);
+  background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%);
+  color: #065f46;
+  font-weight: 600;
+}
+
+.social-btn--primary:hover:not(:disabled) {
+  border-color: #086247;
+  background: linear-gradient(135deg, #ffffff 0%, #dcfce7 100%);
+  color: #065f46;
+  box-shadow: 0 8px 20px rgba(8, 98, 71, 0.14);
+}
+
+.social-btn.google svg {
+  color: #ea4335;
+}
+
+.social-btn--disabled {
+  justify-content: flex-start;
+  color: #9ca3af;
+  background: #f8fafc;
+  border-color: #e5e7eb;
+}
+
+.social-btn--disabled svg {
+  color: #94a3b8;
+}
+
+.social-btn__badge {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b7280;
+  background: #e5e7eb;
+  padding: 3px 8px;
+  border-radius: 999px;
+}
 
 .social-btn:disabled {
-  opacity: 0.5;
+  opacity: 1;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 /* Divider */
@@ -1111,7 +1151,7 @@
   }
   
   .social-login {
-    flex-direction: column;
+    gap: 10px;
   }
   
   .form-row-modern {

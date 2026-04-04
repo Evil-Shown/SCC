@@ -45,18 +45,43 @@
 }
 
 /* Light mode overrides - Adjusted for "Frosted Forest" theme */
-html[data-theme="light"] .tt-root {
-  --tt-bg-deep: #f8fafc;
+[data-theme="light"] .tt-root {
+  --tt-bg-deep: #f5f8fa;
   --tt-bg-surface: #ffffff;
-  --tt-bg-card: rgba(255, 255, 255, 0.8);
+  --tt-bg-card: rgba(255, 255, 255, 0.9);
   --tt-accent: #059669; 
   --tt-accent-light: #10b981;
   --tt-accent-glow: rgba(5, 150, 105, 0.1);
-  --tt-border: rgba(6, 78, 59, 0.08);
-  --tt-text-primary: #064e3b;
-  --tt-text-secondary: #0f172a;
+  --tt-border: rgba(6, 78, 59, 0.1);
+  --tt-text-primary: #0f172a;
+  --tt-text-secondary: #334155;
   --tt-text-muted: #64748b;
-  --tt-shadow: 0 20px 40px rgba(6, 78, 59, 0.06);
+  --tt-shadow: 0 10px 40px rgba(0, 0, 0, 0.05);
+}
+
+/* Light Mode Transitions */
+[data-theme="light"] .tt-hero {
+  background: linear-gradient(165deg, #f0fdfa 0%, #ffffff 100%) !important;
+  border-color: rgba(16, 185, 129, 0.2);
+  box-shadow: 0 20px 60px rgba(16, 185, 129, 0.08);
+}
+
+[data-theme="light"] .tt-hero::before {
+  background: radial-gradient(circle at 100% 0%, rgba(16, 185, 129, 0.1) 0%, transparent 60%);
+}
+
+[data-theme="light"] .tt-hero__title {
+  background: linear-gradient(135deg, #1e293b 40%, #059669);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+[data-theme="light"] .tt-stat__val {
+  color: #1e293b;
+}
+
+[data-theme="light"] .tt-stat__lbl {
+  color: #64748b;
 }
 
 /* Base Layout */

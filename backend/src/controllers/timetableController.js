@@ -4,6 +4,8 @@ import Timetable from "../models/Timetable.js";
 import CalendarSync from "../models/CalendarSync.js";
 import { generateOptimizedSchedule, findScheduleConflicts } from "../utils/timetableScheduler.js";
 import { assertOpenAIConfigured, createChatCompletion, getChatCompletionText } from "../config/openai.js";
+import { getGoogleAuthRedirectUri, getClientAppUrl } from "../config/googleOAuth.js";
+import { upsertGoogleUserSession } from "../services/googleAuthFlow.js";
 import fs from "fs/promises";
 import Tesseract from "tesseract.js";
 import { PDFParse } from "pdf-parse";
@@ -371,6 +373,23 @@ const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_CALENDAR_EVENTS_URL = "https://www.googleapis.com/calendar/v3/calendars/primary/events";
 
+const parseGoogleState = (state) => {
+  if (!state) {
+    return { mode: "timetable" };
+  }
+
+  try {
+    const decoded = JSON.parse(Buffer.from(String(state), "base64url").toString("utf8"));
+    if (decoded && typeof decoded === "object") {
+      return decoded;
+    }
+  } catch {
+    // Legacy timetable flow used a raw userId string.
+  }
+
+  return { mode: "timetable", userId: String(state) };
+};
+
 /**
  * Get Google OAuth URL for Calendar (uses GOOGLE_CLIENT_ID from .env)
  * GET /api/timetable/google-auth-url
@@ -378,8 +397,6 @@ const GOOGLE_CALENDAR_EVENTS_URL = "https://www.googleapis.com/calendar/v3/calen
 export const getGoogleAuthUrl = async (req, res) => {
   try {
     const clientId = process.env.GOOGLE_CLIENT_ID;
-    const apiUrl = (process.env.API_URL || `http://localhost:${process.env.PORT || 5000}`).replace(/\/$/, "");
-    const clientUrl = (process.env.CLIENT_URL || "http://localhost:5173").replace(/\/$/, "");
 
     if (!clientId) {
       return res.status(500).json({
@@ -393,15 +410,13 @@ export const getGoogleAuthUrl = async (req, res) => {
     //
     // Use a dedicated env override so we can match whatever URI you registered
     // (localhost vs 127.0.0.1, http vs https, custom port, etc).
-    const redirectUri =
-      process.env.GOOGLE_REDIRECT_URI?.replace(/\/$/, "") ||
-      `${apiUrl}/api/timetable/google-callback`;
+    const redirectUri = getGoogleAuthRedirectUri(req);
 
     // Helpful for debugging OAuth flow mismatch.
     console.log("[Google OAuth Callback] redirectUri =", redirectUri);
 
     console.log("[Google OAuth] redirectUri =", redirectUri);
-    const state = String(req.user._id);
+    const state = Buffer.from(JSON.stringify({ mode: "timetable", userId: String(req.user._id) }), "utf8").toString("base64url");
     const url = `${GOOGLE_AUTH_URL}?${new URLSearchParams({
       client_id: clientId,
       redirect_uri: redirectUri,
@@ -531,8 +546,10 @@ export const getGoogleEvents = async (req, res) => {
 export const googleCallback = async (req, res) => {
   try {
     const { code, state } = req.query;
-    const clientUrl = (process.env.CLIENT_URL || "http://localhost:5173").replace(/\/$/, "");
-    const apiUrl = (process.env.API_URL || `http://localhost:${process.env.PORT || 5000}`).replace(/\/$/, "");
+    const clientUrl = getClientAppUrl();
+    const authCallbackUrl = `${clientUrl}/auth/google/callback`;
+    const parsedState = parseGoogleState(state);
+    const isAuthFlow = parsedState.mode === "login" || parsedState.mode === "register";
 
     console.log(
       "[Google callback] received:",
@@ -540,17 +557,16 @@ export const googleCallback = async (req, res) => {
     );
 
     if (!code || !state) {
-      return res.redirect(`${clientUrl}/timetable?google_error=missing_code_or_state`);
+      return res.redirect(isAuthFlow ? `${authCallbackUrl}#google_error=missing_code_or_state` : `${clientUrl}/timetable?google_error=missing_code_or_state`);
     }
+
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
     if (!clientId || !clientSecret) {
-      return res.redirect(`${clientUrl}/timetable?google_error=server_not_configured`);
+      return res.redirect(isAuthFlow ? `${authCallbackUrl}#google_error=server_not_configured` : `${clientUrl}/timetable?google_error=server_not_configured`);
     }
 
-    const redirectUri =
-      process.env.GOOGLE_REDIRECT_URI?.replace(/\/$/, "") ||
-      `${apiUrl}/api/timetable/google-callback`;
+    const redirectUri = getGoogleAuthRedirectUri(req);
     const tokenRes = await axios.post(
       GOOGLE_TOKEN_URL,
       new URLSearchParams({
@@ -576,7 +592,31 @@ export const googleCallback = async (req, res) => {
     const refreshToken = tokenRes.data?.refresh_token;
 
     if (!accessToken) {
-      return res.redirect(`${clientUrl}/timetable?google_error=no_token`);
+      return res.redirect(isAuthFlow ? `${authCallbackUrl}#google_error=no_token` : `${clientUrl}/timetable?google_error=no_token`);
+    }
+
+    const profileRes = await axios.get("https://www.googleapis.com/oauth2/v2/userinfo", {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+
+    const profile = profileRes.data;
+
+    if (isAuthFlow) {
+      try {
+        const session = await upsertGoogleUserSession({ profile, mode: parsedState.mode });
+        const payload = new URLSearchParams({
+          accessToken: session.accessToken,
+          refreshToken: session.refreshToken,
+          user: JSON.stringify(session.userResponse),
+          mode: session.mode,
+          googleNewUser: session.isNewUser ? "1" : "0"
+        });
+
+        return res.redirect(`${authCallbackUrl}#${payload.toString()}`);
+      } catch (authError) {
+        console.error("Google auth session error:", authError.message);
+        return res.redirect(`${authCallbackUrl}#google_error=auth_session_failed`);
+      }
     }
 
     // Google may not return refresh_token after the first consent.
@@ -584,13 +624,15 @@ export const googleCallback = async (req, res) => {
     const update = { lastSyncedAt: new Date() };
     if (refreshToken) update.googleRefreshToken = refreshToken;
 
-    await CalendarSync.findOneAndUpdate({ user: state }, update, { upsert: true, new: true });
+    await CalendarSync.findOneAndUpdate({ user: parsedState.userId || String(state) }, update, { upsert: true, new: true });
 
     return res.redirect(`${clientUrl}/timetable?google_connected=1`);
   } catch (error) {
     console.error("Google callback error:", error?.response?.data || error.message);
-    const clientUrl = (process.env.CLIENT_URL || "http://localhost:5173").replace(/\/$/, "");
-    return res.redirect(`${clientUrl}/timetable?google_error=exchange_failed`);
+    const clientUrl = getClientAppUrl();
+    const parsedState = parseGoogleState(req.query?.state);
+    const isAuthFlow = parsedState.mode === "login" || parsedState.mode === "register";
+    return res.redirect(isAuthFlow ? `${clientUrl}/auth/google/callback#google_error=exchange_failed` : `${clientUrl}/timetable?google_error=exchange_failed`);
   }
 };
 

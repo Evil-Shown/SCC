@@ -41,7 +41,8 @@ export const validateRegister = (req, res, next) => {
  * Validate login input
  */
 export const validateLogin = (req, res, next) => {
-  const { email, password } = req.body;
+  const email = String(req.body.email || "").trim();
+  const { password } = req.body;
   const errors = [];
 
   if (!email) {

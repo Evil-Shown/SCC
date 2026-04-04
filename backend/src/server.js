@@ -17,20 +17,20 @@ import fileRoutes from "./routes/fileRoutes.js";
 import notesRoutes from "./routes/notesRoutes.js";
 import kuppiRoutes from "./routes/kuppiRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
+import examRoutes from "./routes/examRoutes.js";
+
+
+import studyPilotRoutes from "./routes/studyPilotRoutes.js"; 
+
 import meetupRoutes from "./routes/meetupRoutes.js";
 import timetableRoutes from "./routes/timetableRoutes.js";
 import aiRoutes from "./routes/aiRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
-import examRoutes from "./routes/examRoutes.js";
-import studyPilotRoutes from "./routes/studyPilotRoutes.js"; 
 import { startMeetupCancellationJob } from "./jobs/meetupJobs.js";
 
 const app = express();
 const server = http.createServer(app);
-app.locals.dbConnected = false;
-app.locals.dbError = null;
 
-// Middleware
 const allowedOrigins = [
   process.env.CLIENT_URL || "http://localhost:5173",
   "http://localhost:5173",
@@ -38,17 +38,21 @@ const allowedOrigins = [
   "http://localhost:5175",
 ];
 
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  credentials: true
-}));
+const corsOriginHandler = (origin, callback) => {
+  if (!origin || allowedOrigins.includes(origin)) {
+    callback(null, true);
+  } else {
+    callback(new Error("Not allowed by CORS"));
+  }
+};
 
+// Middleware
+app.use(
+  cors({
+    origin: corsOriginHandler,
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -63,11 +67,21 @@ app.get("/", (req, res) => {
   res.json({
     success: true,
     message: "Smart Campus Companion API",
-    version: "1.0.0"
+    version: "1.0.0",
   });
 });
 
-// Mount API Routes (ඔබගේ සියලුම Routes මෙහි සුරක්ෂිතව ඇත)
+// Registering Routes
+app.get("/api/health", (req, res) => {
+  res.json({
+    success: true,
+    server: "ok",
+    database: "connected",
+    environment: process.env.NODE_ENV || "development",
+  });
+});
+
+// API Routes (require DB)
 app.use("/api/auth", authRoutes);
 app.use("/api/groups", groupRoutes);
 app.use("/api", messageRoutes);
@@ -75,21 +89,21 @@ app.use("/api", fileRoutes);
 app.use("/api", notesRoutes);
 app.use("/api", kuppiRoutes);
 app.use("/api", notificationRoutes);
+app.use('/api/exams', examRoutes);
+
+
+app.use('/api/study-pilot', studyPilotRoutes);
+
 app.use("/api", meetupRoutes);
 app.use("/api", timetableRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/admin", adminRoutes);
-app.use('/api/exams', examRoutes);
-
-// Study Pilot Route
-app.use('/api/study-pilot', studyPilotRoutes);
-
 
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({
     success: false,
-    message: "Route not found"
+    message: "Route not found",
   });
 });
 
@@ -97,38 +111,34 @@ app.use((req, res) => {
 app.use((err, req, res, next) => {
   console.error("Error:", err);
 
-  // Multer errors
   if (err instanceof multer.MulterError) {
     if (err.code === "LIMIT_FILE_SIZE") {
       return res.status(400).json({
         success: false,
-        message: "File too large. Maximum size is 50MB"
+        message: "File too large. Maximum size is 50MB",
       });
     }
     return res.status(400).json({
       success: false,
-      message: err.message
+      message: err.message,
     });
   }
 
   res.status(err.status || 500).json({
     success: false,
-    message: err.message || "Internal server error"
+    message: err.message || "Internal server error",
   });
 });
 
-// ==========================================
-// 💡 Socket.io setup (නිවැරදිව ක්‍රියාත්මක වේ)
-// ==========================================
+// Socket.io — same origin policy as Express (works with multiple dev ports)
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    origin: corsOriginHandler,
     credentials: true,
-    methods: ["GET", "POST"]
-  }
+    methods: ["GET", "POST"],
+  },
 });
 
-// Socket.io connection handling
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
@@ -164,14 +174,14 @@ const startJobs = async () => {
       const result = await KuppiPost.updateMany(
         {
           isArchived: false,
-          eventDate: { $lt: now }
+          eventDate: { $lt: now },
         },
         {
           $set: {
             isArchived: true,
             archivedAt: now,
-            archivedReason: "event-expired"
-          }
+            archivedReason: "event-expired",
+          },
         }
       );
 
@@ -186,55 +196,39 @@ const startJobs = async () => {
   await archiveExpiredKuppiPostsJob();
   setInterval(archiveExpiredKuppiPostsJob, 60 * 1000);
 
-  // Start meetup auto-cancellation job
   startMeetupCancellationJob();
 };
 
-// ==========================================
-// 💡 Database Initialization (Original Team Logic)
-// ==========================================
-const initDb = async () => {
-  const requireDb = process.env.REQUIRE_DB === "true" || (process.env.NODE_ENV || "development") === "production";
-  const retryMs = Number(process.env.DB_RETRY_MS || 30000);
-
+/**
+ * Connect to MongoDB Atlas first, then start the HTTP server.
+ * No API is served until the database is connected.
+ */
+const startServer = async () => {
   try {
     await connectDB();
-    app.locals.dbConnected = true;
-    app.locals.dbError = null;
-    console.log("Database connected.");
+
     await startJobs();
+
+    const PORT = process.env.PORT || 5000;
+    server
+      .listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+        console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
+      })
+      .on("error", (err) => {
+        if (err.code === "EADDRINUSE") {
+          console.error(
+            `Port ${PORT} is already in use. Kill the other process or change PORT in .env`
+          );
+        } else {
+          console.error("Server error:", err.message);
+        }
+        process.exit(1);
+      });
   } catch (error) {
-    app.locals.dbConnected = false;
-    app.locals.dbError = error?.message || String(error);
-
-    if (requireDb) {
-      console.error(app.locals.dbError);
-      process.exit(1);
-    }
-
-    console.error("DB connection failed; starting server without DB. It will keep retrying.");
-    setTimeout(initDb, retryMs);
+    console.error(error.message);
+    process.exit(1);
   }
 };
 
-// ==========================================
-// 💡 Server Start
-// ==========================================
-const PORT = process.env.PORT || 5000;
-
-server
-  .listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
-  })
-  .on("error", (err) => {
-    if (err.code === "EADDRINUSE") {
-      console.error(`Port ${PORT} is already in use. Kill the other process or change PORT in .env`);
-    } else {
-      console.error("Server error:", err.message);
-    }
-    process.exit(1);
-  });
-
-// 💡 මෙහි තිබූ startServer(); යන වැරදි කොටස ඉවත් කර නිවැරදි initDb() ඇතුළත් කර ඇත.
-initDb();
+startServer();

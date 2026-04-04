@@ -1,8 +1,9 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import mongoose from "mongoose";
+import connectDB from "./config/db.js";
 import User from "./models/User.js";
+import mongoose from "mongoose";
 
 const MONGO_URI = process.env.MONGO_URI;
 
@@ -18,7 +19,7 @@ const seedUser = {
 
 async function seed() {
     try {
-        await mongoose.connect(MONGO_URI);
+        await connectDB();
         console.log("✅ MongoDB Connected");
 
         // Remove existing test user if exists

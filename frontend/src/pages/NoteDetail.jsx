@@ -1,13 +1,17 @@
 import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { useNavigate, useParams, Link } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import {
   ArrowLeft,
   ThumbsUp,
   MessageSquare,
   ExternalLink,
   Send,
-  ChevronRight,
+  UserRound,
+  BookOpen,
+  GraduationCap,
+  CalendarDays,
+  Tag,
 } from "lucide-react";
 import {
   reactToNoteAction,
@@ -16,13 +20,13 @@ import {
   fetchNotes,
 } from "../features/notes/notesSlice";
 import LoadingSpinner from "../components/LoadingSpinner";
-import NotificationBell from "../components/NotificationBell";
 import "../styles/Notes.css";
 
 const NoteDetail = () => {
   const { noteId } = useParams();
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useSelector((state) => state.auth);
   const { notes, comments, commentsLoading } = useSelector(
     (state) => state.notes
@@ -54,12 +58,16 @@ const NoteDetail = () => {
     setSubmitting(false);
   };
 
+  const handleBack = () => {
+    navigate(location.state?.from || "/notes");
+  };
+
   if (!note) {
     return (
       <div className="notes-page">
         <header className="notes-header">
           <div className="notes-header-left">
-            <button onClick={() => navigate("/notes")} className="back-btn">
+            <button onClick={handleBack} className="back-btn">
               <ArrowLeft size={20} />
             </button>
             <h1>Note Details</h1>
@@ -71,97 +79,120 @@ const NoteDetail = () => {
   }
 
   const authorName = note.userId?.name || "Anonymous";
+  const publishedOn = new Date(note.createdAt).toLocaleDateString();
+  const likesCount = note.reactionsCount?.like || note.reactionsCount?.likes || 0;
 
   return (
     <div className="notes-page">
       <div className="pr-canvas" />
 
-      <header className="dashboard-header">
-        <div className="dashboard-header__inner">
-          <Link to="/dashboard" className="dashboard-logo">
-            <span className="dashboard-logo__text">Neural Nexus</span>
-          </Link>
-          <div className="dashboard-actions">
-            <NotificationBell />
-            <button
-              className="dashboard-profile-btn"
-              onClick={() => navigate("/profile")}
-            >
-              <span className="dashboard-avatar">
-                {user?.name?.charAt(0) || "U"}
-              </span>
-            </button>
-          </div>
-        </div>
-      </header>
-
       <div className="notes-container">
-        <div className="pr-topbar">
-          <div className="pr-topbar__left">
-            <button className="pr-back-btn" onClick={() => navigate("/notes")} title="Go Back">
+        <section className="notes-hero notes-hero--detail">
+          <div className="notes-hero-content">
+            <button className="notes-hero-back" onClick={handleBack} title="Go Back">
               <ArrowLeft size={20} />
             </button>
-            <div className="pr-topbar__breadcrumb">
-              <Link to="/dashboard">Dashboard</Link>
-              <ChevronRight size={16} style={{ color: 'var(--n-text-muted)' }} />
-              <Link to="/notes">Notes</Link>
-              <ChevronRight size={16} style={{ color: 'var(--n-text-muted)' }} />
-              <span className="pr-topbar__page">{note.title}</span>
-            </div>
-          </div>
-          <div className="pr-topbar__meta">
-            <span>Published on {new Date(note.createdAt).toLocaleDateString()}</span>
-          </div>
-        </div>
 
-        <div className="note-detail-container">
-          <div className="note-detail-card">
-            <div className="note-detail-header">
-              <div className="note-detail-avatar">
-                <span>{authorName.charAt(0).toUpperCase()}</span>
+            <div className="notes-hero-main">
+              <div className="notes-hero-text">
+                <p className="notes-hero__role">Knowledge Hub Entry</p>
+                <h1 className="notes-hero-title notes-hero-title--detail">{note.title}</h1>
+                <p className="notes-hero-subtitle">
+                  Published by {authorName} on {publishedOn}
+                </p>
               </div>
-              <div>
-                <h1 className="note-detail-title">{note.title}</h1>
-                <div className="note-detail-meta">
-                  <span>By {authorName}</span>
-                  {note.subject && <span>• {note.subject}</span>}
-                  {note.year && <span>• Year {note.year}</span>}
+
+              <div className="notes-hero-metrics notes-hero-metrics--detail">
+                <div className="hero-metric-card">
+                  <span className="hero-metric-label">Subject</span>
+                  <strong className="hero-metric-value">{note.subject || "General"}</strong>
+                </div>
+                <div className="hero-metric-card">
+                  <span className="hero-metric-label">Year</span>
+                  <strong className="hero-metric-value">{note.year ? `Y${note.year}` : "All"}</strong>
+                </div>
+                <div className="hero-metric-card">
+                  <span className="hero-metric-label">Comments</span>
+                  <strong className="hero-metric-value">{note.commentsCount || 0}</strong>
                 </div>
               </div>
             </div>
+          </div>
+        </section>
 
-            <div className="note-detail-content">
-              {note.description}
-            </div>
-
-            {note.tags && note.tags.length > 0 && (
-              <div className="note-detail-tags">
-                {note.tags.map((tag, i) => (
-                  <span key={i} className="note-detail-tag">{tag}</span>
-                ))}
+        <div className="note-detail-container">
+          <div className="note-detail-layout">
+            <article className="note-detail-card">
+              <div className="note-detail-header">
+                <div className="note-detail-avatar">
+                  <span>{authorName.charAt(0).toUpperCase()}</span>
+                </div>
+                <div>
+                  <h1 className="note-detail-title">{note.title}</h1>
+                  <div className="note-detail-meta">
+                    <span><UserRound size={14} /> {authorName}</span>
+                    {note.subject && <span><BookOpen size={14} /> {note.subject}</span>}
+                    {note.year && <span><GraduationCap size={14} /> Year {note.year}</span>}
+                    <span><CalendarDays size={14} /> {publishedOn}</span>
+                  </div>
+                </div>
               </div>
-            )}
 
-            <div className="note-detail-actions">
-              {note.onedriveLink && (
-                <a
-                  href={note.onedriveLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="note-detail-btn primary"
-                >
-                  <ExternalLink size={18} />
-                  Access Resource Files
-                </a>
+              {note.tags && note.tags.length > 0 && (
+                <div className="note-detail-tags">
+                  {note.tags.map((tag, i) => (
+                    <span key={i} className="note-detail-tag"><Tag size={13} /> {tag}</span>
+                  ))}
+                </div>
               )}
-              <button
-                className={`note-detail-btn secondary ${note._userReaction === "like" ? "active" : ""}`}
-                onClick={() => handleReaction("like")}
-              >
-                <ThumbsUp size={18} />
-                <span>{note.reactionsCount?.likes || 0} Helpful</span>
-              </button>
-            </div>
+
+              <div className="note-detail-content">
+                {note.description}
+              </div>
+
+              <div className="note-detail-actions">
+                {note.onedriveLink && (
+                  <a
+                    href={note.onedriveLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="note-detail-btn primary"
+                  >
+                    <ExternalLink size={18} />
+                    Access Resource Files
+                  </a>
+                )}
+                <button
+                  className={`note-detail-btn secondary ${note._userReaction === "like" ? "active" : ""}`}
+                  onClick={() => handleReaction("like")}
+                >
+                  <ThumbsUp size={18} />
+                  <span>{likesCount} Helpful</span>
+                </button>
+              </div>
+            </article>
+
+            <aside className="note-insight-panel">
+              <h3>Insight Panel</h3>
+              <div className="note-insight-grid">
+                <div className="note-insight-item">
+                  <span className="label">Author</span>
+                  <strong>{authorName}</strong>
+                </div>
+                <div className="note-insight-item">
+                  <span className="label">Subject</span>
+                  <strong>{note.subject || "General"}</strong>
+                </div>
+                <div className="note-insight-item">
+                  <span className="label">Year Level</span>
+                  <strong>{note.year ? `Year ${note.year}` : "All"}</strong>
+                </div>
+                <div className="note-insight-item">
+                  <span className="label">Comments</span>
+                  <strong>{note.commentsCount || 0}</strong>
+                </div>
+              </div>
+            </aside>
           </div>
 
           <div className="comments-section">
@@ -190,8 +221,8 @@ const NoteDetail = () => {
 
             <div className="comments-list">
               {noteComments.map((comment, index) => (
-                <div 
-                  key={comment._id} 
+                <div
+                  key={comment._id}
                   className="comment-item"
                   style={{ animationDelay: `${index * 0.1}s` }}
                 >

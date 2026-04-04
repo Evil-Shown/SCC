@@ -617,18 +617,18 @@ svg.lucide,
   justify-content: center;
   width: 44px;
   height: 44px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(15, 23, 42, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: 14px;
   cursor: pointer;
   transition: all 0.3s ease;
-  color: var(--text-secondary, #e2e8f0);
+  color: #e2e8f0;
 }
 
 .uiverse-bell-btn:hover {
-  background: rgba(16, 185, 129, 0.1);
-  border-color: rgba(16, 185, 129, 0.3);
-  color: #10b981;
+  background: rgba(15, 23, 42, 0.14);
+  border-color: rgba(148, 163, 184, 0.3);
+  color: #ffffff;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
@@ -655,7 +655,7 @@ svg.lucide,
   min-width: 20px;
   height: 20px;
   padding: 0 5px;
-  background: linear-gradient(135deg, #22C55E, #16a34a);
+  background: linear-gradient(135deg, #22c55e, #16a34a);
   color: #fff;
   font-size: 0.7rem;
   font-weight: 700;
@@ -1451,6 +1451,241 @@ html[data-theme="light"] .uiverse-loader-text {
 
 html[data-theme="light"] .uiverse-progress {
   background: rgba(15, 23, 42, 0.06);
+}
+
+/* Notification bell dropdown */
+.notification-bell-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.notification-dropdown {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  width: min(380px, calc(100vw - 1rem));
+  max-height: 480px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 1600;
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(4, 13, 8, 0.98), rgba(7, 18, 12, 0.95));
+  border: 1px solid rgba(34, 197, 94, 0.16);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+}
+
+.notification-dropdown-header,
+.notification-dropdown-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(6, 78, 59, 0.24));
+  border-bottom: 1px solid rgba(34, 197, 94, 0.12);
+}
+
+.notification-dropdown-footer {
+  border-top: 1px solid rgba(34, 197, 94, 0.12);
+  border-bottom: none;
+  justify-content: center;
+}
+
+.notification-dropdown-header span {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-primary, #f1f5f9);
+}
+
+.notification-dropdown-body {
+  max-height: 360px;
+  overflow-y: auto;
+  padding: 0.35rem;
+  background:
+    radial-gradient(circle at top right, rgba(16, 185, 129, 0.08), transparent 40%),
+    rgba(8, 16, 11, 0.85);
+}
+
+.notification-dropdown-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.85rem 0.9rem;
+  border-radius: 16px;
+  transition: all 0.2s ease;
+}
+
+.notification-dropdown-item:hover {
+  background: rgba(16, 185, 129, 0.14);
+  transform: translateX(2px);
+}
+
+.notification-dropdown-item.unread {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.18);
+}
+
+.notif-icon-sm {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: rgba(16, 185, 129, 0.09);
+  border: 1px solid rgba(34, 197, 94, 0.14);
+}
+
+.notif-dropdown-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1;
+}
+
+.notif-dropdown-title {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--text-primary, #f1f5f9);
+}
+
+.notif-dropdown-msg,
+.notif-dropdown-time {
+  font-size: 0.74rem;
+  color: var(--text-secondary, #94a3b8);
+  line-height: 1.35;
+}
+
+.notif-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  margin-top: 0.35rem;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.12);
+}
+
+.notification-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  min-height: 180px;
+  color: var(--text-secondary, #94a3b8);
+}
+
+.notification-empty p {
+  margin: 0;
+}
+
+.notification-dropdown-footer button,
+.mark-all-btn {
+  border: none;
+  cursor: pointer;
+}
+
+.notification-dropdown-footer button {
+  background: linear-gradient(135deg, #10b981, #22c55e);
+  color: #04110c;
+  border-radius: 999px;
+  padding: 0.55rem 1rem;
+  font-weight: 800;
+  box-shadow: 0 8px 18px rgba(34, 197, 94, 0.18);
+}
+
+.notification-dropdown-footer button:hover {
+  filter: brightness(1.04);
+  transform: translateY(-1px);
+}
+
+.mark-all-btn {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  color: #bbf7d0;
+  border-radius: 999px;
+  padding: 0.45rem 0.8rem;
+  font-weight: 700;
+}
+
+.mark-all-btn:hover {
+  background: rgba(16, 185, 129, 0.18);
+}
+
+html[data-theme="light"] .uiverse-bell-btn {
+  background: rgba(255, 255, 255, 0.82);
+  border-color: rgba(100, 116, 139, 0.24);
+  color: #475569;
+}
+
+html[data-theme="light"] .uiverse-bell-btn:hover {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(100, 116, 139, 0.34);
+  color: #334155;
+}
+
+html[data-theme="light"] .notification-dropdown {
+  background: linear-gradient(180deg, rgba(236, 253, 245, 0.98), rgba(240, 253, 244, 0.96));
+  border-color: rgba(16, 185, 129, 0.16);
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.12);
+}
+
+html[data-theme="light"] .notification-dropdown-header,
+html[data-theme="light"] .notification-dropdown-footer {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(34, 197, 94, 0.08));
+  border-color: rgba(16, 185, 129, 0.12);
+}
+
+html[data-theme="light"] .notification-dropdown-body {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+html[data-theme="light"] .notification-dropdown-item:hover {
+  background: rgba(16, 185, 129, 0.08);
+}
+
+html[data-theme="light"] .notification-dropdown-item.unread {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.16);
+}
+
+html[data-theme="light"] .notif-dropdown-title {
+  color: #0f172a;
+}
+
+html[data-theme="light"] .notif-dropdown-msg,
+html[data-theme="light"] .notif-dropdown-time,
+html[data-theme="light"] .notification-empty {
+  color: #475569;
+}
+
+html[data-theme="light"] .notification-dropdown {
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.12);
+}
+
+html[data-theme="light"] .notification-dropdown-header,
+html[data-theme="light"] .notification-dropdown-footer {
+  background: rgba(255, 255, 255, 0.7);
+  border-color: rgba(15, 23, 42, 0.08);
+}
+
+html[data-theme="light"] .notification-dropdown-body {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+html[data-theme="light"] .notification-dropdown-item:hover {
+  background: rgba(16, 185, 129, 0.08);
+}
+
+@media (max-width: 768px) {
+  .notification-dropdown {
+    width: min(340px, calc(100vw - 1rem));
+    right: -0.25rem;
+  }
 }
 
 html[data-theme="light"] .uiverse-switch {

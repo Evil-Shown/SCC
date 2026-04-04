@@ -1,5 +1,10 @@
 import api from "./api";
 
+export const getGoogleAuthStartUrl = (mode = "login") => {
+  const baseUrl = api.defaults.baseURL || "http://localhost:5000";
+  return `${baseUrl}/api/auth/google/start?mode=${encodeURIComponent(mode)}`;
+};
+
 /**
  * Register a new user
  * Backend returns: { success, message, data: { user, accessToken, refreshToken } }

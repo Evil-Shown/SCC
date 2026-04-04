@@ -79,8 +79,15 @@ export const login = createAsyncThunk(
       const response = await authService.login(credentials);
       return response.data;
     } catch (error) {
+      const data = error.response?.data;
+      const fromErrors =
+        Array.isArray(data?.errors) && data.errors.length
+          ? data.errors.join(". ")
+          : null;
       return rejectWithValue(
-        error.response?.data?.message || "Login failed. Please check your credentials."
+        fromErrors ||
+          data?.message ||
+          "Login failed. Please check your credentials."
       );
     }
   }

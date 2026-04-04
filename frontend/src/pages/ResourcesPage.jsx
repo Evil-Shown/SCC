@@ -252,14 +252,14 @@ const makeV = (isDark) => ({
 
 const makeS = (V) => ({
   page: { background: V.dark, color: V.textPrimary, fontFamily: "'Inter',sans-serif", minHeight: "100vh", paddingTop: 0 },
-  navWrap: { position: "fixed", top: 0, left: 0, right: 0, zIndex: 120, backdropFilter: "blur(14px)", background: V.navGlass, borderBottom: `1px solid ${V.border}` },
-  navInner: { maxWidth: 1280, margin: "0 auto", padding: "0.85rem clamp(1rem,4vw,2rem)", display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: "0.75rem" },
-  navBrand: { color: V.textPrimary, textDecoration: "none", fontWeight: 800, fontSize: "1.08rem", letterSpacing: "-0.02em", whiteSpace: "nowrap" },
-  navCenter: { justifySelf: "center", display: "flex", alignItems: "center", gap: "0.35rem", padding: "0.28rem", borderRadius: 999, border: `1px solid ${V.border}`, background: V.navPill },
-  navItem: { color: V.textMuted, textDecoration: "none", fontSize: "0.88rem", fontWeight: 600, padding: "0.52rem 0.88rem", borderRadius: 999, transition: "all 0.2s" },
-  navItemActive: { color: V.textPrimary, background: V.navActive, border: `1px solid ${V.navActiveBorder}` },
+  navWrap: { position: "fixed", top: 0, left: 0, right: 0, zIndex: 120, backdropFilter: "blur(10px) saturate(1.05)", background: "linear-gradient(135deg, #0f5132, #14532d)", borderBottom: "1px solid rgba(236, 253, 245, 0.14)", boxShadow: "0 10px 24px rgba(15, 83, 45, 0.2)" },
+  navInner: { maxWidth: 1280, margin: "0 auto", padding: "1.04rem clamp(0.9rem,2vw,1.8rem)", display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: "1.1rem" },
+  navBrand: { color: "#f8fff9", textDecoration: "none", fontWeight: 800, fontSize: "clamp(1.14rem, 1.3vw, 1.5rem)", letterSpacing: "0.02em", whiteSpace: "nowrap", lineHeight: 1.05 },
+  navCenter: { justifySelf: "center", display: "flex", alignItems: "center", gap: "0.35rem", padding: 0, border: 0, background: "none" },
+  navItem: { color: "#ffffff", textDecoration: "none", fontSize: "0.89rem", fontWeight: 650, padding: "0.86rem 1.35rem", borderRadius: 9999, transition: "all 0.25s ease", border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.08)", backdropFilter: "blur(12px)", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" },
+  navItemActive: { color: "#03060b", background: "linear-gradient(135deg, #16a34a, #22c55e)", border: "1px solid transparent", boxShadow: "0 4px 14px rgba(34, 197, 94, 0.35)" },
   navRight: { justifySelf: "end", display: "flex", alignItems: "center", gap: "0.5rem" },
-  navSignIn: { color: V.textMuted, textDecoration: "none", fontWeight: 600, fontSize: "0.86rem", padding: "0.52rem 0.8rem", borderRadius: 999 },
+  navSignIn: { color: "#ecfdf5", textDecoration: "none", fontWeight: 600, fontSize: "0.86rem", padding: "0.52rem 0.8rem", borderRadius: 999 },
   navCta: { color: "#fff", textDecoration: "none", fontWeight: 700, fontSize: "0.86rem", padding: "0.58rem 1rem", borderRadius: 999, background: V.green, boxShadow: "0 6px 18px -8px rgba(16,185,129,0.8)" },
   navAvatar: { width: 36, height: 36, borderRadius: "50%", background: V.green, color: "#fff", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "1rem", overflow: "hidden", padding: 0 },
   navDropdown: { position: "absolute", top: "calc(100% + 10px)", right: 0, minWidth: 200, background: V.navGlass, backdropFilter: "blur(18px)", border: `1px solid ${V.border}`, borderRadius: 14, overflow: "hidden", boxShadow: "0 16px 40px rgba(0,0,0,0.25)", zIndex: 200 },
@@ -306,7 +306,7 @@ const makeS = (V) => ({
 });
 
 const css = `
-  .page-nav-center a:hover { color: #f8fafc !important; background: rgba(255,255,255,0.1); }
+  .page-nav-center a:hover { color: #ffffff !important; background: rgba(255,255,255,0.15) !important; border-color: rgba(34, 197, 94, 0.4) !important; transform: translateY(-1px) scale(1.03); }
   .cat-card:hover { border-color: var(--cc, #10b981) !important; transform: translateY(-4px); box-shadow: 0 16px 28px rgba(0,0,0,0.3) !important; }
   .note-row:hover { border-color: rgba(16,185,129,0.4) !important; transform: translateY(-2px); }
   @media (max-width: 920px) {

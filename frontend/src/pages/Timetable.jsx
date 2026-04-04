@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
+
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
 import { logout } from "../features/auth/authSlice";
+import { useTheme } from "../context/ThemeContext";
 import {
   Calendar,
   Brain,
@@ -12,6 +15,7 @@ import {
   RefreshCw,
   Trash2,
   Home as HomeIcon,
+  GraduationCap,
   LayoutDashboard,
   BookMarked,
   Video,
@@ -125,6 +129,7 @@ const Timetable = () => {
   const dispatch = useDispatch();
   const { user, isAuthenticated } = useSelector((state) => state.auth);
   const navigate = useNavigate();
+  const { theme } = useTheme();
 
   const toDateTimeLocalValue = (value) => {
     if (!value) return "";
@@ -172,6 +177,7 @@ const Timetable = () => {
   const navLinks = [
     { icon: <HomeIcon size={18} strokeWidth={2.3} />, label: "Home", path: "/" },
     { icon: <LayoutDashboard size={18} strokeWidth={2.3} />, label: "Dashboard", path: "/dashboard" },
+    { icon: <GraduationCap size={18} strokeWidth={2.3} />, label: "Exam Mode", path: "/exam-mode" },
     { icon: <Brain size={18} strokeWidth={2.3} />, label: "Timetable", path: "/timetable", active: true },
     { icon: <BookMarked size={18} strokeWidth={2.3} />, label: "Notes", path: "/notes" },
     { icon: <Video size={18} strokeWidth={2.3} />, label: "Kuppi", path: "/kuppi" },
@@ -549,12 +555,16 @@ const Timetable = () => {
   const isSync = activeTab === "sync";
 
   return (
-    <div className="tt-root">
+    <div className="tt-root" data-theme={theme}>
       <div className="tt-canvas" />
 
       <main className="tt-main">
         {/* TOP BAR / BREADCRUMBS */}
-        <div className="tt-topbar">
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="tt-topbar"
+        >
           <div className="tt-topbar__left">
             <button className="tt-back-btn" onClick={() => navigate("/dashboard")} title="Go Back">
               <ArrowLeft size={18} />
@@ -570,40 +580,66 @@ const Timetable = () => {
             <div className="tt-status-dot" />
             <span>AI ENGINE ONLINE</span>
           </div>
-        </div>
+        </motion.div>
 
         {/* HERO SECTION */}
-        <section className="tt-hero">
+        <motion.section 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="tt-hero"
+        >
           <div className="tt-hero__content">
-            <span className="tt-hero__tag">Academic Operations</span>
-            <h1 className="tt-hero__title">Smart Strategy Matrix</h1>
-            <p className="tt-hero__desc">
+            <motion.span 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.8 }}
+              transition={{ delay: 0.3 }}
+              className="tt-hero__tag"
+            >
+              Academic Operations
+            </motion.span>
+            <motion.h1 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="tt-hero__title"
+            >
+              Smart Strategy Matrix
+            </motion.h1>
+            <motion.p 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              className="tt-hero__desc"
+            >
               Orchestrate your academic trajectory with our <strong>Neural Strategy Engine</strong>. 
               Input your constraints, calibrate subject difficulty, and deploy a high-efficiency 
               study plan synchronized across your ecosystem.
-            </p>
+            </motion.p>
           </div>
 
           <div className="tt-stats">
-            <div className="tt-stat">
-              <div className="tt-stat__val">{universitySchedule.length}</div>
-              <div className="tt-stat__lbl">Core Lectures</div>
-            </div>
-            <div className="tt-stat">
-              <div className="tt-stat__val">
-                {optimizedSchedule.filter(e => {
+            {[
+              { val: universitySchedule.length, lbl: "Core Lectures" },
+              { val: optimizedSchedule.filter(e => {
                   const t = String(e?.type || "").toLowerCase();
                   return t === "study" || String(e?.title || "").toLowerCase().includes("study");
-                }).length}
-              </div>
-              <div className="tt-stat__lbl">Study Blocks</div>
-            </div>
-            <div className="tt-stat">
-              <div className="tt-stat__val">{conflicts.length}</div>
-              <div className="tt-stat__lbl">Conflicts</div>
-            </div>
+                }).length, lbl: "Study Blocks" },
+              { val: conflicts.length, lbl: "Conflicts" }
+            ].map((stat, idx) => (
+              <motion.div 
+                key={stat.lbl}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.6 + (idx * 0.1) }}
+                className="tt-stat"
+              >
+                <div className="tt-stat__val">{stat.val}</div>
+                <div className="tt-stat__lbl">{stat.lbl}</div>
+              </motion.div>
+            ))}
           </div>
-        </section>
+        </motion.section>
 
         {/* ALERTS */}
         {error && (
@@ -746,27 +782,27 @@ const Timetable = () => {
                 {universitySchedule.length === 0 ? (
                   <EmptyState title="Registry Empty" description="Add your first subject block to initialize." />
                 ) : (
-                  <div className="tt-editor">
-                    <table className="tt-table">
+                  <div className="tt-editor-table-wrap">
+                    <table className="tt-editor-table">
                       <thead>
                         <tr>
-                          <th>Title</th>
-                          <th>Code</th>
-                          <th>Start</th>
-                          <th>End</th>
+                          <th>Subject Title</th>
+                          <th>ID/Code</th>
+                          <th>Start Time</th>
+                          <th>End Time</th>
                           <th>Difficulty</th>
-                          <th>Actions</th>
+                          <th style={{ width: '80px' }}>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
                         {universitySchedule.map((event, index) => (
-                          <tr key={index} className="tt-table-row">
+                          <tr key={index} className="tt-editor-table-row">
                             <td>
                               <input
                                 className="tt-input"
                                 value={event.title}
                                 onChange={(e) => handleChangeEventField(index, "title", e.target.value)}
-                                placeholder="Lecture Title"
+                                placeholder="e.g. Physics II"
                               />
                             </td>
                             <td>
@@ -774,7 +810,7 @@ const Timetable = () => {
                                 className="tt-input"
                                 value={event.subjectCode}
                                 onChange={(e) => handleChangeEventField(index, "subjectCode", e.target.value)}
-                                placeholder="CS201"
+                                placeholder="PHYS101"
                               />
                             </td>
                             <td>
@@ -799,13 +835,13 @@ const Timetable = () => {
                                 value={difficultyLevels[event.subjectCode || event.title] || "medium"}
                                 onChange={(e) => handleChangeDifficulty(event.subjectCode || event.title, e.target.value)}
                               >
-                                <option value="easy">Easy</option>
-                                <option value="medium">Medium</option>
-                                <option value="hard">Hard</option>
+                                <option value="easy">Level: Easy</option>
+                                <option value="medium">Level: Medium</option>
+                                <option value="hard">Level: Hard</option>
                               </select>
                             </td>
-                            <td>
-                              <button className="tt-btn tt-btn-danger tt-btn-sm" onClick={() => handleRemoveEvent(index)}>
+                            <td style={{ textAlign: 'center' }}>
+                              <button className="tt-btn tt-btn-danger tt-btn-sm" onClick={() => handleRemoveEvent(index)} title="Remove Block">
                                 <Trash2 size={14} />
                               </button>
                             </td>
