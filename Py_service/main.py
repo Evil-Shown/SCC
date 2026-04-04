@@ -17,11 +17,11 @@ load_dotenv()
 
 app = FastAPI(title="SCC Exam Plan AI Microservice")
 
-# Windows වල Tesseract Install කළ තැන (ඔබේ Path එක වෙනස් නම් මෙතන හදන්න)
+# Windows Tesseract Path (ඔබේ පරිගණකයේ Path එකට ගැලපෙන සේ වෙනස් කරන්න)
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 # ==========================================
-# 1. AI MODEL SETUP - EXAM PLANNER (Heavy)
+# 1. AI MODEL SETUP - EXAM PLANNER
 # ==========================================
 llm_planner = langchain_nvidia_ai_endpoints.ChatNVIDIA(
     model="nvidia/nemotron-3-super-120b-a12b",
@@ -29,25 +29,8 @@ llm_planner = langchain_nvidia_ai_endpoints.ChatNVIDIA(
     temperature=1,
     top_p=0.95,
     max_tokens=16384,
-    reasoning_budget=16384,
-    chat_template_kwargs={"enable_thinking": True}
 )
 
-
-# ==========================================
-# 2. AI MODEL SETUP - STUDY PILOT (Fast/Instruct)
-# ==========================================
-llm_pilot = langchain_nvidia_ai_endpoints.ChatNVIDIA(
-    model="marin/marin-8b-instruct",
-    api_key=os.getenv("NVIDIA_API_KEY"), 
-    temperature=0.3, 
-    top_p=0.9,
-    max_tokens=1500, 
-)
-
-# ==========================================
-# ADVANCED PDF EXTRACTION (TEXT + OCR)
-# ==========================================
 def extract_text_from_pdf(file_bytes: bytes) -> str:
     text = ""
     try:
@@ -56,17 +39,13 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
             page = doc[page_num]
             page_text = page.get_text().strip()
             
-            # පිටුවේ අකුරු 50කට වඩා තියෙනවා නම් ඒ කියන්නේ ඒක සාමාන්‍ය PDF එකක්
             if len(page_text) > 50:
                 text += page_text + "\n"
             else:
-                # අකුරු නැත්නම් (Scanned Image එකක් නම්) Tesseract OCR පාවිච්චි කරනවා
                 print(f"Page {page_num + 1} appears to be a scanned image. Running OCR...")
-                pix = page.get_pixmap(dpi=150) # පිටුව ෆොටෝ එකක් (Image) බවට පත් කිරීම
+                pix = page.get_pixmap(dpi=150) 
                 img_data = pix.tobytes("png")
                 img = Image.open(io.BytesIO(img_data))
-                
-                # ෆොටෝ එකේ තියෙන අකුරු කියවීම
                 ocr_text = pytesseract.image_to_string(img)
                 text += ocr_text + "\n"
                 
@@ -75,7 +54,7 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
     return text
 
 # ------------------------------------------
-# ROUTE 1: Generate Study Plan (Uses Nemotron)
+# ROUTE 1: Generate Study Plan
 # ------------------------------------------
 @app.post("/api/generate-plan")
 async def generate_study_plan(
@@ -97,23 +76,20 @@ async def generate_study_plan(
     
     Please generate the study plan based on the above PDF context and the provided rules.
     """
-
-    messages = [
-        SystemMessage(content=systemPrompt), 
-        HumanMessage(content=user_message)
-    ]
-
+    messages = [SystemMessage(content=systemPrompt), HumanMessage(content=user_message)]
+    
+    # JsonOutputParser භාවිතා කිරීම
     chain = llm_planner | JsonOutputParser()
 
     try:
         result = await chain.ainvoke(messages) 
         return {"success": True, "data": result}
     except Exception as e:
-        print("AI Generation Error (Planner):", e)
+        print("Plan Generation Error:", e)
         return {"success": False, "message": str(e)}
 
 # ------------------------------------------
-# ROUTE 2: Study Pilot Functions (Uses Marin)
+# ROUTE 2: Study Pilot Functions
 # ------------------------------------------
 @app.post("/api/study-pilot")
 async def generate_study_pilot_materials(
@@ -127,32 +103,88 @@ async def generate_study_pilot_materials(
             file_bytes = await file.read()
             extracted = extract_text_from_pdf(file_bytes)
             pdf_text += extracted
-            print(f"Extracted {len(extracted)} characters from {file.filename}")
 
     if not pdf_text.strip():
-        print("Warning: No text could be extracted from the PDF even with OCR.")
-        return {
-            "success": False, 
-            "message": "UUncleared PDF.PLease upload Clear PDF"
-        }
+        return {"success": False, "message": "Uncleared PDF. Please upload a clear PDF"}
 
     system_rules = ""
+    
     if actionType == "Summary":
-        system_rules = 'Summarize the text. Output ONLY valid JSON: {"summaryTitle": "Title", "keyPoints": ["Point 1", "Point 2"], "detailedSummary": "Details"}'
+        system_rules = (
+            'You are an expert tutor. Create a highly detailed summary suitable for absolute beginners. '
+            'Deeply explain all key concepts, formulas, and necessary parts found in the text(If have). '
+            'Do NOT just list bullet point, write full, descriptive explanations for each point so someone reading it for the first time can learn it completely.'
+            'Output ONLY valid JSON in this exact format:'
+            '{"summaryTitle": "Main Title", "keyPoints": [{"title": "Concept Name", "description": "Very detailed deep explanation..."}], "detailedSummary": "Overall conclusion"}'
+        )
     elif actionType == "Flashcards":
-        system_rules = 'Create exactly 10 flashcards. Output ONLY a valid JSON array: [{"front": "Term", "back": "Definition"}]'
-    elif actionType == "Quiz":
-        system_rules = 'Create a 20-question multiple choice quiz. Output ONLY a valid JSON array: [{"question": "Q", "options": ["A", "B", "C", "D"], "correctAnswers": ["A"], "explanations": {"A": "Exp A", "B": "Exp B", "C": "Exp C", "D": "Exp D"}}]'
+        system_rules = (
+            'Create highly effective flashcards based on the text. '
+             'every key concept, formula, and necessary part should be included in a flashcard.'
+            'Output ONLY a valid JSON array of objects: [{"front": "Question or Term", "back": "Detailed Answer"}]'
+        )
+    elif actionType == "Quiz" or "quiz" in chatPrompt.lower() or "mcq" in chatPrompt.lower():
+        system_rules = (
+            f'User request: "{chatPrompt}". You are an exam creator. Create a multiple choice quiz based on the provided text. '
+            'RULES: 1. If the user requested a specific number of questions in their prompt, generate exactly that many (Maximum 50). '
+            'If no number is specified, generate between 5 and 20 questions depending on the length of the text. '
+            '2. EVERY question MUST have EXACTLY 4 options. '
+            '3. Multiple correct answers are allowed (e.g., ["Option A", "Option C"]). '
+            '4. You MUST provide a brief explanation for EVERY option (why it is correct or incorrect). '
+            '5. Each question Corrected answere/ers  show as"Correct answere is/are (e.g., ["Option A", "Option C"]) with brief explanation '
+            'Output ONLY a valid JSON array matching this exact format: '
+            '[{"question": "Question text?", "options": {"A": "First option", "B": "Second option", "C": "Third option", "D": "Fourth option"}, "correctAnswers": ["A", "C"], "explanations": {"A": "Reason A", "B": "Reason B", "C": "Reason C", "D": "Reason D"}}]'
+        )
     elif actionType == "Mindmap":
-         system_rules = 'Create a knowledge map. Output ONLY valid JSON: {"nodes": [{"id": "1", "data": {"label": "Topic"}}], "edges": [{"id": "e1", "source": "1", "target": "2"}]}'
+         system_rules = """
+You are an expert knowledge architect.
+
+Generate a highly structured, hierarchical mind map for the topic: "{chatPrompt}".
+
+Rules:
+1. Identify a single central root node.
+2. Create primary branches (level 1), then expand into level 2 and level 3 where relevant.
+3. Maintain strict hierarchy (parent → child relationships).
+4. Avoid duplication and ensure full topic coverage.
+5. Use concise labels (max 3–5 words per node).
+6. Include examples/use-cases as leaf nodes where applicable.
+7. Keep balanced depth across branches.
+8. Ensure logical grouping and clear semantic relationships.
+
+Output STRICTLY in this JSON format (no extra text):
+
+{
+  "nodes": [
+    {"id": "1", "data": {"label": "Main Topic"}},
+    {"id": "2", "data": {"label": "Branch 1"}},
+    {"id": "3", "data": {"label": "Sub-branch 1.1"}}
+  ],
+  "edges": [
+    {"id": "e1-2", "source": "1", "target": "2"},
+    {"id": "e2-3", "source": "2", "target": "3"}
+  ]
+}
+
+Constraints:
+- Root node must always have id "1".
+- IDs must be unique strings.
+- Edges must correctly represent hierarchy (parent → child).
+- Do NOT output explanations, only JSON.
+
+Create a knowledge map. Output ONLY valid JSON: {"nodes": [{"id": "1", "data": {"label": "Topic"}}], "edges": [{"id": "e1", "source": "1", "target": "2"}]}
+""".replace("{chatPrompt}", chatPrompt)
+
     else:
-        system_rules = f'Act as Study Pilot. User asked: "{chatPrompt}". Output ONLY valid JSON response.'
+        system_rules = f'Act as Study Pilot. User asked: "{chatPrompt}". Output ONLY valid JSON.'
 
     user_message = f"""
     [SOURCE DOCUMENT TEXT]
-    {pdf_text[:7000]}  
+    {pdf_text[:8000]}  
 
-    CRITICAL INSTRUCTION: Do NOT include greetings, explanations, or any text outside of the JSON object. Just return the raw JSON.
+    CRITICAL INSTRUCTION:
+    1. Output strictly valid JSON.
+    2. Do NOT include greetings, explanations, or any text outside of the JSON object/array.
+    3. Keys MUST be enclosed in double quotes. Do NOT leave trailing commas.
     """
 
     messages = [
@@ -161,19 +193,14 @@ async def generate_study_pilot_materials(
     ]
 
     try:
-        response = await llm_pilot.ainvoke(messages) 
-        raw_text = response.content
-
-        json_match = re.search(r'(\{[\s\S]*\}|\[[\s\S]*\])', raw_text)
-        if not json_match:
-            print("Failed to find JSON in AI response. Raw Output:", raw_text)
-            raise ValueError("AI did not return valid JSON data.")
-            
-        json_str = json_match.group(0)
-        parsed_data = json.loads(json_str) 
+        # JsonOutputParser භාවිතා කර ඇත.
+        parser = JsonOutputParser()
+        chain = llm_planner | parser
+        
+        parsed_data = await chain.ainvoke(messages)
 
         # --- AUTO-CORRECT AI NESTING ---
-        if actionType in ["Flashcards", "Quiz"]:
+        if actionType in ["Flashcards", "Quiz"] or "quiz" in chatPrompt.lower() or "mcq" in chatPrompt.lower():
             if isinstance(parsed_data, dict):
                 for val in parsed_data.values():
                     if isinstance(val, list):
@@ -184,7 +211,7 @@ async def generate_study_pilot_materials(
         
     except Exception as e:
         print(f"Pilot Generation Error ({actionType}):", e)
-        return {"success": False, "message": str(e)}
+        return {"success": False, "message": "Failed to parse AI response. Please try again."}
 
 if __name__ == "__main__":
     import uvicorn

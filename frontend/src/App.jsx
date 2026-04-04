@@ -1,11 +1,10 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { Provider, useDispatch, useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux"; // Provider ඉවත් කර ඇත
 import { useEffect, useRef, useState } from "react";
 import { Toaster } from "react-hot-toast";
-import store from "./store/store";
 import { ThemeProvider } from "./context/ThemeContext";
 import ThemeToggle from "./components/ThemeToggle";
-import { fetchUserProfile, logout, updateLastActivity, resetAuth } from "./features/auth/authSlice";
+import { fetchUserProfile, updateLastActivity, resetAuth } from "./features/auth/authSlice";
 import SessionEnd from "./components/SessionEnd";
 import { initSocket } from "./socket/socket";
 
@@ -30,10 +29,8 @@ import ExamMode from './pages/ExamMode';
 
 // Components
 import ProtectedRoute from "./components/ProtectedRoute";
-
-// අලුතින් හැදූ Exam Mode Components Import කරගැනීම
 import ExamLogin from './components/Exam/ExamLogin';
-import ExamProtectedRoute from './components/ExamProtectedRoute';
+import ExamProtectedRoute from './components/ExamProtectedRoute'; 
 
 // Styles
 import "./App.css";
@@ -48,7 +45,7 @@ function AuthInitializer({ children }) {
     if (accessToken) {
       dispatch(fetchUserProfile());
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [accessToken, dispatch]); 
 
   useEffect(() => {
     if (accessToken && user?._id) {
@@ -60,15 +57,18 @@ function AuthInitializer({ children }) {
 }
 
 function App() {
-  // Session timeout logic
-  const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes in ms
+  // Session timeout logic (30 minutes)
+  const SESSION_TIMEOUT = 30 * 60 * 1000; 
   const [sessionEnded, setSessionEnded] = useState(false);
-  const dispatch = store.dispatch;
-  const lastActivity = store.getState().auth.lastActivity;
-  const isAuthenticated = store.getState().auth.isAuthenticated;
+  
+  // Redux hooks - Provider එක main.jsx හි ඇති බැවින් මෙහිදී ක්‍රියා කරයි
+  const dispatch = useDispatch();
+  const lastActivity = useSelector((state) => state.auth.lastActivity);
+  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
+  
   const timerRef = useRef();
 
-  // Reset timer on activity
+  // Reset timer on user activity
   useEffect(() => {
     if (!isAuthenticated) return;
     const handleActivity = () => {
@@ -84,28 +84,28 @@ function App() {
     };
   }, [isAuthenticated, dispatch]);
 
-  // Check for inactivity
+  // Check for inactivity periodically
   useEffect(() => {
     if (!isAuthenticated) return;
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
       const now = Date.now();
-      if (now - store.getState().auth.lastActivity > SESSION_TIMEOUT) {
+      // Redux state එකෙන් කෙලින්ම අගය පරීක්ෂා කිරීම
+      if (now - lastActivity > SESSION_TIMEOUT) {
         setSessionEnded(true);
         dispatch(resetAuth());
         clearInterval(timerRef.current);
       }
-    }, 10000); // check every 10s
+    }, 10000); 
     return () => clearInterval(timerRef.current);
-  }, [isAuthenticated, lastActivity, dispatch]);
+  }, [isAuthenticated, lastActivity, dispatch, SESSION_TIMEOUT]);
 
   const handleSessionEndClose = () => {
     setSessionEnded(false);
   };
 
   return (
-    <Provider store={store}>
-      <AuthInitializer>
+    <AuthInitializer>
       <ThemeProvider>
         <Router>
           <div className="app">
@@ -119,124 +119,61 @@ function App() {
                   border: "1px solid var(--toast-border)",
                 },
                 success: {
-                  iconTheme: {
-                    primary: "#10b981",
-                    secondary: "#052e1b",
-                  },
+                  iconTheme: { primary: "#10b981", secondary: "#052e1b" },
                 },
                 error: {
-                  iconTheme: {
-                    primary: "#ef4444",
-                    secondary: "#450a0a",
-                  },
+                  iconTheme: { primary: "#ef4444", secondary: "#450a0a" },
                 },
               }}
             />
             <ThemeToggle />
             {sessionEnded && <SessionEnd onClose={handleSessionEndClose} />}
+            
             <Routes>
-              {/* --- සාමාන්‍ය (Public & Protected) Routes --- */}
+              {/* --- Public Routes --- */}
               <Route path="/" element={<Home />} />
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/login" element={<AuthPage />} />
               <Route path="/register" element={<AuthPage />} />
-              <Route
-                path="/dashboard"
-                element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/profile"
-                element={
-                  <ProtectedRoute>
-                    <Profile />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/groups"
-                element={
-                  <ProtectedRoute>
-                    <Groups />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/groups/:groupId"
-                element={
-                  <ProtectedRoute>
-                    <GroupDetail />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/notes"
-                element={
-                  <ProtectedRoute>
-                    <Notes />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/notes/:noteId"
-                element={
-                  <ProtectedRoute>
-                    <NoteDetail />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/kuppi"
-                element={
-                  <ProtectedRoute>
-                    <Kuppi />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/notifications"
-                element={
-                  <ProtectedRoute>
-                    <Notifications />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/timetable"
-                element={
-                  <ProtectedRoute>
-                    <Timetable />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/ai-chat"
-                element={
-                  <ProtectedRoute>
-                    <AiChat />
-                  </ProtectedRoute>
-                }
-              />
               <Route path="/community" element={<CommunityPage />} />
               <Route path="/resources" element={<ResourcesPage />} />
               <Route path="/tutors" element={<TutorsPage />} />
+
+              {/* --- Standard Protected Routes --- */}
+              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+              <Route path="/groups" element={<ProtectedRoute><Groups /></ProtectedRoute>} />
+              <Route path="/groups/:groupId" element={<ProtectedRoute><GroupDetail /></ProtectedRoute>} />
+              <Route path="/notes" element={<ProtectedRoute><Notes /></ProtectedRoute>} />
+              <Route path="/notes/:noteId" element={<ProtectedRoute><NoteDetail /></ProtectedRoute>} />
+              <Route path="/kuppi" element={<ProtectedRoute><Kuppi /></ProtectedRoute>} />
+              <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+              <Route path="/timetable" element={<ProtectedRoute><Timetable /></ProtectedRoute>} />
+              <Route path="/ai-chat" element={<ProtectedRoute><AiChat /></ProtectedRoute>} />
+              <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+
+              {/* --- Exam Mode Routes --- */}
+              <Route 
+                path="/exam-login" 
+                element={<ProtectedRoute><ExamLogin /></ProtectedRoute>} 
+              />
+              
               <Route
-                path="/admin"
+                path="/exam-mode"
                 element={
-                  <ProtectedRoute>
-                    <AdminDashboard />
-                  </ProtectedRoute>
+                  <ExamProtectedRoute>
+                    <ExamMode />
+                  </ExamProtectedRoute>
                 }
               />
+
+              {/* 404 Fallback */}
+              <Route path="*" element={<div className="p-10 text-center"><h1>404 - Not Found</h1></div>} />
             </Routes>
           </div>
         </Router>
       </ThemeProvider>
-      </AuthInitializer>
-    </Provider>
+    </AuthInitializer>
   );
 }
 

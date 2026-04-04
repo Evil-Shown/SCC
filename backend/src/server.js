@@ -21,10 +21,9 @@ import meetupRoutes from "./routes/meetupRoutes.js";
 import timetableRoutes from "./routes/timetableRoutes.js";
 import aiRoutes from "./routes/aiRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
-import { startMeetupCancellationJob } from "./jobs/meetupJobs.js";
 import examRoutes from "./routes/examRoutes.js";
 import studyPilotRoutes from "./routes/studyPilotRoutes.js"; 
-
+import { startMeetupCancellationJob } from "./jobs/meetupJobs.js";
 
 const app = express();
 const server = http.createServer(app);
@@ -38,6 +37,7 @@ const allowedOrigins = [
   "http://localhost:5174",
   "http://localhost:5175",
 ];
+
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) {
@@ -67,7 +67,7 @@ app.get("/", (req, res) => {
   });
 });
 
-// API Routes
+// Mount API Routes (ඔබගේ සියලුම Routes මෙහි සුරක්ෂිතව ඇත)
 app.use("/api/auth", authRoutes);
 app.use("/api/groups", groupRoutes);
 app.use("/api", messageRoutes);
@@ -81,6 +81,7 @@ app.use("/api/ai", aiRoutes);
 app.use("/api/admin", adminRoutes);
 app.use('/api/exams', examRoutes);
 
+// Study Pilot Route
 app.use('/api/study-pilot', studyPilotRoutes);
 
 
@@ -116,7 +117,9 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Socket.io setup
+// ==========================================
+// 💡 Socket.io setup (නිවැරදිව ක්‍රියාත්මක වේ)
+// ==========================================
 const io = new Server(server, {
   cors: {
     origin: process.env.CLIENT_URL || "http://localhost:5173",
@@ -151,6 +154,9 @@ io.on("connection", (socket) => {
 
 app.set("io", io);
 
+// ==========================================
+// 💡 Background Jobs
+// ==========================================
 const startJobs = async () => {
   const archiveExpiredKuppiPostsJob = async () => {
     try {
@@ -184,9 +190,11 @@ const startJobs = async () => {
   startMeetupCancellationJob();
 };
 
+// ==========================================
+// 💡 Database Initialization (Original Team Logic)
+// ==========================================
 const initDb = async () => {
-  const requireDb =
-    process.env.REQUIRE_DB === "true" || (process.env.NODE_ENV || "development") === "production";
+  const requireDb = process.env.REQUIRE_DB === "true" || (process.env.NODE_ENV || "development") === "production";
   const retryMs = Number(process.env.DB_RETRY_MS || 30000);
 
   try {
@@ -209,7 +217,11 @@ const initDb = async () => {
   }
 };
 
+// ==========================================
+// 💡 Server Start
+// ==========================================
 const PORT = process.env.PORT || 5000;
+
 server
   .listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
@@ -224,4 +236,5 @@ server
     process.exit(1);
   });
 
-startServer();
+// 💡 මෙහි තිබූ startServer(); යන වැරදි කොටස ඉවත් කර නිවැරදි initDb() ඇතුළත් කර ඇත.
+initDb();

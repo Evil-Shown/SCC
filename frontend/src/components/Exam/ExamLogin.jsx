@@ -32,7 +32,7 @@ const ExamLogin = () => {
 
                 // සාර්ථකව ලොග් වූ පසු Exam Mode Main Page එකට Redirect කිරීම
                 // (ඔබගේ route එක අනුව මෙම path එක වෙනස් කරගන්න)
-                navigate('/exam-mode/dashboard'); 
+                navigate('/exam-mode'); 
             }
         } catch (err) {
             // Backend එකෙන් එවන Error message එක පෙන්වීම

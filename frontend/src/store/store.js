@@ -6,9 +6,9 @@ import notesReducer from "../features/notes/notesSlice";
 import kuppiReducer from "../features/kuppi/kuppiSlice";
 import notificationsReducer from "../features/notifications/notificationsSlice";
 import meetupReducer from "../features/meetups/meetupSlice";
+import examReducer from "../features/exam/examSlice"; //Mithun's exam mode features
 
-//Exam mode by mithun features 
-import examReducer from "../features/exam/examSlice";
+
 
 export const store = configureStore({
   reducer: {
