@@ -18,10 +18,7 @@ import notesRoutes from "./routes/notesRoutes.js";
 import kuppiRoutes from "./routes/kuppiRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import examRoutes from "./routes/examRoutes.js";
-
-
 import studyPilotRoutes from "./routes/studyPilotRoutes.js"; 
-
 import meetupRoutes from "./routes/meetupRoutes.js";
 import timetableRoutes from "./routes/timetableRoutes.js";
 import aiRoutes from "./routes/aiRoutes.js";

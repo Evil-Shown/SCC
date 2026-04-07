@@ -1,11 +1,11 @@
 import multer from "multer";
 import path from "path";
 
-// 💡 වෙනස: DiskStorage වෙනුවට MemoryStorage භාවිතා කිරීම.
-// මෙවිට file.buffer හරහා කෙලින්ම Python වෙත යැවිය හැක.
+// 💡 Difference: memoryStorage using instead of  DiskStorage.
+// Now can send directly to the Python via file.buffer 
 const storage = multer.memoryStorage();
 
-// File filter (ඔබගේ පැරණි කේතයමයි)
+// File filter 
 const fileFilter = (req, file, cb) => {
   const allowedMimes = [
     "application/pdf",
