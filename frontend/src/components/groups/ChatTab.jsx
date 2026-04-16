@@ -35,9 +35,10 @@ function fmtTime(ts) {
 }
 
 // ── ChatTab ─────────────────────────────────────────────────────
+// The main chat area where members can talk
 function ChatTab({ groupId }) {
     const dispatch = useDispatch();
-    const { messages: messagesMap, isLoading } = useSelector((s) => s.chat);
+    const { messages: messagesMap, isLoading } = useSelector((s) => s.chat); // Get messages for this group
     const { user } = useSelector((s) => s.auth);
     const messages = messagesMap[groupId] || [];
 
@@ -52,11 +53,12 @@ function ChatTab({ groupId }) {
         endRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
+    // Handle sending a new message
     const handleSend = (e) => {
         e.preventDefault();
         if (!input.trim()) return;
         dispatch(sendMessage({ groupId, content: input.trim() }));
-        setInput("");
+        setInput(""); // Clear the box after sending
     };
 
     // Group consecutive messages from same sender

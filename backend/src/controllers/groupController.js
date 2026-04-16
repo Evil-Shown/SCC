@@ -36,6 +36,7 @@ const logActivity = async (groupId, actorId, action, targetId = null, meta = {},
    ────────────────────────────────────────────────────────── */
 
 /**
+ * This searches for users so we can invite them easily
  * GET /api/groups/users/search?q=name
  */
 export const searchUsers = async (req, res) => {
@@ -146,6 +147,7 @@ export const getGroupById = async (req, res) => {
 };
 
 /**
+ * Makes a brand new group and sets the creator as the admin
  * POST /api/groups
  */
 export const createGroup = async (req, res) => {
@@ -187,7 +189,8 @@ export const createGroup = async (req, res) => {
 };
 
 /**
- * PUT /api/groups/:groupId   (admin/owner only — enforced via requireGroupRole)
+ * Updates group info like name or tags, but only if you're an admin
+ * PUT /api/groups/:groupId
  */
 export const updateGroup = async (req, res) => {
     try {
@@ -235,6 +238,7 @@ export const updateGroup = async (req, res) => {
 };
 
 /**
+ * Soft deletes the group so it doesn't show up anymore
  * DELETE /api/groups/:groupId   (owner only)
  */
 export const deleteGroup = async (req, res) => {
@@ -274,6 +278,7 @@ export const deleteGroup = async (req, res) => {
    ────────────────────────────────────────────────────────── */
 
 /**
+ * Lets a user join a public group
  * POST /api/groups/:groupId/join
  */
 export const joinGroup = async (req, res) => {
@@ -314,6 +319,7 @@ export const joinGroup = async (req, res) => {
 };
 
 /**
+ * Lets a member leave the group (but owner can't just leave)
  * POST /api/groups/:groupId/leave
  */
 export const leaveGroup = async (req, res) => {

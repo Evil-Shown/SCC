@@ -7,7 +7,7 @@ import { Toaster } from "react-hot-toast";
 import store from "./store/store";
 import { ThemeProvider } from "./context/ThemeContext";
 import ThemeToggle from "./components/ThemeToggle";
-import { fetchUserProfile, logout, updateLastActivity, resetAuth } from "./features/auth/authSlice";
+import { fetchUserProfile, updateLastActivity, resetAuth } from "./features/auth/authSlice";
 import SessionEnd from "./components/SessionEnd";
 import { initSocket } from "./socket/socket";
 
@@ -27,7 +27,12 @@ import ExamMode from './pages/ExamMode';
 import CommunityPage from "./pages/CommunityPage";
 import ResourcesPage from "./pages/ResourcesPage";
 import TutorsPage from "./pages/TutorsPage";
-import Timetable from "./pages/Timetable";
+import TimetableHome from "./pages/TimetableHome";
+import Resources from "./pages/Resources";
+import Modules from "./pages/Modules";
+import GenerateTimetable from "./pages/GenerateTimetable";
+import SemesterTimetableView from "./pages/SemesterTimetableView";
+import TimetableSearch from "./pages/TimetableSearch";
 import AiChat from "./pages/AiChat";
 import AdminDashboard from "./pages/AdminDashboard";
 
@@ -273,7 +278,182 @@ function App() {
       <AuthInitializer>
         <ThemeProvider>
           <Router>
-            <AppShell sessionEnded={sessionEnded} handleSessionEndClose={handleSessionEndClose} />
+            <div className="app">
+              <Toaster
+                position="top-right"
+                toastOptions={{
+                  duration: 3000,
+                  style: {
+                    background: "var(--toast-bg)",
+                    color: "var(--toast-text)",
+                    border: "1px solid var(--toast-border)",
+                  },
+                  success: {
+                    iconTheme: {
+                      primary: "#10b981",
+                      secondary: "#052e1b",
+                    },
+                  },
+                  error: {
+                    iconTheme: {
+                      primary: "#ef4444",
+                      secondary: "#450a0a",
+                    },
+                  },
+                }}
+              />
+              <ThemeToggle />
+              {sessionEnded && <SessionEnd onClose={handleSessionEndClose} />}
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/auth" element={<AuthPage />} />
+                <Route path="/login" element={<AuthPage />} />
+                <Route path="/register" element={<AuthPage />} />
+                <Route path="/auth/google/callback" element={<GoogleAuthCallback />} />
+                <Route
+                  path="/dashboard"
+                  element={
+                    <ProtectedRoute>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/profile"
+                  element={
+                    <ProtectedRoute>
+                      <Profile />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/groups"
+                  element={
+                    <ProtectedRoute>
+                      <Groups />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/groups/:groupId"
+                  element={
+                    <ProtectedRoute>
+                      <GroupDetail />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/notes"
+                  element={
+                    <ProtectedRoute>
+                      <Notes />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/notes/:noteId"
+                  element={
+                    <ProtectedRoute>
+                      <NoteDetail />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/kuppi"
+                  element={
+                    <ProtectedRoute>
+                      <Kuppi />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/notifications"
+                  element={
+                    <ProtectedRoute>
+                      <Notifications />
+                    </ProtectedRoute>
+                  }
+                />
+
+                <Route path="/exam-login" element={<ExamLogin />} />
+                <Route
+                  path="/exam-mode"
+                  element={
+                    <ProtectedRoute>
+                      <ExamMode />
+                    </ProtectedRoute>
+                  }
+                />
+
+                <Route
+                  path="/timetable"
+                  element={
+                    <ProtectedRoute>
+                      <TimetableHome />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/timetable/resources"
+                  element={
+                    <ProtectedRoute>
+                      <Resources />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/timetable/modules"
+                  element={
+                    <ProtectedRoute>
+                      <Modules />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/timetable/generate"
+                  element={
+                    <ProtectedRoute roles={["teacher", "admin"]}>
+                      <GenerateTimetable />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/timetable/search"
+                  element={
+                    <ProtectedRoute>
+                      <TimetableSearch />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/timetable/view/:id"
+                  element={
+                    <ProtectedRoute>
+                      <SemesterTimetableView />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/ai-chat"
+                  element={
+                    <ProtectedRoute>
+                      <AiChat />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="/community" element={<CommunityPage />} />
+                <Route path="/resources" element={<ResourcesPage />} />
+                <Route path="/tutors" element={<TutorsPage />} />
+                <Route
+                  path="/admin"
+                  element={
+                    <ProtectedRoute>
+                      <AdminDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+              </Routes>
+            </div>
           </Router>
         </ThemeProvider>
       </AuthInitializer>

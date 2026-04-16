@@ -192,11 +192,9 @@ html[data-theme="light"] .gc-accent {
     border-radius: var(--r-lg);
     overflow: hidden;
     transition: transform 0.3s, border-color 0.3s, background 0.3s, box-shadow 0.3s;
-    animation: riseIn 0.5s ease both;
 }
 
 .grp-card:hover {
-    transform: translateY(-4px);
     border-color: var(--border-lit);
     background: var(--surface-2);
     box-shadow: 0 14px 28px -12px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--bio-line);
@@ -241,7 +239,6 @@ html[data-theme="light"] .gc-accent {
 }
 
 .grp-card:hover .grp-card__icon-wrap {
-    transform: scale(1.08);
     box-shadow: 0 6px 16px -4px var(--bio-line);
 }
 

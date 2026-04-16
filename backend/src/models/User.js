@@ -57,7 +57,7 @@ const userSchema = new mongoose.Schema({
   year: {
     type: Number,
     min: 1,
-    max: 5
+    max: 4
   },
   phone: {
     type: String,

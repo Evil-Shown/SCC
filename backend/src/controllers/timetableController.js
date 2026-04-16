@@ -62,13 +62,19 @@ export const createRawTimetable = async (req, res) => {
 
     const conflicts = findScheduleConflicts(optimizedSchedule);
 
+    const googleCalendarSync = await tryAutoSyncGoogleCalendar(
+      req.user._id,
+      optimizedSchedule
+    );
+
     return res.status(201).json({
       success: true,
       message: "Timetable saved and optimized plan generated successfully",
       data: {
         timetable,
         conflicts,
-        hasConflicts: conflicts.length > 0
+        hasConflicts: conflicts.length > 0,
+        googleCalendarSync
       }
     });
   } catch (error) {
@@ -303,13 +309,19 @@ export const generateOptimizedTimetable = async (req, res) => {
 
     const conflicts = findScheduleConflicts(optimizedSchedule);
 
+    const googleCalendarSync = await tryAutoSyncGoogleCalendar(
+      req.user._id,
+      optimizedSchedule
+    );
+
     return res.status(200).json({
       success: true,
       message: "Optimized timetable generated successfully",
       data: {
         timetable,
         conflicts,
-        hasConflicts: conflicts.length > 0
+        hasConflicts: conflicts.length > 0,
+        googleCalendarSync
       }
     });
   } catch (error) {
@@ -375,7 +387,7 @@ const GOOGLE_CALENDAR_EVENTS_URL = "https://www.googleapis.com/calendar/v3/calen
 
 const parseGoogleState = (state) => {
   if (!state) {
-    return { mode: "timetable" };
+    return { mode: "timetable", returnPath: "/timetable" };
   }
 
   try {
@@ -387,7 +399,15 @@ const parseGoogleState = (state) => {
     // Legacy timetable flow used a raw userId string.
   }
 
-  return { mode: "timetable", userId: String(state) };
+  return { mode: "timetable", userId: String(state), returnPath: "/timetable" };
+};
+
+const resolveClientReturnPath = (value) => {
+  const fallback = "/timetable";
+  if (typeof value !== "string") return fallback;
+  const trimmed = value.trim();
+  if (!trimmed.startsWith("/") || trimmed.startsWith("//")) return fallback;
+  return trimmed;
 };
 
 /**
@@ -410,13 +430,21 @@ export const getGoogleAuthUrl = async (req, res) => {
     //
     // Use a dedicated env override so we can match whatever URI you registered
     // (localhost vs 127.0.0.1, http vs https, custom port, etc).
+    const returnPath = resolveClientReturnPath(req.query?.returnPath);
     const redirectUri = getGoogleAuthRedirectUri(req);
 
     // Helpful for debugging OAuth flow mismatch.
     console.log("[Google OAuth Callback] redirectUri =", redirectUri);
 
     console.log("[Google OAuth] redirectUri =", redirectUri);
-    const state = Buffer.from(JSON.stringify({ mode: "timetable", userId: String(req.user._id) }), "utf8").toString("base64url");
+    const state = Buffer.from(
+      JSON.stringify({
+        mode: "timetable",
+        userId: String(req.user._id),
+        returnPath
+      }),
+      "utf8"
+    ).toString("base64url");
     const url = `${GOOGLE_AUTH_URL}?${new URLSearchParams({
       client_id: clientId,
       redirect_uri: redirectUri,
@@ -501,12 +529,19 @@ export const getGoogleEvents = async (req, res) => {
       });
     }
 
-    const timeMin = new Date().toISOString();
-    const maxResults = Math.min(50, Number(req.query?.maxResults || 15));
+    // SCC timetables often use class dates in the past or a fixed “study week”; listing only
+    // events with start >= now hides them. Use a wide window around “today”.
+    const nowMs = Date.now();
+    const pastDays = Math.min(366, Math.max(1, Number(req.query?.pastDays || 180)));
+    const futureDays = Math.min(366, Math.max(1, Number(req.query?.futureDays || 180)));
+    const timeMin = new Date(nowMs - pastDays * 24 * 60 * 60 * 1000).toISOString();
+    const timeMax = new Date(nowMs + futureDays * 24 * 60 * 60 * 1000).toISOString();
+    const maxResults = Math.min(250, Number(req.query?.maxResults || 40));
 
     const eventsRes = await axios.get(GOOGLE_CALENDAR_EVENTS_URL, {
       params: {
         timeMin,
+        timeMax,
         maxResults,
         singleEvents: true,
         orderBy: "startTime"
@@ -550,6 +585,8 @@ export const googleCallback = async (req, res) => {
     const authCallbackUrl = `${clientUrl}/auth/google/callback`;
     const parsedState = parseGoogleState(state);
     const isAuthFlow = parsedState.mode === "login" || parsedState.mode === "register";
+    const returnPath = resolveClientReturnPath(parsedState.returnPath);
+    const returnUrl = `${clientUrl}${returnPath}`;
 
     console.log(
       "[Google callback] received:",
@@ -557,13 +594,21 @@ export const googleCallback = async (req, res) => {
     );
 
     if (!code || !state) {
-      return res.redirect(isAuthFlow ? `${authCallbackUrl}#google_error=missing_code_or_state` : `${clientUrl}/timetable?google_error=missing_code_or_state`);
+      return res.redirect(
+        isAuthFlow
+          ? `${authCallbackUrl}#google_error=missing_code_or_state`
+          : `${returnUrl}?google_error=missing_code_or_state`
+      );
     }
 
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
     if (!clientId || !clientSecret) {
-      return res.redirect(isAuthFlow ? `${authCallbackUrl}#google_error=server_not_configured` : `${clientUrl}/timetable?google_error=server_not_configured`);
+      return res.redirect(
+        isAuthFlow
+          ? `${authCallbackUrl}#google_error=server_not_configured`
+          : `${returnUrl}?google_error=server_not_configured`
+      );
     }
 
     const redirectUri = getGoogleAuthRedirectUri(req);
@@ -592,7 +637,11 @@ export const googleCallback = async (req, res) => {
     const refreshToken = tokenRes.data?.refresh_token;
 
     if (!accessToken) {
-      return res.redirect(isAuthFlow ? `${authCallbackUrl}#google_error=no_token` : `${clientUrl}/timetable?google_error=no_token`);
+      return res.redirect(
+        isAuthFlow
+          ? `${authCallbackUrl}#google_error=no_token`
+          : `${returnUrl}?google_error=no_token`
+      );
     }
 
     const profileRes = await axios.get("https://www.googleapis.com/oauth2/v2/userinfo", {
@@ -626,13 +675,18 @@ export const googleCallback = async (req, res) => {
 
     await CalendarSync.findOneAndUpdate({ user: parsedState.userId || String(state) }, update, { upsert: true, new: true });
 
-    return res.redirect(`${clientUrl}/timetable?google_connected=1`);
+    return res.redirect(`${returnUrl}?google_connected=1`);
   } catch (error) {
     console.error("Google callback error:", error?.response?.data || error.message);
     const clientUrl = getClientAppUrl();
     const parsedState = parseGoogleState(req.query?.state);
     const isAuthFlow = parsedState.mode === "login" || parsedState.mode === "register";
-    return res.redirect(isAuthFlow ? `${clientUrl}/auth/google/callback#google_error=exchange_failed` : `${clientUrl}/timetable?google_error=exchange_failed`);
+    const returnPath = resolveClientReturnPath(parsedState.returnPath);
+    return res.redirect(
+      isAuthFlow
+        ? `${clientUrl}/auth/google/callback#google_error=exchange_failed`
+        : `${clientUrl}${returnPath}?google_error=exchange_failed`
+    );
   }
 };
 
@@ -658,33 +712,123 @@ async function getAccessTokenFromRefreshToken(refreshToken) {
 }
 
 /**
+ * Match CalendarSync.user the same way as Timetable.user (ObjectId vs string / legacy).
+ */
+function buildCalendarSyncUserMatch(userId) {
+  const raw = userId;
+  const idStr = raw?.toString?.() ?? String(raw);
+  const or = [{ user: raw }, { user: idStr }];
+  if (mongoose.Types.ObjectId.isValid(idStr)) {
+    try {
+      or.push({ user: new mongoose.Types.ObjectId(idStr) });
+    } catch {
+      /* ignore */
+    }
+  }
+  or.push({
+    $expr: { $eq: [{ $toString: { $ifNull: ["$user", ""] } }, idStr] }
+  });
+  return { $or: or };
+}
+
+function eventHasSccTimetableTag(e) {
+  const priv = e?.extendedProperties?.private;
+  return priv?.sccTimetableSync === "1" || priv?.sccTimetableSync === 1;
+}
+
+/**
+ * Paginate primary calendar and collect IDs of events SCC created (private sccTimetableSync).
+ * Client-side filter is reliable; the events.list privateExtendedProperty query often misses events
+ * depending on encoding/API behavior, leaving orphans after timetable delete.
+ */
+async function listAllSccTaggedGoogleEventIds(accessToken) {
+  if (!accessToken) return [];
+  const collected = [];
+  let pageToken = null;
+  const nowMs = Date.now();
+  // Wide window so semester blocks from past/future years are still discoverable
+  const timeMin = new Date(nowMs - 2500 * 24 * 60 * 60 * 1000).toISOString();
+  const timeMax = new Date(nowMs + 2500 * 24 * 60 * 60 * 1000).toISOString();
+  let pages = 0;
+  const maxPages = 100;
+
+  try {
+    do {
+      if (++pages > maxPages) {
+        console.warn("[listAllSccTaggedGoogleEventIds] stopped at maxPages", maxPages);
+        break;
+      }
+      const res = await axios.get(GOOGLE_CALENDAR_EVENTS_URL, {
+        params: {
+          timeMin,
+          timeMax,
+          maxResults: 250,
+          singleEvents: true,
+          orderBy: "startTime",
+          ...(pageToken ? { pageToken } : {})
+        },
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      for (const e of res.data?.items || []) {
+        if (e?.id && eventHasSccTimetableTag(e)) collected.push(e.id);
+      }
+      pageToken = res.data?.nextPageToken || null;
+    } while (pageToken);
+  } catch (err) {
+    console.error(
+      "[listAllSccTaggedGoogleEventIds]",
+      err?.response?.data || err.message
+    );
+  }
+  return collected;
+}
+
+/**
  * Delete Google Calendar events by ID (best-effort; 404 ignored).
  */
 async function deleteGoogleCalendarEventsById(accessToken, eventIds) {
   if (!accessToken || !Array.isArray(eventIds) || eventIds.length === 0) {
     return { removed: 0, attempted: 0 };
   }
-  const results = await Promise.allSettled(
-    eventIds.map((id) =>
-      axios.delete(`${GOOGLE_CALENDAR_EVENTS_URL}/${encodeURIComponent(id)}`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-        validateStatus: (s) => (s >= 200 && s < 300) || s === 404
-      })
-    )
-  );
-  const removed = results.filter((r) => {
-    if (r.status !== "fulfilled") return false;
-    const s = r.value?.status;
-    return (s >= 200 && s < 300) || s === 404;
-  }).length;
+  const ok = (s) =>
+    (s >= 200 && s < 300) || s === 404 || s === 410;
+  // Serial deletes reduce Google rate-limit failures vs a huge parallel burst.
+  let removed = 0;
+  for (const id of eventIds) {
+    try {
+      const res = await axios.delete(
+        `${GOOGLE_CALENDAR_EVENTS_URL}/${encodeURIComponent(id)}`,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          validateStatus: ok
+        }
+      );
+      if (ok(res.status)) removed += 1;
+      else {
+        console.error(
+          "[deleteGoogleCalendarEventsById] non-OK status",
+          id,
+          res.status,
+          res.data
+        );
+      }
+    } catch (err) {
+      console.error(
+        "[deleteGoogleCalendarEventsById] failed for event",
+        id,
+        err?.response?.data || err.message
+      );
+    }
+  }
   return { removed, attempted: eventIds.length };
 }
 
 /**
  * Remove previously synced SCC events from Google and clear stored IDs.
+ * Uses DB event IDs plus a Calendar API scan for sccTimetableSync=1 (covers missing/stale ID lists).
  */
 async function clearSccSyncedGoogleEventsOnly(userId) {
-  const sync = await CalendarSync.findOne({ user: userId })
+  const sync = await CalendarSync.findOne(buildCalendarSyncUserMatch(userId))
     .select("+googleRefreshToken syncedGoogleEventIds")
     .lean();
 
@@ -692,31 +836,36 @@ async function clearSccSyncedGoogleEventsOnly(userId) {
     ? sync.syncedGoogleEventIds.filter(Boolean)
     : [];
 
-  if (prevIds.length === 0) {
-    return { removedFromGoogle: 0, attempted: 0, hadConnection: Boolean(sync?.googleRefreshToken) };
-  }
-
   let accessToken = null;
   if (sync?.googleRefreshToken) {
     accessToken = await getAccessTokenFromRefreshToken(sync.googleRefreshToken);
   }
 
-  let removedFromGoogle = 0;
+  const idSet = new Set(prevIds);
   if (accessToken) {
-    const { removed } = await deleteGoogleCalendarEventsById(accessToken, prevIds);
+    const taggedIds = await listAllSccTaggedGoogleEventIds(accessToken);
+    for (const id of taggedIds) idSet.add(id);
+  }
+
+  const allIds = [...idSet];
+
+  let removedFromGoogle = 0;
+  if (accessToken && allIds.length > 0) {
+    const { removed } = await deleteGoogleCalendarEventsById(accessToken, allIds);
     removedFromGoogle = removed;
   }
 
   await CalendarSync.findOneAndUpdate(
-    { user: userId },
+    buildCalendarSyncUserMatch(userId),
     { $set: { syncedGoogleEventIds: [] } },
     { new: true }
   );
 
   return {
     removedFromGoogle,
-    attempted: prevIds.length,
-    hadConnection: Boolean(accessToken)
+    attempted: allIds.length,
+    hadConnection: Boolean(accessToken),
+    hadRefreshToken: Boolean(sync?.googleRefreshToken)
   };
 }
 
@@ -786,6 +935,41 @@ async function replaceSccSyncedGoogleEvents(userId, accessToken, optimizedSchedu
     removedOld: prevIds.length,
     failureCount: settled.filter((r) => r.status === "rejected").length
   };
+}
+
+/**
+ * After saving an optimized plan, push to Google when the user has connected Calendar (stored refresh token).
+ * Does not throw — logs and returns a result for optional API responses.
+ */
+async function tryAutoSyncGoogleCalendar(userId, optimizedSchedule) {
+  if (!Array.isArray(optimizedSchedule) || optimizedSchedule.length === 0) {
+    return null;
+  }
+  try {
+    const syncDoc = await CalendarSync.findOne({ user: userId })
+      .select("+googleRefreshToken")
+      .lean();
+    if (!syncDoc?.googleRefreshToken) return null;
+    const accessToken = await getAccessTokenFromRefreshToken(
+      syncDoc.googleRefreshToken
+    );
+    if (!accessToken) return null;
+    const stats = await replaceSccSyncedGoogleEvents(
+      userId,
+      accessToken,
+      optimizedSchedule
+    );
+    return { ok: true, ...stats };
+  } catch (err) {
+    console.error(
+      "[auto Google Calendar sync]",
+      err?.response?.data || err.message
+    );
+    return {
+      ok: false,
+      error: err?.response?.data || err.message
+    };
+  }
 }
 
 /**
@@ -1156,11 +1340,34 @@ Rules:
             error: calendarError?.response?.data || calendarError.message
           };
         }
+      } else {
+        const auto = await tryAutoSyncGoogleCalendar(
+          req.user._id,
+          optimizedSchedule
+        );
+        if (auto?.ok) {
+          calendarSyncResult = {
+            attempted: true,
+            successCount: auto.created,
+            failureCount: auto.failureCount,
+            removedPreviousFromGoogle: auto.removedOld,
+            viaStoredGoogle: true
+          };
+        } else if (auto && auto.ok === false) {
+          calendarSyncResult = {
+            attempted: true,
+            error: auto.error
+          };
+        }
       }
+
+      const syncedToGoogle =
+        Boolean(googleAccessToken) ||
+        Boolean(calendarSyncResult?.viaStoredGoogle);
 
       return res.status(200).json({
         success: true,
-        message: googleAccessToken
+        message: syncedToGoogle
           ? "AI-generated timetable created, optimized, and sent to Google Calendar (best-effort)."
           : "AI-generated timetable created and optimized.",
         data: {
@@ -1353,11 +1560,34 @@ Return ONLY valid JSON (no markdown, no explanation) with this shape:
           error: calendarError?.response?.data || calendarError.message
         };
       }
+    } else {
+      const auto = await tryAutoSyncGoogleCalendar(
+        req.user._id,
+        optimizedSchedule
+      );
+      if (auto?.ok) {
+        calendarSyncResult = {
+          attempted: true,
+          successCount: auto.created,
+          failureCount: auto.failureCount,
+          removedPreviousFromGoogle: auto.removedOld,
+          viaStoredGoogle: true
+        };
+      } else if (auto && auto.ok === false) {
+        calendarSyncResult = {
+          attempted: true,
+          error: auto.error
+        };
+      }
     }
+
+    const syncedToGoogle =
+      Boolean(googleAccessToken) ||
+      Boolean(calendarSyncResult?.viaStoredGoogle);
 
     return res.status(200).json({
       success: true,
-      message: googleAccessToken
+      message: syncedToGoogle
         ? "AI-generated timetable created, optimized, and sent to Google Calendar (best-effort)."
         : "AI-generated timetable created and optimized.",
       data: {

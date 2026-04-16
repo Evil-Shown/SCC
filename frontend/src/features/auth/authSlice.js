@@ -1,24 +1,18 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import * as authService from "../../services/authService";
 import { initSocket, disconnectSocket } from "../../socket/socket";
+import {
+  getStoredUser,
+  getAccessToken,
+  getRefreshToken,
+  persistAuth,
+  persistUser,
+  clearAuthStorage
+} from "../../utils/authStorage.js";
 
-// Get user from sessionStorage with error handling
-const getStoredItem = (key) => {
-  try {
-    const item = sessionStorage.getItem(key);
-    if (key === "user" && item) {
-      return JSON.parse(item);
-    }
-    return item;
-  } catch (error) {
-    console.error(`Error reading ${key} from sessionStorage:`, error);
-    return null;
-  }
-};
-
-const user = getStoredItem("user");
-const accessToken = getStoredItem("accessToken");
-const refreshToken = getStoredItem("refreshToken");
+const user = getStoredUser();
+const accessToken = getAccessToken();
+const refreshToken = getRefreshToken();
 
 const initialState = {
   user: user || null,
@@ -33,25 +27,30 @@ const initialState = {
 // Helper function to handle auth success
 const handleAuthSuccess = (state, action) => {
   const { user, accessToken, refreshToken } = action.payload;
-  
+
   state.isLoading = false;
+  state.error = null;
+  state.lastActivity = Date.now();
+
+  if (!user || !accessToken) {
+    state.user = user ?? null;
+    state.accessToken = accessToken ?? null;
+    state.refreshToken = refreshToken ?? null;
+    state.isAuthenticated = false;
+    return;
+  }
+
   state.user = user;
   state.accessToken = accessToken;
   state.refreshToken = refreshToken;
   state.isAuthenticated = true;
-  state.error = null;
-  state.lastActivity = Date.now();
 
-  // Save to sessionStorage
   try {
-    sessionStorage.setItem("user", JSON.stringify(user));
-    sessionStorage.setItem("accessToken", accessToken);
-    sessionStorage.setItem("refreshToken", refreshToken);
+    persistAuth({ user, accessToken, refreshToken });
   } catch (error) {
-    console.error("Error saving to sessionStorage:", error);
+    console.error("Error saving auth storage:", error);
   }
 
-  // Initialize socket
   if (user?._id) {
     initSocket(user._id);
   }
@@ -105,17 +104,11 @@ export const logout = createAsyncThunk(
       // Disconnect socket
       disconnectSocket();
       
-      // Clear all sessionStorage
-      sessionStorage.removeItem("user");
-      sessionStorage.removeItem("accessToken");
-      sessionStorage.removeItem("refreshToken");
-      
+      clearAuthStorage();
+
       return null;
     } catch (error) {
-      // Even if logout API fails, clear local state
-      sessionStorage.removeItem("user");
-      sessionStorage.removeItem("accessToken");
-      sessionStorage.removeItem("refreshToken");
+      clearAuthStorage();
       disconnectSocket();
       
       return rejectWithValue(
@@ -129,19 +122,18 @@ export const fetchUserProfile = createAsyncThunk(
   "auth/fetchUserProfile",
   async (_, { getState, rejectWithValue }) => {
     try {
-      const { accessToken } = getState().auth;
-      if (!accessToken) {
+      const fromRedux = getState().auth.accessToken;
+      const token = fromRedux || getAccessToken();
+      if (!token) {
         return rejectWithValue("No access token found");
       }
-      
+
       const response = await authService.getMe();
       return response.data.user;
     } catch (error) {
       // If token expired, clear auth state
       if (error.response?.status === 401) {
-        sessionStorage.removeItem("user");
-        sessionStorage.removeItem("accessToken");
-        sessionStorage.removeItem("refreshToken");
+        clearAuthStorage();
       }
       
       return rejectWithValue(
@@ -190,12 +182,9 @@ export const deleteUserAccount = createAsyncThunk(
     try {
       const response = await authService.deleteAccount();
       
-      // Clear all sessionStorage
-      sessionStorage.removeItem("user");
-      sessionStorage.removeItem("accessToken");
-      sessionStorage.removeItem("refreshToken");
+      clearAuthStorage();
       disconnectSocket();
-      
+
       return response;
     } catch (error) {
       return rejectWithValue(
@@ -214,24 +203,29 @@ const authSlice = createSlice({
     },
     setCredentials: (state, action) => {
       const { user, accessToken, refreshToken } = action.payload;
+      state.lastActivity = Date.now();
+
+      if (!user || !accessToken) {
+        state.user = user ?? null;
+        state.accessToken = accessToken ?? null;
+        state.refreshToken = refreshToken ?? null;
+        state.isAuthenticated = false;
+        return;
+      }
+
       state.user = user;
       state.accessToken = accessToken;
       state.refreshToken = refreshToken;
       state.isAuthenticated = true;
-      state.lastActivity = Date.now();
-      
-      sessionStorage.setItem("user", JSON.stringify(user));
-      sessionStorage.setItem("accessToken", accessToken);
-      sessionStorage.setItem("refreshToken", refreshToken);
+
+      persistAuth({ user, accessToken, refreshToken });
     },
     updateLastActivity: (state) => {
       state.lastActivity = Date.now();
     },
     resetAuth: (state) => {
       Object.assign(state, initialState);
-      sessionStorage.removeItem("user");
-      sessionStorage.removeItem("accessToken");
-      sessionStorage.removeItem("refreshToken");
+      clearAuthStorage();
     }
   },
   extraReducers: (builder) => {
@@ -295,16 +289,16 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.user = action.payload;
         try {
-          sessionStorage.setItem("user", JSON.stringify(action.payload));
+          persistUser(action.payload);
         } catch (error) {
-          console.error("Error saving user to sessionStorage:", error);
+          console.error("Error saving user to storage:", error);
         }
       })
       .addCase(fetchUserProfile.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
         // If token was invalid/expired and refresh also failed, reset auth
-        if (!sessionStorage.getItem("accessToken")) {
+        if (!getAccessToken()) {
           state.user = null;
           state.accessToken = null;
           state.refreshToken = null;
@@ -320,9 +314,9 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.user = action.payload;
         try {
-          sessionStorage.setItem("user", JSON.stringify(action.payload));
+          persistUser(action.payload);
         } catch (error) {
-          console.error("Error saving user to sessionStorage:", error);
+          console.error("Error saving user to storage:", error);
         }
       })
       .addCase(updateUserProfile.rejected, (state, action) => {
@@ -341,10 +335,10 @@ const authSlice = createSlice({
         }
         state.lastActivity = Date.now();
         
-        sessionStorage.setItem("accessToken", accessToken);
-        if (refreshToken) {
-          sessionStorage.setItem("refreshToken", refreshToken);
-        }
+        persistAuth({
+          accessToken,
+          ...(refreshToken ? { refreshToken } : {})
+        });
       })
       .addCase(refreshAccessToken.rejected, (state) => {
         // If refresh fails, log out user
@@ -355,9 +349,7 @@ const authSlice = createSlice({
           isAuthenticated: false
         });
         
-        sessionStorage.removeItem("user");
-        sessionStorage.removeItem("accessToken");
-        sessionStorage.removeItem("refreshToken");
+        clearAuthStorage();
         disconnectSocket();
       })
       
@@ -366,6 +358,7 @@ const authSlice = createSlice({
         state.isLoading = true;
       })
       .addCase(deleteUserAccount.fulfilled, (state) => {
+        clearAuthStorage();
         Object.assign(state, {
           user: null,
           accessToken: null,

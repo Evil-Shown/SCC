@@ -1,7 +1,7 @@
 // Dashboard.jsx - Advanced Edition
 import { useEffect, useState, useRef } from "react";
-import axios from "axios";
 import { useSelector, useDispatch } from "react-redux";
+import api from "../services/api";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { logout } from "../features/auth/authSlice";
 import { useTheme } from "../context/ThemeContext";
@@ -127,19 +127,21 @@ export default function Dashboard() {
     async function fetchDashboardData() {
       setIsLoading(true);
       try {
-        const notesRes = await axios.get("/api/notes");
+        const notesRes = await api.get("/api/notes");
         const notesCount = notesRes.data?.data?.length || 0;
         const recentNotesData = notesRes.data?.data?.slice(0, 3) || [];
 
-        const groupsRes = await axios.get("/api/groups?myGroups=true");
+        const groupsRes = await api.get("/api/groups", {
+          params: { myGroups: true }
+        });
         const groupsCount = groupsRes.data?.data?.length || 0;
 
-        const allTimetableRes = await axios.get("/api/timetable");
+        const allTimetableRes = await api.get("/api/timetable");
         const allEvents = allTimetableRes.data?.data || [];
 
         let overviewData = null;
         try {
-          const examsRes = await axios.get("/api/exams/overview");
+          const examsRes = await api.get("/api/exams/overview");
           overviewData = examsRes.data?.data || null;
         } catch {
           overviewData = null;

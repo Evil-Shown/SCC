@@ -23,6 +23,7 @@ import "../styles/Notifications.css";
 /* ═══════════════════════════════════════════════════════════
    CREATE GROUP MODAL
 ═══════════════════════════════════════════════════════════ */
+// This is the popup where we type in the new group details
 function CreateGroupModal({ onClose }) {
   const dispatch = useDispatch();
   const [form, setForm] = useState({
@@ -201,6 +202,7 @@ function CreateGroupModal({ onClose }) {
 ═══════════════════════════════════════════════════════════ */
 const PRESET_TAGS = ["Projects", "Exams", "Labs", "Assignments", "Research"];
 
+// This is the main page that shows all the groups you're in or can join
 const Groups = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -225,6 +227,7 @@ const Groups = () => {
     dispatch(setFilters({ search: val }));
   }, [dispatch]);
 
+  // This runs when someone clicks the join button on a group card
   const handleJoin = async (groupId) => {
     setJoining((p) => ({ ...p, [groupId]: true }));
     try {

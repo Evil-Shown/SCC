@@ -164,7 +164,7 @@ export default function UsersTab() {
                 </td>
                 <td>
                   {editId === user._id ? (
-                    <input className="admin-inline-input" type="number" min={1} max={5} value={editData.year} onChange={(e) => setEditData(d => ({ ...d, year: e.target.value }))} style={{ width: 60 }} />
+                    <input className="admin-inline-input" type="number" min={1} max={4} value={editData.year} onChange={(e) => setEditData(d => ({ ...d, year: e.target.value }))} style={{ width: 60 }} />
                   ) : <span className="admin-cell-muted">{user.year || "—"}</span>}
                 </td>
                 <td>

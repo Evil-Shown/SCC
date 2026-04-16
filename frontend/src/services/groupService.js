@@ -1,5 +1,6 @@
 import api from "./api";
 
+// This file has all the functions to talk to our backend server about groups
 // ── Groups CRUD ────────────────────────────────────────────
 
 export const createGroup = async (groupData) => {

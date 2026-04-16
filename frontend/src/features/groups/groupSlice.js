@@ -188,10 +188,11 @@ export const fetchGroupActivity = createAsyncThunk(
 
 // ─── Slice ─────────────────────────────────────────────────────────────────────
 
+// This is where we store all our group data on the frontend
 const groupsSlice = createSlice({
     name: "groups",
     initialState: {
-        groups: [],
+        groups: [], // All the groups the user sees
         currentGroup: null,
         isLoading: false,
         error: null,
@@ -217,7 +218,7 @@ const groupsSlice = createSlice({
         clearCurrentGroup: (state) => {
             state.currentGroup = null;
         },
-        // Real-time handlers (called from socket.js)
+        // These helpers update the group state instantly when a socket message arrives
         updateGroupRealtime: (state, action) => {
             const updated = action.payload;
             const idx = state.groups.findIndex((g) => g._id === updated._id);
