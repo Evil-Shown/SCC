@@ -6,13 +6,27 @@ import StudyPilot from '../components/Exam/StudyPilot'; // Study Pilot Import �
 import '../styles/ExamMode.css';
 import '../styles/StudyPilot.css';
 
+//UI Icons import
+import schoolIcon from '../assets/school.png';
+import personIcon from '../assets/person.png';
+import assignmentIcon from '../assets/assignment.png';
+import rocketIcon from '../assets/rocket_launch.png';
+import psychologyIcon from '../assets/psychology.jpg';
+
+
+
+
+
 const ExamMode = () => {
     // TAKE currentExam AND currentPlan from Redux store
     const { currentExam, currentPlan } = useSelector((state) => state.exam);
     const [showSetup, setShowSetup] = useState(false);
     
-    // UI එක (Dashboard ද, Study Pilot ද) පාලනය කිරීමට අලුත් State එකක්
+    // New State to track active view (dashboard or study pilot)
     const [activeView, setActiveView] = useState('dashboard');
+
+    // Sidebar open/close state
+    const [sidebarOpen, setSidebarOpen] = useState(true);
 
     const todayFormatted = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
     const todayStr = new Date().toISOString().split('T')[0];
@@ -22,98 +36,64 @@ const ExamMode = () => {
 
     return (
         <div className="scc-exam-layout">
-            {/* --- SIDEBAR --- */}
-            <aside className="scc-sidebar">
-                <div className="sidebar-brand">
-                    <span className="material-symbols-outlined brand-icon">bolt</span>
-                    <h2>SCC EXAM MODE</h2>
-                </div>
+    {/* --- SIDEBAR --- */}
+    <aside className={`scc-sidebar ${sidebarOpen ? 'open' : 'closed'}`}>
+        <div className="sidebar-brand" onClick={() => setSidebarOpen(!sidebarOpen)} style={{ cursor: 'pointer' }}>
+            <img src={schoolIcon} alt="school" className="custom-img-icon brand-icon" />
+            {sidebarOpen && <h2>SCC EXAM MODE</h2>}
+        </div>
 
-                <div className="sidebar-user">
-                    <img 
-                        src="https://ui-avatars.com/api/?name=Mithun+Madusanka&background=81a1c6&color=fff&bold=true" 
-                        alt="Profile" 
-                        className="user-avatar" 
-                    />
-                    <div className="user-info">
-                        <h4>Mithun Madusanka</h4>
-                        <p>Student Account</p>
-                    </div>
-                </div>
+        {/* මෙනුව (nav) සැමවිටම පෙන්වීමට condition එකෙන් ඉවත් කර ඇත */}
+        <nav className="sidebar-nav">
+            
+            {/* Dashboard Button */}
+            <a 
+                href="#" 
+                className={`nav-item ${activeView === 'dashboard' ? 'active' : ''}`}
+                onClick={(e) => { e.preventDefault(); setActiveView('dashboard'); }}
+            >
+                <img src={personIcon} alt="person" className="custom-img-icon" />
+                {/* Sidebar එක open නම් පමණක් අකුරු පෙන්වයි */}
+                {sidebarOpen && <span>Student Dashboard</span>}
+            </a>
+            
+            {/* Setup Study Plans Button */}
+            <a 
+                href="#" 
+                className="nav-item" 
+                onClick={(e) => { e.preventDefault(); setShowSetup(true); }}
+            >
+                <img src={assignmentIcon} alt="assignment" className="custom-img-icon" />
+                {sidebarOpen && <span>Setup Your Study Plans</span>}
+            </a>
+            
+            {/* Study Pilot Button */}
+            <a 
+                href="#" 
+                className={`nav-item ${activeView === 'studyPilot' ? 'active' : ''}`}
+                onClick={(e) => { e.preventDefault(); setActiveView('studyPilot'); }}
+            >
+                <img src={rocketIcon} alt="rocket_launch" className="custom-img-icon" />
+                {sidebarOpen && <span>Study Pilot</span>}
+            </a>
+            
+            {/* Chat Button */}
+            <a href="#" className="nav-item">
+                <img src={psychologyIcon} alt="psychology" className="custom-img-icon" />
+                {sidebarOpen && <span>Chat</span>}
+            </a>
+            
+        </nav>
+    </aside>
 
-                <nav className="sidebar-nav">
-                    {/* Dashboard Button */}
-                    <a 
-                        href="#" 
-                        className={`nav-item ${activeView === 'dashboard' ? 'active' : ''}`}
-                        onClick={(e) => { e.preventDefault(); setActiveView('dashboard'); }}
-                    >
-                        <span className="material-symbols-outlined">dashboard</span> 
-                        Student Dashboard
-                    </a>
-                    
-                    {/* Setup Study Plans Button */}
-                    <a 
-                        href="#" 
-                        className="nav-item" 
-                        onClick={(e) => { e.preventDefault(); setShowSetup(true); }}
-                    >
-                        <span className="material-symbols-outlined">calendar_month</span> 
-                        Setup Your Study Plans
-                    </a>
-                    
-                    {/* Study Pilot Button */}
-                    <a 
-                        href="#" 
-                        className={`nav-item ${activeView === 'studyPilot' ? 'active' : ''}`}
-                        onClick={(e) => { e.preventDefault(); setActiveView('studyPilot'); }}
-                    >
-                        <span className="material-symbols-outlined">rocket_launch</span> 
-                        Study Pilot
-                    </a>
-                    
-                    {/* Chat Button */}
-                    <a href="#" className="nav-item">
-                        <span className="material-symbols-outlined">chat</span> 
-                        Chat
-                    </a>
-                </nav>
-
-                <div className="sidebar-footer">
-                    
-                </div>
-            </aside>
 
             {/* --- MAIN CONTENT --- */}
             <main className="scc-main-container">
-                {/* Top Header - මෙය හැමවිටම දිස්විය යුතුයි */}
-                <header className="scc-top-header">
-                    <div className="search-bar">
-                        <span className="material-symbols-outlined">search</span>
-                        <input type="text" placeholder="Search exams, resources, or topics..." />
-                    </div>
-                    <div className="header-actions">
-                        <span className="material-symbols-outlined">notifications</span>
-                        <span className="material-symbols-outlined">settings</span>
-                    </div>
-                </header>
-
                 <div className="scc-content-scroll">
                     
-                    {/* සක්‍රීය View එක මත පදනම්ව UI එක වෙනස් කිරීම */}
+                    {/*  UI change acco.tho the ACTIVE VIEW */}
                     {activeView === 'dashboard' ? (
                         <>
-                            {/* --- Dashboard එකට අදාළ පැරණි කේතය --- */}
-                            <section className="doomsday-section">
-                                <h3 className="doomsday-title">FINAL EXAMS</h3>
-                                <div className="clock-grid">
-                                    <div className="clock-box"><h1>12</h1><p>DAYS</p></div>
-                                    <div className="clock-box"><h1>08</h1><p>HOURS</p></div>
-                                    <div className="clock-box"><h1>45</h1><p>MINUTES</p></div>
-                                    <div className="clock-box"><h1>12</h1><p>SECONDS</p></div>
-                                </div>
-                            </section>
-
                             <div className="dashboard-grid">
                                 <div className="tasks-column" style={{ display: 'flex', flexDirection: 'column' }}>
                                     {currentPlan ? (
@@ -155,24 +135,10 @@ const ExamMode = () => {
                                         </>
                                     )}
                                 </div>
-
-                                <div className="stats-column">
-                                    <div className="scc-card readiness-card">
-                                        <div className="card-header">
-                                            <p>READINESS SCORE</p>
-                                            <span className="material-symbols-outlined">analytics</span>
-                                        </div>
-                                        <h1>{currentExam?.readinessScore || 0}<span>%</span></h1>
-                                        <p className="growth-text">Based on your plan</p>
-                                        <div className="progress-container">
-                                            <div className="progress-bar" style={{ width: `${currentExam?.readinessScore || 0}%` }}></div>
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
                         </>
                     ) : activeView === 'studyPilot' ? (
-                        /* --- Study Pilot එක පෙන්වන කොටස --- */
+                        /* --- Study Pilot part --- */
                         <StudyPilot />
                     ) : null}
 

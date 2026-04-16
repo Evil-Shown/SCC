@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import api from '../../services/api'; // ඔයාගේ axios instance එක
+import api from '../../services/api'; //  axios instance 
 
 // Send request to Backend API to create the Exam Plan
 export const createExamPlan = createAsyncThunk(
@@ -7,7 +7,7 @@ export const createExamPlan = createAsyncThunk(
     async (formData, thunkAPI) => {
         try {
             const response = await api.post('/api/exams/setup', formData, {
-                // 💡 අනිවාර්යයෙන්ම මෙම Header එක තිබිය යුතුයි
+                // 💡 HEADER MUST
                 headers: {
                     'Content-Type': 'multipart/form-data'
                 }
@@ -25,7 +25,7 @@ export const generateStudyMaterials = createAsyncThunk(
     async (formData, thunkAPI) => {
         try {
             const response = await api.post('/api/study-pilot/generate', formData, {
-                // 💡 අනිවාර්යයෙන්ම මෙම Header එක තිබිය යුතුයි
+                // 💡 HEADER MUST
                 headers: {
                     'Content-Type': 'multipart/form-data'
                 }

@@ -17,7 +17,7 @@ load_dotenv()
 
 app = FastAPI(title="SCC Exam Plan AI Microservice")
 
-# Windows Tesseract Path (ඔබේ පරිගණකයේ Path එකට ගැලපෙන සේ වෙනස් කරන්න)
+# Windows Tesseract Path 
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 # ==========================================
@@ -35,7 +35,7 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
     text = ""
     try:
         doc = fitz.open(stream=file_bytes, filetype="pdf")
-        for page_num in range(min(len(doc), 15)): # මුල් පිටු 15 පමණක්
+        for page_num in range(min(len(doc), 15)): # first 15 pages
             page = doc[page_num]
             page_text = page.get_text().strip()
             
@@ -78,7 +78,7 @@ async def generate_study_plan(
     """
     messages = [SystemMessage(content=systemPrompt), HumanMessage(content=user_message)]
     
-    # JsonOutputParser භාවිතා කිරීම
+    # JsonOutputParser 
     chain = llm_planner | JsonOutputParser()
 
     try:
@@ -193,7 +193,7 @@ Create a knowledge map. Output ONLY valid JSON: {"nodes": [{"id": "1", "data": {
     ]
 
     try:
-        # JsonOutputParser භාවිතා කර ඇත.
+        # JsonOutputParser 
         parser = JsonOutputParser()
         chain = llm_planner | parser
         
