@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import "./SessionEnd.css";
+import "../styles/SessionEnd.css";
 
 function SessionEnd({ onClose }) {
   const navigate = useNavigate();
