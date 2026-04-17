@@ -8,6 +8,9 @@ import {
     fetchGroupMeetups, createGroupMeetup,
     meetupCreatedRealtime, meetupStatusChangedRealtime, meetupVotedRealtime,
 } from "../features/meetups/meetupSlice";
+import {
+    pollCreatedRealtime, pollUpdatedRealtime, pollDeletedRealtime, pollVotedRealtime
+} from "../features/polls/pollSlice";
 import { joinGroup as joinSocketRoom, leaveGroup as leaveSocketRoom, getSocket } from "../socket/socket";
 import * as groupService from "../services/groupService";
 import {
@@ -15,7 +18,7 @@ import {
     Plus, X, Clock, Zap, Globe, Navigation, Shuffle,
     Award, Lock, Trash2, LogOut, Waves,
     Home as HomeIcon, Brain, BookMarked, Video, LayoutDashboard,
-    ChevronDown, ChevronUp, AlertTriangle, Mail, Activity, Tag
+    ChevronDown, ChevronUp, AlertTriangle, Mail, Activity, Tag, BarChart2
 } from "lucide-react";
 import LoadingSpinner from "../components/LoadingSpinner";
 import NotificationBell from "../components/NotificationBell";
@@ -25,6 +28,7 @@ import FilesTab from "../components/groups/FilesTab";
 import MemberList from "../components/groups/MemberList";
 import InvitesTab from "../components/groups/InvitesTab";
 import ActivityTab from "../components/groups/ActivityTab";
+import PollsTab from "../components/groups/PollsTab";
 import { confirmAction } from "../utils/toast";
 import "../styles/Dashboard.css";
 import "../styles/Groups.css";
@@ -34,6 +38,7 @@ import "../styles/Notifications.css";
 /* ═══════════════════════════════════════════════════════════
    CREATE MEETUP MODAL
 ═══════════════════════════════════════════════════════════ */
+// Form to schedule a new meeting (online or physical)
 function CreateMeetupModal({ groupId, memberCount, onClose }) {
     const dispatch = useDispatch();
     const [form, setForm] = useState({
@@ -64,6 +69,7 @@ function CreateMeetupModal({ groupId, memberCount, onClose }) {
         if (!form.time) return setErr("Time is required");
         if (form.mode === "ONLINE" && !form.meetingLink) return setErr("Meeting link is required for online meetups");
         if (form.mode === "PHYSICAL" && !form.location) return setErr("Location is required for physical meetups");
+        if (form.mode === "HYBRID" && (!form.location || !form.meetingLink)) return setErr("Both location and meeting link are required for hybrid meetups");
         setBusy(true); setErr("");
         try {
             await dispatch(createGroupMeetup({ groupId, payload: form })).unwrap();
@@ -144,21 +150,21 @@ function CreateMeetupModal({ groupId, memberCount, onClose }) {
 
                         {["ONLINE", "HYBRID"].includes(form.mode) && (
                             <div className="form-field" style={{ marginBottom: 0 }}>
-                                <label className="form-label">Meeting Link {form.mode === "ONLINE" ? "*" : "(optional)"}</label>
+                                <label className="form-label">Meeting Link *</label>
                                 <input className="form-input" value={form.meetingLink}
                                     onChange={(e) => set("meetingLink", e.target.value)}
                                     placeholder="https://meet.google.com/…"
-                                    required={form.mode === "ONLINE"} />
+                                    required={["ONLINE", "HYBRID"].includes(form.mode)} />
                             </div>
                         )}
 
                         {["PHYSICAL", "HYBRID"].includes(form.mode) && (
                             <div className="form-field" style={{ marginBottom: 0 }}>
-                                <label className="form-label">Location {form.mode === "PHYSICAL" ? "*" : "(optional)"}</label>
+                                <label className="form-label">Location *</label>
                                 <input className="form-input" value={form.location}
                                     onChange={(e) => set("location", e.target.value)}
                                     placeholder="Room 204, Library…"
-                                    required={form.mode === "PHYSICAL"} />
+                                    required={["PHYSICAL", "HYBRID"].includes(form.mode)} />
                             </div>
                         )}
 
@@ -201,7 +207,7 @@ function MeetupsTab({ groupId, isAdmin, currentUser, memberCount, meetups, meetu
     const past = meetups.filter((m) => ["Completed", "Cancelled"].includes(m.status));
 
     return (
-        <div className="meetups-tab-container fade-in">
+        <div className="meetups-tab-container">
             {/* Header */}
             <div className="mt-header">
                 <div>
@@ -269,6 +275,7 @@ function MeetupsTab({ groupId, isAdmin, currentUser, memberCount, meetups, meetu
 /* ═══════════════════════════════════════════════════════════
    MAIN GroupDetail PAGE
 ═══════════════════════════════════════════════════════════ */
+// This is the big page that shows chat, polls, and everything for a specific group
 const GroupDetail = () => {
     const { groupId } = useParams();
     const navigate = useNavigate();
@@ -297,23 +304,40 @@ const GroupDetail = () => {
         };
     }, [dispatch, groupId]);
 
-    // ── Socket: real-time meetup updates ─────────────────────
+    // Listen for real-time socket updates (someone votes, new poll, etc)
     useEffect(() => {
         if (!socket) return;
         const onCreated = (data) => dispatch(meetupCreatedRealtime(data));
         const onChanged = (data) => dispatch(meetupStatusChangedRealtime(data));
         const onVoted = (data) => dispatch(meetupVotedRealtime(data));
+
+        const onPollCreated = (data) => dispatch(pollCreatedRealtime(data));
+        const onPollUpdated = (data) => dispatch(pollUpdatedRealtime(data));
+        const onPollDeleted = (pollId) => dispatch(pollDeletedRealtime({ pollId, groupId }));
+        const onPollVoted = (data) => dispatch(pollVotedRealtime(data));
+
         socket.on("group-meetup:created", onCreated);
         socket.on("group-meetup:status-changed", onChanged);
         socket.on("group-meetup:voted", onVoted);
+
+        socket.on("group-poll:created", onPollCreated);
+        socket.on("group-poll:updated", onPollUpdated);
+        socket.on("group-poll:deleted", onPollDeleted);
+        socket.on("group-poll:voted", onPollVoted);
+
         return () => {
             socket.off("group-meetup:created", onCreated);
             socket.off("group-meetup:status-changed", onChanged);
             socket.off("group-meetup:voted", onVoted);
-        };
-    }, [socket, dispatch]);
 
-    // ── Computed ──────────────────────────────────────────────
+            socket.off("group-poll:created", onPollCreated);
+            socket.off("group-poll:updated", onPollUpdated);
+            socket.off("group-poll:deleted", onPollDeleted);
+            socket.off("group-poll:voted", onPollVoted);
+        };
+    }, [socket, dispatch, groupId]);
+
+    // Figure out if the current user is an admin here
     const isAdmin = !!(
         currentGroup?.creator === user?._id ||
         currentGroup?.creator?._id?.toString() === user?._id ||
@@ -342,6 +366,15 @@ const GroupDetail = () => {
         navigate("/groups");
     };
 
+    const handleBack = () => {
+        // If we came from a deep link, we might not have history.
+        if (window.history.length > 2 && location.key !== "default") {
+            navigate(-1);
+        } else {
+            navigate("/groups");
+        }
+    };
+
     // ── Loading / not found states ────────────────────────────
     if (groupLoading && !currentGroup) return (
         <div className="db-root" style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -366,6 +399,7 @@ const GroupDetail = () => {
 
     const tabs = [
         { id: "chat", label: "Chat", Icon: MessageSquare, badge: 0 },
+        { id: "polls", label: "Polls", Icon: BarChart2, badge: 0 },
         { id: "meetups", label: "Meetups", Icon: Calendar, badge: activeMeetups },
         { id: "files", label: "Files", Icon: File, badge: 0 },
         { id: "members", label: "Members", Icon: Users, badge: memberCount },
@@ -377,14 +411,16 @@ const GroupDetail = () => {
     const upcomingMeetup = meetups.find((m) => ["Active", "Confirmed", "Draft"].includes(m.status));
 
     return (
-        <div className="db-root grp-root gdetail-page fade-in">
+        <div className="db-root grp-root gdetail-page">
             {/* ── Cinematic Hero Header ── */}
             <div className="gdetail-hero">
                 <div className="gdetail-hero-inner">
                     <div className="gdetail-breadcrumbs">
-                        <button className="gdetail-back-btn" onClick={() => navigate("/groups")}>
-                            <ArrowLeft size={14} /> Back to Groups
+                        <button className="gdetail-back-btn" onClick={handleBack} aria-label="Go back">
+                            <ArrowLeft size={14} /> {window.history.length > 2 ? "Back" : "Back to Groups"}
                         </button>
+                        <span className="gdetail-crumb-sep">/</span>
+                        <Link to="/groups" className="gdetail-crumb-link">Groups</Link>
                         <span className="gdetail-crumb-sep">/</span>
                         <span className="gdetail-crumb-current">{currentGroup.name}</span>
                     </div>
@@ -461,6 +497,9 @@ const GroupDetail = () => {
                     {/* Left: Tab Content */}
                     <div className="gdetail-content-panel">
                         {activeTab === "chat" && <ChatTab groupId={groupId} />}
+                        {activeTab === "polls" && (
+                            <PollsTab groupId={groupId} isAdmin={isAdmin} currentUser={user} />
+                        )}
                         {activeTab === "meetups" && (
                             <MeetupsTab
                                 groupId={groupId}

@@ -21,8 +21,8 @@ function ConfirmModal({ message, onConfirm, onCancel }) {
 
 function RoleBadge({ role }) {
   const config = {
-    admin: { color: "#f472b6", icon: Shield, bg: "#f472b633" },
-    teacher: { color: "#60a5fa", icon: GraduationCap, bg: "#60a5fa33" },
+    admin: { color: "#16a34a", icon: Shield, bg: "#16a34a33" },
+    teacher: { color: "#22c55e", icon: GraduationCap, bg: "#22c55e33" },
     student: { color: "#34d399", icon: User, bg: "#34d39933" },
   };
   const { color, icon: Icon, bg } = config[role] || config.student;
@@ -60,7 +60,13 @@ export default function UsersTab() {
 
   const handleEdit = (user) => {
     setEditId(user._id);
-    setEditData({ name: user.name, role: user.role, department: user.department || "", year: user.year || "" });
+    setEditData({
+      name: user.name,
+      role: user.role,
+      department: user.department || "",
+      year: user.year || "",
+      isVerified: Boolean(user.isVerified),
+    });
   };
 
   const handleSave = async () => {
@@ -158,13 +164,24 @@ export default function UsersTab() {
                 </td>
                 <td>
                   {editId === user._id ? (
-                    <input className="admin-inline-input" type="number" min={1} max={5} value={editData.year} onChange={(e) => setEditData(d => ({ ...d, year: e.target.value }))} style={{ width: 60 }} />
+                    <input className="admin-inline-input" type="number" min={1} max={4} value={editData.year} onChange={(e) => setEditData(d => ({ ...d, year: e.target.value }))} style={{ width: 60 }} />
                   ) : <span className="admin-cell-muted">{user.year || "—"}</span>}
                 </td>
                 <td>
-                  <span style={{ color: user.isVerified ? "#34d399" : "#f87171", fontWeight: 600, fontSize: 12 }}>
-                    {user.isVerified ? "✓ Yes" : "✗ No"}
-                  </span>
+                  {editId === user._id ? (
+                    <select
+                      className="admin-select-sm"
+                      value={editData.isVerified ? "true" : "false"}
+                      onChange={(e) => setEditData(d => ({ ...d, isVerified: e.target.value === "true" }))}
+                    >
+                      <option value="true">Yes</option>
+                      <option value="false">No</option>
+                    </select>
+                  ) : (
+                    <span style={{ color: user.isVerified ? "#34d399" : "#f87171", fontWeight: 600, fontSize: 12 }}>
+                      {user.isVerified ? "✓ Yes" : "✗ No"}
+                    </span>
+                  )}
                 </td>
                 <td className="admin-cell-muted">{new Date(user.createdAt).toLocaleDateString()}</td>
                 <td>

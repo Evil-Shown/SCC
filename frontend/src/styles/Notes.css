@@ -359,9 +359,21 @@
 
 .notes-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
   gap: 1rem;
   margin-bottom: 1rem;
+}
+
+@media (min-width: 1440px) {
+  .notes-grid {
+    grid-template-columns: repeat(auto-fill, minmax(460px, 1fr));
+  }
+}
+
+@media (min-width: 1680px) {
+  .notes-grid {
+    grid-template-columns: repeat(auto-fill, minmax(520px, 1fr));
+  }
 }
 
 .note-card {
@@ -369,7 +381,7 @@
   border: 1px solid var(--np-border);
   border-radius: var(--np-radius-lg);
   box-shadow: var(--np-shadow-md);
-  padding: 1rem;
+  padding: 1.12rem;
   display: flex;
   flex-direction: column;
   min-height: 305px;
@@ -536,12 +548,12 @@
 .note-actions {
   display: flex;
   align-items: center;
-  gap: 0.34rem;
+  gap: 0.45rem;
 }
 
 .action-btn {
-  min-width: 2.06rem;
-  height: 2.06rem;
+  min-width: 2.2rem;
+  height: 2.2rem;
   border-radius: 999px;
   border: 1px solid var(--np-border);
   background: var(--np-surface-soft);

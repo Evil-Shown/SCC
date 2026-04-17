@@ -13,7 +13,8 @@ import NotificationBell from "../components/NotificationBell";
 import "../styles/Dashboard.css";
 import "../styles/Notifications.css";
 import "../styles/Profile.css";
-import { deleteKuppiPost, getMyKuppiLogs } from "../services/kuppiService";
+import { deleteKuppiPost, getMyKuppiLogs, updateKuppiPost } from "../services/kuppiService";
+import { getMyNotes, updateNote as updateNoteById, deleteNote as deleteNoteById } from "../services/notesService";
 import { confirmAction, notifyError, notifySuccess } from "../utils/toast";
 
 const TABS = ["overview", "activity", "settings"];
@@ -38,6 +39,16 @@ const Profile = () => {
   const [kuppiLogs, setKuppiLogs] = useState([]);
   const [logsLoading, setLogsLoading] = useState(false);
   const [logsError, setLogsError] = useState("");
+  const [notes, setNotes] = useState([]);
+  const [notesLoading, setNotesLoading] = useState(false);
+  const [notesError, setNotesError] = useState("");
+
+  const [editingKuppi, setEditingKuppi] = useState(null);
+  const [editingNote, setEditingNote] = useState(null);
+  const [kuppiEditForm, setKuppiEditForm] = useState({ title: "", description: "", subject: "", eventDate: "", meetingLink: "" });
+  const [noteEditForm, setNoteEditForm] = useState({ title: "", description: "", subject: "", onedriveLink: "", tags: "", year: "" });
+  const [updatingKuppi, setUpdatingKuppi] = useState(false);
+  const [updatingNote, setUpdatingNote] = useState(false);
 
   const navLinks = [
     { icon: <HomeIcon size={16} />, label: "Home", path: "/" },
@@ -71,6 +82,15 @@ const Profile = () => {
       .finally(() => setLogsLoading(false));
   }, [isAuthenticated]);
 
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    setNotesLoading(true);
+    getMyNotes({ page: 1, limit: 100 })
+      .then((r) => setNotes(r.data || []))
+      .catch((e) => setNotesError(e?.response?.data?.message || "Failed to load notes"))
+      .finally(() => setNotesLoading(false));
+  }, [isAuthenticated]);
+
   const summary = useMemo(() => {
     const total = kuppiLogs.length;
     const active = kuppiLogs.filter((l) => !l.isArchived).length;
@@ -96,6 +116,102 @@ const Profile = () => {
       notifySuccess("Deleted");
     } catch (e) {
       notifyError(e?.response?.data?.message || "Delete failed");
+    }
+  };
+
+  const toDateTimeLocal = (value) => {
+    const date = new Date(value);
+    if (isNaN(date.getTime())) return "";
+    const tz = date.getTimezoneOffset();
+    const local = new Date(date.getTime() - tz * 60000);
+    return local.toISOString().slice(0, 16);
+  };
+
+  const openKuppiEdit = (log) => {
+    setEditingKuppi(log);
+    setKuppiEditForm({
+      title: log.title || "",
+      description: log.description || "",
+      subject: log.subject || "",
+      eventDate: toDateTimeLocal(log.eventDate),
+      meetingLink: log.meetingLink || "",
+    });
+  };
+
+  const saveKuppiEdit = async (e) => {
+    e.preventDefault();
+    if (!editingKuppi) return;
+    try {
+      setUpdatingKuppi(true);
+      const payload = {
+        title: kuppiEditForm.title.trim(),
+        description: kuppiEditForm.description.trim(),
+        subject: kuppiEditForm.subject.trim(),
+        eventDate: kuppiEditForm.eventDate,
+        meetingLink: kuppiEditForm.meetingLink.trim(),
+      };
+      const res = await updateKuppiPost(editingKuppi._id, payload);
+      const updated = res?.data;
+      if (updated?._id) {
+        setKuppiLogs((prev) => prev.map((l) => (l._id === updated._id ? updated : l)));
+      }
+      setEditingKuppi(null);
+      notifySuccess("Kuppi session updated");
+    } catch (e2) {
+      notifyError(e2?.response?.data?.message || "Failed to update kuppi session");
+    } finally {
+      setUpdatingKuppi(false);
+    }
+  };
+
+  const handleDeleteNote = async (id) => {
+    const ok = await confirmAction("Permanently delete this note?", { confirmText: "Delete" });
+    if (!ok) return;
+    try {
+      await deleteNoteById(id);
+      setNotes((prev) => prev.filter((n) => n._id !== id));
+      notifySuccess("Note deleted");
+    } catch (e) {
+      notifyError(e?.response?.data?.message || "Delete failed");
+    }
+  };
+
+  const openNoteEdit = (note) => {
+    setEditingNote(note);
+    setNoteEditForm({
+      title: note.title || "",
+      description: note.description || "",
+      subject: note.subject || "",
+      onedriveLink: note.onedriveLink || "",
+      tags: Array.isArray(note.tags) ? note.tags.join(", ") : "",
+      year: note.year ?? "",
+    });
+  };
+
+  const saveNoteEdit = async (e) => {
+    e.preventDefault();
+    if (!editingNote) return;
+    try {
+      setUpdatingNote(true);
+      const payload = {
+        title: noteEditForm.title.trim(),
+        description: noteEditForm.description.trim(),
+        subject: noteEditForm.subject.trim(),
+        onedriveLink: noteEditForm.onedriveLink.trim(),
+        tags: noteEditForm.tags,
+        year: noteEditForm.year === "" ? "" : Number(noteEditForm.year),
+      };
+      const res = await updateNoteById(editingNote._id, payload);
+      const updated = res?.data;
+      if (updated?._id) {
+        setNotes((prev) => prev.map((n) => (n._id === updated._id ? updated : n)));
+      }
+      setEditingNote(null);
+      notifySuccess("Note updated");
+    } catch (e2) {
+      notifyError(e2?.response?.data?.message || "Failed to update note");
+    } finally {
+      setUpdatingNote(false);
     }
   };
 
@@ -364,6 +480,9 @@ const Profile = () => {
                           <span className={`pr-badge ${log.isArchived ? "pr-badge--dim" : "pr-badge--teal"}`}>
                             {log.isArchived ? "Archived" : "Active"}
                           </span>
+                          <button className="pr-del" onClick={() => openKuppiEdit(log)} title="Edit" style={{ color: "#34d399", borderColor: "rgba(52, 211, 153, 0.35)" }}>
+                            <Edit3 size={13} />
+                          </button>
                           <button className="pr-del" onClick={() => handleDelete(log._id)} title="Delete">
                             <Trash2 size={13} />
                           </button>
@@ -371,6 +490,51 @@ const Profile = () => {
                         <div className="pr-titem__meta">
                           <span><Clock size={11} /> Published {fmtDate(log.createdAt)}</span>
                           <span><Calendar size={11} /> Event {fmtDate(log.eventDate)}</span>
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+
+              <div className="pr-activity__header" style={{ marginTop: 24 }}>
+                <h3>Published Notes</h3>
+                <span className="pr-count-badge">{notes.length}</span>
+              </div>
+
+              {notesLoading && (
+                <div className="pr-loader">
+                  <div className="pr-loader__ring" />
+                  <span>Loading notes…</span>
+                </div>
+              )}
+              {!notesLoading && notesError && <p className="pr-error">{notesError}</p>}
+              {!notesLoading && !notesError && notes.length === 0 && (
+                <div className="pr-empty"><BookMarked size={32} /><p>No notes published yet.</p></div>
+              )}
+
+              {!notesLoading && !notesError && notes.length > 0 && (
+                <div className="pr-timeline">
+                  {notes.map((note, i) => (
+                    <article key={note._id} className="pr-titem" style={{ animationDelay: `${i * 40}ms` }}>
+                      <div className="pr-titem__track">
+                        <div className="pr-titem__dot" />
+                        {i < notes.length - 1 && <div className="pr-titem__line" />}
+                      </div>
+                      <div className="pr-titem__body">
+                        <div className="pr-titem__top">
+                          <p className="pr-titem__title">{note.title}</p>
+                          <span className="pr-badge pr-badge--teal">{note.subject || "General"}</span>
+                          <button className="pr-del" onClick={() => openNoteEdit(note)} title="Edit" style={{ color: "#34d399", borderColor: "rgba(52, 211, 153, 0.35)" }}>
+                            <Edit3 size={13} />
+                          </button>
+                          <button className="pr-del" onClick={() => handleDeleteNote(note._id)} title="Delete">
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                        <div className="pr-titem__meta">
+                          <span><Clock size={11} /> Published {fmtDate(note.createdAt)}</span>
+                          {note.year ? <span><Shield size={11} /> Year {note.year}</span> : <span><Shield size={11} /> Year —</span>}
                         </div>
                       </div>
                     </article>
@@ -441,6 +605,88 @@ const Profile = () => {
       </main>
 
       {/* ── EDIT MODAL ─────────────────────────────────────────────────────── */}
+      {editingKuppi && (
+        <div className="pr-overlay" onClick={() => !updatingKuppi && setEditingKuppi(null)}>
+          <div className="pr-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="pr-modal__head">
+              <h3>Edit Kuppi Session</h3>
+              <button className="pr-modal__x" onClick={() => !updatingKuppi && setEditingKuppi(null)}><X size={16} /></button>
+            </div>
+            <form className="pr-modal__form" onSubmit={saveKuppiEdit}>
+              <div className="pr-field">
+                <label>Title *</label>
+                <input className="pr-input" type="text" required value={kuppiEditForm.title} onChange={(e) => setKuppiEditForm({ ...kuppiEditForm, title: e.target.value })} />
+              </div>
+              <div className="pr-field">
+                <label>Description *</label>
+                <textarea className="pr-input pr-textarea" rows={3} required value={kuppiEditForm.description} onChange={(e) => setKuppiEditForm({ ...kuppiEditForm, description: e.target.value })} />
+              </div>
+              <div className="pr-field-row">
+                <div className="pr-field">
+                  <label>Subject</label>
+                  <input className="pr-input" type="text" value={kuppiEditForm.subject} onChange={(e) => setKuppiEditForm({ ...kuppiEditForm, subject: e.target.value })} />
+                </div>
+                <div className="pr-field">
+                  <label>Event Date *</label>
+                  <input className="pr-input" type="datetime-local" required value={kuppiEditForm.eventDate} onChange={(e) => setKuppiEditForm({ ...kuppiEditForm, eventDate: e.target.value })} />
+                </div>
+              </div>
+              <div className="pr-field">
+                <label>Meeting Link</label>
+                <input className="pr-input" type="url" value={kuppiEditForm.meetingLink} onChange={(e) => setKuppiEditForm({ ...kuppiEditForm, meetingLink: e.target.value })} />
+              </div>
+              <div className="pr-modal__foot">
+                <button type="button" className="pr-btn-cancel" onClick={() => setEditingKuppi(null)} disabled={updatingKuppi}>Cancel</button>
+                <button type="submit" className="pr-btn-save" disabled={updatingKuppi}>{updatingKuppi ? "Saving…" : "Save Kuppi"}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {editingNote && (
+        <div className="pr-overlay" onClick={() => !updatingNote && setEditingNote(null)}>
+          <div className="pr-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="pr-modal__head">
+              <h3>Edit Note</h3>
+              <button className="pr-modal__x" onClick={() => !updatingNote && setEditingNote(null)}><X size={16} /></button>
+            </div>
+            <form className="pr-modal__form" onSubmit={saveNoteEdit}>
+              <div className="pr-field">
+                <label>Title *</label>
+                <input className="pr-input" type="text" required value={noteEditForm.title} onChange={(e) => setNoteEditForm({ ...noteEditForm, title: e.target.value })} />
+              </div>
+              <div className="pr-field">
+                <label>Description *</label>
+                <textarea className="pr-input pr-textarea" rows={3} required value={noteEditForm.description} onChange={(e) => setNoteEditForm({ ...noteEditForm, description: e.target.value })} />
+              </div>
+              <div className="pr-field-row">
+                <div className="pr-field">
+                  <label>Subject</label>
+                  <input className="pr-input" type="text" value={noteEditForm.subject} onChange={(e) => setNoteEditForm({ ...noteEditForm, subject: e.target.value })} />
+                </div>
+                <div className="pr-field">
+                  <label>Year</label>
+                  <input className="pr-input" type="number" min={1} max={6} value={noteEditForm.year} onChange={(e) => setNoteEditForm({ ...noteEditForm, year: e.target.value })} />
+                </div>
+              </div>
+              <div className="pr-field">
+                <label>Tags (comma separated)</label>
+                <input className="pr-input" type="text" value={noteEditForm.tags} onChange={(e) => setNoteEditForm({ ...noteEditForm, tags: e.target.value })} />
+              </div>
+              <div className="pr-field">
+                <label>OneDrive Link</label>
+                <input className="pr-input" type="url" value={noteEditForm.onedriveLink} onChange={(e) => setNoteEditForm({ ...noteEditForm, onedriveLink: e.target.value })} />
+              </div>
+              <div className="pr-modal__foot">
+                <button type="button" className="pr-btn-cancel" onClick={() => setEditingNote(null)} disabled={updatingNote}>Cancel</button>
+                <button type="submit" className="pr-btn-save" disabled={updatingNote}>{updatingNote ? "Saving…" : "Save Note"}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {isEditOpen && (
         <div className="pr-overlay" onClick={closeEdit}>
           <div className="pr-modal" onClick={(e) => e.stopPropagation()}>

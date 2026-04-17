@@ -95,7 +95,7 @@ export default function GroupsTab() {
               <tr key={group._id}>
                 <td>
                   <div className="admin-user-cell">
-                    <div className="admin-avatar" style={{ background: "#4338ca44", color: "#818cf8" }}>
+                    <div className="admin-avatar" style={{ background: "#16a34a33", color: "#22c55e" }}>
                       {group.name?.charAt(0)?.toUpperCase()}
                     </div>
                     <div>
@@ -107,7 +107,7 @@ export default function GroupsTab() {
                 <td className="admin-cell-muted">{group.creator?.name || "—"}</td>
                 <td className="admin-cell-muted">{group.subject || "—"}</td>
                 <td>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "#a5b4fc" }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "#22c55e" }}>
                     <Users size={13} /> {group.members?.length ?? 0}
                   </span>
                 </td>

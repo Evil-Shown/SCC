@@ -6,7 +6,12 @@ import {
 import { Users, BookOpen, Layers, Zap, MessageSquare, TrendingUp, ShieldCheck, UserPlus } from "lucide-react";
 import adminApi from "../../services/adminApi";
 
-const COLORS = ["#818cf8", "#34d399", "#f472b6", "#fb923c", "#60a5fa"];
+const COLORS = ["#16a34a", "#22c55e", "#34d399", "#4ade80", "#86efac"];
+const ROLE_COLORS = {
+  admin: "#16a34a",
+  student: "#84cc16",
+  teacher: "#0ea5a4",
+};
 
 function StatCard({ icon: Icon, label, value, sub, color, trend }) {
   return (
@@ -17,14 +22,14 @@ function StatCard({ icon: Icon, label, value, sub, color, trend }) {
       <div className="admin-stat-info">
         <span className="admin-stat-label">{label}</span>
         <span className="admin-stat-value">{value?.toLocaleString() ?? "—"}</span>
-        {sub && <span className="admin-stat-sub">{sub}</span>}
+        <span className="admin-stat-sub">{sub || "\u00A0"}</span>
+        {trend !== undefined && (
+          <div className="admin-stat-trend" style={{ color: trend >= 0 ? "#34d399" : "#f87171" }}>
+            <TrendingUp size={14} />
+            <span>{trend >= 0 ? "+" : ""}{trend} this week</span>
+          </div>
+        )}
       </div>
-      {trend !== undefined && (
-        <div className="admin-stat-trend" style={{ color: trend >= 0 ? "#34d399" : "#f87171" }}>
-          <TrendingUp size={14} />
-          <span>+{trend} this week</span>
-        </div>
-      )}
     </div>
   );
 }
@@ -32,8 +37,8 @@ function StatCard({ icon: Icon, label, value, sub, color, trend }) {
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload?.length) {
     return (
-      <div style={{ background: "#1e1b4b", border: "1px solid #4338ca", borderRadius: 8, padding: "8px 14px" }}>
-        <p style={{ color: "#a5b4fc", marginBottom: 4, fontSize: 12 }}>{label}</p>
+      <div style={{ background: "rgba(9, 22, 15, 0.94)", border: "1px solid rgba(34, 197, 94, 0.45)", borderRadius: 8, padding: "8px 14px" }}>
+        <p style={{ color: "#86efac", marginBottom: 4, fontSize: 12 }}>{label}</p>
         {payload.map((p, i) => (
           <p key={i} style={{ color: p.color, margin: 0, fontSize: 13, fontWeight: 600 }}>
             {p.name}: {p.value}
@@ -75,14 +80,14 @@ export default function OverviewTab() {
     <div className="admin-overview">
       {/* Stat Cards */}
       <div className="admin-stats-grid">
-        <StatCard icon={Users} label="Total Users" value={stats.totalUsers} sub={`${stats.verifiedUsers} verified`} color="#818cf8" trend={stats.newUsersThisWeek} />
-        <StatCard icon={Layers} label="Study Groups" value={stats.totalGroups} color="#34d399" trend={stats.newGroupsThisWeek} />
-        <StatCard icon={BookOpen} label="Notes Shared" value={stats.totalNotes} color="#f472b6" />
-        <StatCard icon={Zap} label="Kuppi Posts" value={stats.totalKuppi} color="#fb923c" />
-        <StatCard icon={MessageSquare} label="Messages Sent" value={stats.totalMessages} color="#60a5fa" />
-        <StatCard icon={ShieldCheck} label="Verified Users" value={stats.verifiedUsers} sub={`${Math.round((stats.verifiedUsers / Math.max(stats.totalUsers, 1)) * 100)}% of total`} color="#a78bfa" />
+        <StatCard icon={Users} label="Total Users" value={stats.totalUsers} sub={`${stats.verifiedUsers} verified`} color="#16a34a" trend={stats.newUsersThisWeek} />
+        <StatCard icon={Layers} label="Study Groups" value={stats.totalGroups} color="#22c55e" trend={stats.newGroupsThisWeek} />
+        <StatCard icon={BookOpen} label="Notes Shared" value={stats.totalNotes} color="#10b981" />
+        <StatCard icon={Zap} label="Kuppi Posts" value={stats.totalKuppi} color="#84cc16" />
+        <StatCard icon={MessageSquare} label="Messages Sent" value={stats.totalMessages} color="#34d399" />
+        <StatCard icon={ShieldCheck} label="Verified Users" value={stats.verifiedUsers} sub={`${Math.round((stats.verifiedUsers / Math.max(stats.totalUsers, 1)) * 100)}% of total`} color="#65a30d" />
         <StatCard icon={UserPlus} label="New Users (7d)" value={stats.newUsersThisWeek} color="#4ade80" />
-        <StatCard icon={TrendingUp} label="New Groups (7d)" value={stats.newGroupsThisWeek} color="#f59e0b" />
+        <StatCard icon={TrendingUp} label="New Groups (7d)" value={stats.newGroupsThisWeek} color="#22c55e" />
       </div>
 
       <div className="admin-charts-row">
@@ -93,15 +98,15 @@ export default function OverviewTab() {
             <AreaChart data={charts.registrationsChart} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="regGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#818cf8" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#818cf8" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#16a34a" stopOpacity={0.42} />
+                  <stop offset="95%" stopColor="#16a34a" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
               <XAxis dataKey="date" tick={{ fill: "#6b7280", fontSize: 10 }} interval={4} />
               <YAxis tick={{ fill: "#6b7280", fontSize: 10 }} allowDecimals={false} />
               <Tooltip content={<CustomTooltip />} />
-              <Area type="monotone" dataKey="users" name="New Users" stroke="#818cf8" fill="url(#regGrad)" strokeWidth={2} dot={false} />
+              <Area type="monotone" dataKey="users" name="New Users" stroke="#16a34a" fill="url(#regGrad)" strokeWidth={2} dot={false} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -115,7 +120,7 @@ export default function OverviewTab() {
               <XAxis dataKey="day" tick={{ fill: "#6b7280", fontSize: 11 }} />
               <YAxis tick={{ fill: "#6b7280", fontSize: 10 }} allowDecimals={false} />
               <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="messages" name="Messages" fill="#60a5fa" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="messages" name="Messages" fill="#22c55e" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -128,9 +133,11 @@ export default function OverviewTab() {
           <ResponsiveContainer width="100%" height={220}>
             <PieChart>
               <Pie data={charts.roleDistribution} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
-                {charts.roleDistribution.map((_, i) => (
-                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                ))}
+                {charts.roleDistribution.map((entry, i) => {
+                  const roleKey = String(entry?.name || "").toLowerCase();
+                  const fill = ROLE_COLORS[roleKey] || COLORS[i % COLORS.length];
+                  return <Cell key={i} fill={fill} stroke="rgba(255,255,255,0.42)" strokeWidth={1} />;
+                })}
               </Pie>
               <Tooltip content={<CustomTooltip />} />
               <Legend iconType="circle" wrapperStyle={{ fontSize: 12, color: "#9ca3af" }} />

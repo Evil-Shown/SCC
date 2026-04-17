@@ -1,7 +1,7 @@
 // Dashboard.jsx - Advanced Edition
 import { useEffect, useState, useRef } from "react";
-import axios from "axios";
 import { useSelector, useDispatch } from "react-redux";
+import api from "../services/api";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { logout } from "../features/auth/authSlice";
 import { useTheme } from "../context/ThemeContext";
@@ -83,7 +83,6 @@ export default function Dashboard() {
   const dispatch = useDispatch();
   const location = useLocation();
   const navigate = useNavigate();
-  const scrollRef = useRef(0);
 
   const [dayProgress, setDayProgress] = useState(0);
   const [stats, setStats] = useState([]);
@@ -98,7 +97,6 @@ export default function Dashboard() {
   const [streak, setStreak] = useState(7);
   const [aiInsight, setAiInsight] = useState("");
   const [focusMode, setFocusMode] = useState(false);
-  const [showHeader, setShowHeader] = useState(true);
   const [quote, setQuote] = useState({ text: "The expert in anything was once a beginner.", author: "Helen Hayes" });
 
   // Day progress ring effect
@@ -124,38 +122,26 @@ export default function Dashboard() {
     if (!isAuthenticated) navigate("/");
   }, [isAuthenticated, navigate]);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      const currentScroll = window.scrollY || 0;
-      const isScrollingUp = currentScroll < scrollRef.current;
-
-      setShowHeader(currentScroll < 96 || isScrollingUp);
-      scrollRef.current = currentScroll;
-    };
-
-    scrollRef.current = window.scrollY || 0;
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
   // Fetch dashboard data
   useEffect(() => {
     async function fetchDashboardData() {
       setIsLoading(true);
       try {
-        const notesRes = await axios.get("/api/notes");
+        const notesRes = await api.get("/api/notes");
         const notesCount = notesRes.data?.data?.length || 0;
         const recentNotesData = notesRes.data?.data?.slice(0, 3) || [];
 
-        const groupsRes = await axios.get("/api/groups?myGroups=true");
+        const groupsRes = await api.get("/api/groups", {
+          params: { myGroups: true }
+        });
         const groupsCount = groupsRes.data?.data?.length || 0;
 
-        const allTimetableRes = await axios.get("/api/timetable");
+        const allTimetableRes = await api.get("/api/timetable");
         const allEvents = allTimetableRes.data?.data || [];
 
         let overviewData = null;
         try {
-          const examsRes = await axios.get("/api/exams/overview");
+          const examsRes = await api.get("/api/exams/overview");
           overviewData = examsRes.data?.data || null;
         } catch {
           overviewData = null;
@@ -313,7 +299,7 @@ export default function Dashboard() {
       </div>
 
       {/* Floating Navigation Bar */}
-      <header className={`dashboard-header ${showHeader ? "dashboard-header--visible" : "dashboard-header--hidden"}`}>
+      <header className="dashboard-header dashboard-header--visible">
         <Link to="/dashboard" className="dashboard-logo">
           <span className="dashboard-logo__text">User Dashboard</span>
         </Link>

@@ -56,6 +56,12 @@ export const createMeetup = async ({ groupId, organizerId, body }) => {
         throw err;
     }
 
+    if (body.mode === "HYBRID" && (!body.location || !body.meetingLink)) {
+        const err = new Error("Both location and meeting link are required for Hybrid meetups");
+        err.statusCode = 400;
+        throw err;
+    }
+
     const meetup = await Meeting.create({
         groupId,
         organizerId,

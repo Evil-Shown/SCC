@@ -26,6 +26,7 @@ function fmtSize(bytes) {
 }
 
 // ── FilesTab ───────────────────────────────────────────────────
+// Tab for uploading and downloading study materials
 function FilesTab({ groupId, currentUserId, isAdmin }) {
     const [files, setFiles] = useState([]);
     const [loading, setLoading] = useState(false);

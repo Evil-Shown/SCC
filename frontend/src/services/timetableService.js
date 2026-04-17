@@ -1,7 +1,13 @@
 import axios from "axios";
 import api from "./api";
+import {
+  getAccessToken,
+  getRefreshToken,
+  persistAuth
+} from "../utils/authStorage.js";
+import { API_BASE_URL } from "../config/apiBase.js";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const API_URL = API_BASE_URL;
 
 // 1️⃣ Save timetable (+ auto-generate optimized plan on backend)
 export const createRawTimetable = async (
@@ -67,6 +73,15 @@ export const clearOptimizedSchedule = async () => {
   return response.data.data; // { timetable }
 };
 
+/** Push the current saved optimized plan to Google (uses stored refresh token if body empty). */
+export const syncGoogleCalendar = async (body = {}) => {
+  const response = await api.post("/api/timetable/sync-google", body);
+  if (!response.data?.success) {
+    throw new Error(response.data?.message || "Failed to sync with Google Calendar");
+  }
+  return response.data.data;
+};
+
 // 2️⃣ Get User Timetable (latest)
 export const getUserTimetable = async (userId) => {
   const response = await api.get(`/api/timetable/${userId}`);
@@ -105,19 +120,18 @@ export const getOngoingEvent = async () => {
 };
 
 // Google OAuth URL (uses GOOGLE_CLIENT_ID from backend .env)
-export const getGoogleAuthUrl = async () => {
+export const getGoogleAuthUrl = async ({ returnPath } = {}) => {
   // This endpoint is protected by JWT auth.
   // If accessToken is missing/expired, try refresh once before failing.
-  let token = sessionStorage.getItem("accessToken");
+  let token = getAccessToken();
   if (!token) {
-    const refreshToken = sessionStorage.getItem("refreshToken");
+    const refreshToken = getRefreshToken();
     if (refreshToken) {
-      // Use direct axios to avoid interceptor races while bootstrapping OAuth.
       const refreshRes = await axios.post(`${API_URL}/api/auth/refresh`, { refreshToken });
       const next = refreshRes?.data?.data?.accessToken;
       if (next) {
         token = next;
-        sessionStorage.setItem("accessToken", next);
+        persistAuth({ accessToken: next });
       }
     }
   }
@@ -129,7 +143,12 @@ export const getGoogleAuthUrl = async () => {
   // Use direct axios call (no interceptors) and send token in BOTH header + query.
   const response = await axios.get(`${API_URL}/api/timetable/google-auth-url`, {
     headers: { Authorization: `Bearer ${token}` },
-    params: { token }
+    params: {
+      token,
+      ...(typeof returnPath === "string" && returnPath.trim()
+        ? { returnPath: returnPath.trim() }
+        : {})
+    }
   });
   if (!response.data?.success) {
     throw new Error(response.data?.message || "Failed to get Google auth URL");
@@ -148,10 +167,14 @@ export const getGoogleCalendarStatus = async () => {
   return response.data.data; // { connected, lastSyncedAt }
 };
 
-// Upcoming Google Calendar events (read-only)
-export const getGoogleCalendarEvents = async ({ maxResults = 15 } = {}) => {
+// Upcoming Google Calendar events (read-only); backend uses a wide date window so timetable blocks aren’t hidden
+export const getGoogleCalendarEvents = async ({
+  maxResults = 40,
+  pastDays = 180,
+  futureDays = 180
+} = {}) => {
   const response = await api.get("/api/timetable/google-events", {
-    params: { maxResults }
+    params: { maxResults, pastDays, futureDays }
   });
   if (!response.data?.success) {
     throw new Error(response.data?.message || "Failed to fetch Google Calendar events");

@@ -12,12 +12,17 @@ const GoogleAuthCallback = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated } = useSelector((state) => state.auth);
+  const { isAuthenticated, user: authUser } = useSelector((state) => state.auth);
   const [message, setMessage] = useState("Completing Google sign-in...");
+
+  const getDashboardPathByRole = (role) => {
+    const normalizedRole = String(role || "").toLowerCase();
+    return normalizedRole === "admin" ? "/admin" : "/dashboard";
+  };
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate("/dashboard", { replace: true });
+      navigate(getDashboardPathByRole(authUser?.role), { replace: true });
       return;
     }
 
@@ -47,7 +52,7 @@ const GoogleAuthCallback = () => {
       if (mode === "register") {
         navigate("/", { replace: true });
       } else {
-        navigate(user?.role === "admin" ? "/admin" : "/dashboard", { replace: true });
+        navigate(getDashboardPathByRole(user?.role), { replace: true });
       }
     } catch (parseError) {
       console.error("Google auth callback parse error:", parseError);
@@ -55,7 +60,7 @@ const GoogleAuthCallback = () => {
       const timer = setTimeout(() => navigate("/auth", { replace: true }), 2200);
       return () => clearTimeout(timer);
     }
-  }, [dispatch, isAuthenticated, location.pathname, location.hash, navigate]);
+  }, [authUser?.role, dispatch, isAuthenticated, location.pathname, location.hash, navigate]);
 
   return (
     <div className="dashboard-loading" style={{ minHeight: "100vh" }}>

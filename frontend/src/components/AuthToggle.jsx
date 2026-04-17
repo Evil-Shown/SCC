@@ -174,9 +174,17 @@ const AuthToggle = () => {
   const [justLoggedIn, setJustLoggedIn] = useState(false);
 
   const { user } = useSelector((state) => state.auth);
+
+  const getDashboardPathByRole = (role) => {
+    const normalizedRole = String(role || "").toLowerCase();
+    if (normalizedRole === "admin") return "/admin";
+    if (normalizedRole === "student" || normalizedRole === "teacher" || normalizedRole === "lecturer") return "/dashboard";
+    return "/dashboard";
+  };
+
   useEffect(() => {
     if (isAuthenticated && user) {
-      const target = user.role === "admin" ? "/admin" : "/dashboard";
+      const target = getDashboardPathByRole(user.role);
       if (justLoggedIn) {
         // Show success message briefly after fresh login/register
         const timer = setTimeout(() => {
@@ -379,7 +387,7 @@ const AuthToggle = () => {
         if (login.fulfilled.match(result)) {
           setJustLoggedIn(true);
           const role = result.payload?.user?.role;
-          setPostAuthRedirect(role === "admin" ? "/admin" : "/dashboard");
+          setPostAuthRedirect(getDashboardPathByRole(role));
           setSuccessMessage("Login successful! Redirecting to dashboard...");
           // Navigation will be handled by the useEffect watching isAuthenticated
         } else if (login.rejected.match(result)) {

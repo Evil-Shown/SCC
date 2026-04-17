@@ -98,17 +98,17 @@ export default function KuppiTab() {
                     {post.title}
                   </div>
                 </td>
-                <td className="admin-cell-muted">{post.tutor?.name || "—"}</td>
+                <td className="admin-cell-muted">{post.ownerId?.name || post.tutor?.name || "—"}</td>
                 <td className="admin-cell-muted">{post.subject || "—"}</td>
                 <td>
                   {post.eventDate ? (
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "#a5b4fc", fontSize: 12 }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "#6ee7b7", fontSize: 12 }}>
                       <Calendar size={12} />
                       {new Date(post.eventDate).toLocaleDateString()}
                     </span>
                   ) : "—"}
                 </td>
-                <td style={{ color: "#60a5fa", fontWeight: 600 }}>
+                <td style={{ color: "#22c55e", fontWeight: 600 }}>
                   {post.applicants?.length ?? 0}
                 </td>
                 <td>

@@ -388,7 +388,7 @@ export const getKuppiPosts = async (req, res) => {
 
     const [posts, total] = await Promise.all([
       KuppiPost.find(query)
-        .populate("tutor", "name email")
+        .populate("ownerId", "name email")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),

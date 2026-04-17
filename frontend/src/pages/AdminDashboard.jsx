@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { useSelector } from "react-redux";
-import { Link, Navigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { Link, Navigate, useNavigate } from "react-router-dom";
+import { logout } from "../features/auth/authSlice";
 import {
   LayoutDashboard, Users, Layers, BookOpen, Zap,
-  Activity, ArrowLeft, RefreshCw
+  Activity, ArrowLeft, RefreshCw, LogOut
 } from "lucide-react";
 import "../pages/admin/AdminDashboard.css";
 import OverviewTab from "./admin/OverviewTab";
@@ -32,8 +33,15 @@ const TAB_TITLES = {
 };
 
 export default function AdminDashboard() {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
   const [activeTab, setActiveTab] = useState("overview");
+
+  const handleLogout = () => {
+    dispatch(logout());
+    navigate("/", { replace: true });
+  };
 
   // Guard: only admins
   if (!user || user.role !== "admin") {
@@ -96,7 +104,11 @@ export default function AdminDashboard() {
               <RefreshCw size={11} />
               Live Data
             </div>
-            <Link to="/dashboard" className="admin-back-btn">
+            <button className="admin-logout-btn" onClick={handleLogout}>
+              <LogOut size={15} />
+              Sign Out
+            </button>
+            <Link to="/" className="admin-back-btn">
               <ArrowLeft size={15} />
               Back to App
             </Link>

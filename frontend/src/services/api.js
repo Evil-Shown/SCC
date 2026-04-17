@@ -1,6 +1,13 @@
 import axios from "axios";
+import {
+  getAccessToken,
+  getRefreshToken,
+  persistAuth,
+  clearAuthStorage
+} from "../utils/authStorage.js";
+import { API_BASE_URL } from "../config/apiBase.js";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const API_URL = API_BASE_URL;
 
 // Create axios instance
 const api = axios.create({
@@ -28,20 +35,45 @@ const isOnAuthRoute = () => {
   return p.includes("/login") || p.includes("/register") || p.includes("/auth");
 };
 
-// Request interceptor to add token
+function getTokenFromRedux() {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.__SCC_STORE__?.getState?.()?.auth?.accessToken || null;
+  } catch {
+    return null;
+  }
+}
+
+function setRequestAuthHeader(config, token) {
+  if (!token) return;
+  const h = config.headers;
+  if (h && typeof h.set === "function") {
+    h.set("Authorization", `Bearer ${token}`);
+  } else {
+    config.headers = config.headers || {};
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+}
+
+// Synchronous interceptor: storage first, then Redux (via window store — no circular import).
 api.interceptors.request.use(
   (config) => {
-    const token = sessionStorage.getItem("accessToken");
-    config.headers = config.headers || {};
-    if (token) {
-      config.headers = config.headers || {};
-      config.headers.Authorization = `Bearer ${token}`;
+    let token = getAccessToken() || getTokenFromRedux();
+    if (token && !getAccessToken()) {
+      try {
+        const st = window.__SCC_STORE__?.getState?.()?.auth;
+        persistAuth({
+          accessToken: token,
+          ...(st?.refreshToken ? { refreshToken: st.refreshToken } : {})
+        });
+      } catch {
+        /* ignore */
+      }
     }
+    setRequestAuthHeader(config, token);
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 // Response interceptor — token refresh pattern aligned with `main`
@@ -58,7 +90,7 @@ api.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        const refreshToken = sessionStorage.getItem("refreshToken");
+        const refreshToken = getRefreshToken();
         if (refreshToken) {
           // Single-flight refresh: avoid parallel refresh races clearing tokens.
           if (!refreshInFlight) {
@@ -73,7 +105,11 @@ api.interceptors.response.use(
           // Backend returns { success, message, data: { accessToken } }
           if (response.data.success && response.data.data?.accessToken) {
             const { accessToken } = response.data.data;
-            sessionStorage.setItem("accessToken", accessToken);
+            const nextRefresh = response.data.data?.refreshToken;
+            persistAuth({
+              accessToken,
+              ...(nextRefresh ? { refreshToken: nextRefresh } : {})
+            });
 
             originalRequest.headers = originalRequest.headers || {};
             originalRequest.headers.Authorization = `Bearer ${accessToken}`;
@@ -84,9 +120,7 @@ api.interceptors.response.use(
         throw new Error("No refresh token found");
       } catch (refreshError) {
         console.error("Token refresh failed:", refreshError);
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
-        localStorage.removeItem("user");
+        clearAuthStorage();
 
         if (!isOnAuthRoute()) {
           window.location.href = "/login";

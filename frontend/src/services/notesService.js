@@ -11,6 +11,21 @@ export const getNotes = async (params = {}) => {
   return response.data;
 };
 
+export const getMyNotes = async (params = {}) => {
+  const response = await api.get("/api/notes/my", { params });
+  return response.data;
+};
+
+export const updateNote = async (noteId, noteData) => {
+  const response = await api.put(`/api/notes/${noteId}`, noteData);
+  return response.data;
+};
+
+export const deleteNote = async (noteId) => {
+  const response = await api.delete(`/api/notes/${noteId}`);
+  return response.data;
+};
+
 export const searchNotes = async (params = {}) => {
   const response = await api.get("/api/notes/search", { params });
   return response.data;
@@ -36,6 +51,9 @@ export const getComments = async (noteId, params = {}) => {
 export default {
   createNote,
   getNotes,
+  getMyNotes,
+  updateNote,
+  deleteNote,
   searchNotes,
   reactToNote,
   addComment,

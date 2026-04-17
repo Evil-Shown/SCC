@@ -129,9 +129,10 @@ function ActivityRow({ item }) {
 }
 
 /* ── Main component ─────────────────────────────────────── */
+// This tab shows a history of everything that happened in the group
 export default function ActivityTab({ groupId }) {
     const dispatch = useDispatch();
-    const activityState = useSelector(selectGroupActivity(groupId));
+    const activityState = useSelector(selectGroupActivity(groupId)); // Get the history from state
     const loading = useSelector(selectActivityLoading);
     const [page, setPage] = useState(1);
     const LIMIT = 20;

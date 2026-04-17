@@ -1,138 +1,263 @@
-# Smart Campus Companion (SCC) 
+# Smart Campus Companion (SCC)
 
-[![Status](https://img.shields.io/badge/Status-Operational-success.svg)]()
+[![Status](https://img.shields.io/badge/Status-Active-success.svg)]()
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)]()
-[![Tech](https://img.shields.io/badge/Stack-MERN%20+%20Socket.io-orange.svg)]()
+[![Monorepo](https://img.shields.io/badge/Repo-Frontend%20%2B%20Backend-orange.svg)]()
 
-> **The ultimate digital ecosystem for modern campus life.** Smart Campus Companion (SCC) is an AI-powered, real-time collaboration platform designed to streamline academic workflows, foster peer-to-peer learning, and centralize student resources.
+Smart Campus Companion is a full-stack campus collaboration platform that combines:
 
----
+- academic note/resource sharing,
+- study-group coordination,
+- real-time chat and notifications,
+- timetable and meetup workflows,
+- role-aware admin capabilities,
+- AI-assisted features.
 
-##  Features at a Glance
+This repository is a JavaScript monorepo with a Vite + React frontend and an Express + MongoDB backend.
 
-###  Deep-Seated Dashboard
-A cinematic, high-performance command center featuring:
-- **Visual Matrix**: Real-time academic tracking and timetable visualization.
-- **Activity Stream**: Instant updates on group chats, notes, and notifications.
-- **Theme Engine**: Seamless transition between *Forest Lumière* (Light) and *Forest Noir* (Dark) modes.
+## Table of Contents
 
-###  AI-Powered Intelligence
-- **AI Chat**: Context-aware assistant for academic queries.
-- **Smart Scheduling**: Visual timetable management with automated conflict resolution (In-progress).
-- **Intelligence Archives**: A robust repository for notes and resources with future OneDrive integration.
+- [Architecture Snapshot](#architecture-snapshot)
+- [Tech Stack](#tech-stack)
+- [Repository Layout](#repository-layout)
+- [Local Development](#local-development)
+- [Environment Variables](#environment-variables)
+- [Runtime Behavior](#runtime-behavior)
+- [API and Realtime Overview](#api-and-realtime-overview)
+- [Operational Troubleshooting](#operational-troubleshooting)
+- [Documentation Map](#documentation-map)
+- [Scripts Reference](#scripts-reference)
+- [License](#license)
 
-###  Peer Collaboration (The Kuppi Module)
-- **Marketplace for Learning**: Post and apply for "Kuppi" (peer teaching) sessions.
-- **Real-time Groups**: Fully functional group hubs with persistent chat and file sharing.
-- **Global Reach**: Connect with tutors and students across departments.
+## Architecture Snapshot
 
-###  Enterprise-Grade Security
-- **JWT Refresh Cycle**: Dual-token authentication system (Access + Refresh).
-- **RBAC**: Role-based access control (Student, Teacher, Admin).
-- **Session Protection**: Automatic logout on inactivity for maximum security.
+SCC follows a layered architecture with strict functional separation:
 
----
+1. Presentation Layer (frontend): routes, pages, components, local UX state.
+2. Application State Layer (frontend): Redux slices and async action orchestration.
+3. Transport Layer: Axios HTTP for REST + Socket.IO for event-driven realtime.
+4. API Layer (backend): Express route modules and middleware composition.
+5. Domain Layer (backend): controllers and services for use-case logic.
+6. Data Layer (backend): Mongoose models on MongoDB Atlas.
+7. Background Processing: scheduled jobs for automated housekeeping.
 
-##  Technical Architecture
+The backend blocks server startup until MongoDB is connected. This prevents partially alive API states.
 
-SCC is built on a modern, distributed architecture designed for scalability and real-time performance.
+## Tech Stack
 
-### The Stack
-- **Frontend**: `React.js` (Vite) + `Redux Toolkit` (State) + `Semantic UI` + `Socket.io-client`.
-- **Backend**: `Node.js` + `Express` + `MongoDB` (Mongoose).
-- **Communication**: Bidirectional event-driven communication via `Socket.io`.
-- **Styling**: Advanced CSS-in-JS tokens with a custom **Desi UI Animation System**.
+Frontend (frontend):
 
-> [!IMPORTANT]
-> For a deep dive into the system's inner workings, data models, and implementation details, please refer to the [System Documentation](file:///d:/Coding/SCC/SYSTEM_DOCUMENTATION.md).
+- React 19 + Vite 7
+- Redux Toolkit
+- React Router
+- Axios
+- Socket.IO Client
+- GSAP, Three.js, Recharts, Semantic UI CSS
 
----
+Backend (backend):
 
-##  Quick Start
+- Node.js + Express 5
+- MongoDB + Mongoose
+- Socket.IO Server
+- JWT-based auth flow
+- Multer file handling
+- Nodemailer / Google APIs / OpenAI integrations
+
+Monorepo tooling (root):
+
+- concurrently for running frontend + backend together
+
+## Repository Layout
+
+Top-level:
+
+- frontend: React app, pages, components, hooks, state, services, styles.
+- backend: Express app, API routes, controllers, models, middleware, jobs.
+- resources: static/support resources.
+- SYSTEM_DOCUMENTATION.md: product/system narrative documentation.
+- CODEBASE_EXPLAINED.md: deep technical map for developers.
+
+High-value subfolders:
+
+- frontend/src/pages: route-level views.
+- frontend/src/features: Redux slices by domain.
+- frontend/src/services: API request modules.
+- frontend/src/socket: websocket client integration.
+- backend/src/routes: endpoint registration per feature area.
+- backend/src/controllers: request orchestration and domain logic.
+- backend/src/models: Mongo schemas and indexes.
+- backend/src/middlewares: auth, validation, role checks, error handling.
+- backend/src/jobs: periodic maintenance tasks.
+
+## Local Development
 
 ### Prerequisites
-- Node.js (v18+)
-- MongoDB Atlas account (or local MongoDB)
 
-### Installation
+- Node.js 18+
+- npm 9+
+- MongoDB Atlas connection string
 
-1. **Clone & Install**
-   ```bash
-   git clone https://github.com/Evil-Shown/SCC.git
-   cd SCC
-   npm install # Install root dependencies
-   ```
+### 1) Install dependencies
 
-2. **Backend Configuration**
-   ```bash
+From repository root:
+
+   npm install
+
+Install subproject dependencies (recommended first run):
+
    cd backend
-   cp .env.example .env # Create your environment file
    npm install
-   npm run dev
-   ```
-
-   For Google sign-in/register, add these variables to `backend/.env` and register the callback URI in Google Cloud Console:
-   ```bash
-   GOOGLE_CLIENT_ID=your-google-client-id
-   GOOGLE_CLIENT_SECRET=your-google-client-secret
-   GOOGLE_REDIRECT_URI=http://localhost:5000/api/auth/google/callback
-   CLIENT_URL=http://localhost:5173
-   ```
-
-   Use the same Google OAuth app for both login and registration flows.
-
-3. **Frontend Configuration**
-   ```bash
    cd ../frontend
-   cp .env.example .env
    npm install
+
+### 2) Configure backend environment
+
+Create backend/.env and set at minimum:
+
+   MONGO_URI=<mongodb or mongodb+srv connection string>
+   PORT=5000
+   CLIENT_URL=http://localhost:5173
+
+Optional but commonly needed:
+
+   NODE_ENV=development
+   GOOGLE_CLIENT_ID=<google oauth client id>
+   GOOGLE_CLIENT_SECRET=<google oauth secret>
+   GOOGLE_REDIRECT_URI=http://localhost:5000/api/auth/google/callback
+   MONGO_DNS_SERVERS=8.8.8.8,1.1.1.1
+
+### 3) Configure frontend environment
+
+Create frontend/.env if needed:
+
+   VITE_API_URL=http://localhost:5000
+
+Notes:
+
+- In Vite dev mode, frontend/src/config/apiBase.js defaults to same-origin + proxy style behavior when VITE_API_URL is not set.
+- In non-dev mode, fallback points to http://localhost:5000 if VITE_API_URL is missing.
+
+### 4) Run in development
+
+From repository root:
+
    npm run dev
-   ```
 
----
+This launches backend and frontend concurrently.
 
-## 📂 Project Structure
+Health checks:
 
-```text
-SCC/
-├── frontend/           # Vite + React Client
-│   ├── src/
-│   │   ├── components/ # Atomic UI & Business components
-│   │   ├── features/   # Redux logic (Auth, Notes, etc.)
-│   │   ├── socket/     # Real-time event handlers
-│   │   └── pages/      # Compiled view layers
-│
-├── backend/            # Express Server
-│   ├── src/
-│   │   ├── controllers/# Business logic
-│   │   ├── models/     # Mongoose Data Schemas
-│   │   ├── routes/     # RESTful Endpoints
-│   │   └── socket/     # Socket.io event emitters
-│
-└── resources/          # Shared assets and documentation
-```
+- API root: GET /
+- API health: GET /api/health
 
----
+## Environment Variables
 
-##  Contributing & Support
+Backend critical variables:
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+- MONGO_URI or MONGODB_URI: MongoDB connection (required).
+- PORT: backend listening port (default 5000).
+- CLIENT_URL: allowed frontend origin used by CORS.
+- NODE_ENV: runtime environment label.
 
-- **Found a bug?** Open an [Issue](https://github.com/Evil-Shown/SCC/issues).
-- **Want to talk?** Email us at `support@scc.com`.
+Backend integration variables (feature-dependent):
 
----
+- GOOGLE_CLIENT_ID
+- GOOGLE_CLIENT_SECRET
+- GOOGLE_REDIRECT_URI
+- OPENAI key and provider settings (if AI features are enabled in your deployment)
 
-## 📄 License
+Frontend variables:
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+- VITE_API_URL: explicit API base URL for deployed frontend builds.
 
-© 2026 Smart Campus Companion Team. 
+## Runtime Behavior
 
-##  Additional Resources
+Startup sequence (backend):
 
-- [React Documentation](https://react.dev)
-- [Redux Toolkit Documentation](https://redux-toolkit.js.org)
-- [Express.js Documentation](https://expressjs.com)
-- [MongoDB Documentation](https://docs.mongodb.com)
-- [Socket.io Documentation](https://socket.io/docs)
+1. Load environment.
+2. Connect to MongoDB.
+3. Sync selected indexes (User, Module).
+4. Register routes and middleware.
+5. Start background jobs.
+6. Start HTTP + Socket.IO listeners.
+
+CORS and dev ports:
+
+- Backend allows configured CLIENT_URL and common localhost Vite ports (5173-5175) in server configuration.
+
+Error model:
+
+- 404 fallback returns JSON payload.
+- Multer errors are normalized (including file-size violations).
+- Unhandled errors return status-aware JSON messages.
+
+## API and Realtime Overview
+
+Registered backend API groups include:
+
+- /api/auth
+- /api/groups
+- /api/exams
+- /api/study-pilot
+- /api/ai
+- /api/admin
+- plus additional mounted feature routes for files, notes, notifications, polls, timetable, meetups, resources, modules, and semester timetable.
+
+Socket.IO events include:
+
+- join-room (personal room by user id)
+- join-group (group scoped channel)
+- leave-group
+
+## Operational Troubleshooting
+
+### MongoDB connection fails
+
+Checklist:
+
+1. Verify MONGO_URI format starts with mongodb:// or mongodb+srv://.
+2. Confirm Atlas Network Access includes your IP.
+3. Validate credentials in the URI.
+4. If SRV lookup fails on Windows/restricted DNS, set MONGO_DNS_SERVERS.
+
+### Port already in use
+
+If backend port is occupied, change PORT in backend/.env or stop the conflicting process.
+
+### CORS blocked in browser
+
+Confirm frontend origin matches CLIENT_URL or is one of allowed localhost ports configured by backend.
+
+## Documentation Map
+
+- System narrative and module descriptions: [SYSTEM_DOCUMENTATION.md](SYSTEM_DOCUMENTATION.md)
+- Deep technical codebase guide: [CODEBASE_EXPLAINED.md](CODEBASE_EXPLAINED.md)
+- Backend architecture notes: [backend/ARCHITECTURE.md](backend/ARCHITECTURE.md)
+
+## Scripts Reference
+
+Root scripts:
+
+- npm run dev: run backend + frontend concurrently.
+- npm run backend: run backend dev server.
+- npm run frontend: run frontend dev server.
+- npm run seed:api: run backend API seeding.
+- npm run seed:groups: run group/meetup seeding.
+
+Backend scripts:
+
+- npm run dev: nodemon on backend/src/server.js.
+- npm run start: node backend/src/server.js.
+- npm run seed:groups: execute backend/src/scripts/seedGroupsMeetups.js.
+- npm run seed:api: execute backend/src/scripts/seedViaApi.js.
+
+Frontend scripts:
+
+- npm run dev: start Vite.
+- npm run build: production build.
+- npm run preview: preview built assets.
+- npm run lint: lint frontend source.
+
+## License
+
+MIT License. See [LICENSE](LICENSE).

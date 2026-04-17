@@ -97,6 +97,39 @@ export const getNotes = async (req, res) => {
   }
 };
 
+export const getMyNotes = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    const notes = await Note.find({ userId: req.user._id })
+      .populate("userId", "name email profilePicture department year")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const total = await Note.countDocuments({ userId: req.user._id });
+
+    res.status(200).json({
+      success: true,
+      data: notes,
+      pagination: {
+        total,
+        page,
+        pages: Math.ceil(total / limit),
+        limit,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching my notes:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch your notes",
+    });
+  }
+};
+
 export const searchNotes = async (req, res) => {
   try {
     const searchQuery = req.query.q;
@@ -378,11 +411,98 @@ export const getCommentsForNote = async (req, res) => {
   }
 };
 
+export const updateNote = async (req, res) => {
+  try {
+    const { noteId } = req.params;
+    const { title, description, onedriveLink, tags, subject, year } = req.body;
+    const userId = req.user._id;
+
+    const note = await Note.findById(noteId);
+    if (!note) {
+      return res.status(404).json({ success: false, message: "Note not found" });
+    }
+
+    if (note.userId.toString() !== userId.toString()) {
+      return res.status(403).json({ success: false, message: "Not authorized to update this note" });
+    }
+
+    if (title !== undefined) note.title = title;
+    if (description !== undefined) note.description = description;
+    if (onedriveLink !== undefined) note.onedriveLink = onedriveLink;
+    if (subject !== undefined) note.subject = subject;
+    if (year !== undefined) note.year = year === "" || year === null ? null : Number(year);
+
+    if (tags !== undefined) {
+      if (Array.isArray(tags)) {
+        note.tags = tags;
+      } else if (typeof tags === "string") {
+        note.tags = tags
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean);
+      }
+    }
+
+    await note.save();
+
+    const populatedNote = await Note.findById(noteId)
+      .populate("userId", "name email profilePicture department year");
+
+    res.status(200).json({
+      success: true,
+      message: "Note updated successfully",
+      data: populatedNote,
+    });
+  } catch (error) {
+    console.error("Error updating note:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to update note",
+    });
+  }
+};
+
+export const deleteNote = async (req, res) => {
+  try {
+    const { noteId } = req.params;
+    const userId = req.user._id;
+
+    const note = await Note.findById(noteId);
+    if (!note) {
+      return res.status(404).json({ success: false, message: "Note not found" });
+    }
+
+    if (note.userId.toString() !== userId.toString()) {
+      return res.status(403).json({ success: false, message: "Not authorized to delete this note" });
+    }
+
+    await Promise.all([
+      Note.findByIdAndDelete(noteId),
+      Reaction.deleteMany({ noteId }),
+      Comment.deleteMany({ noteId }),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      message: "Note deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting note:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to delete note",
+    });
+  }
+};
+
 export default {
   createNote,
   getNotes,
+  getMyNotes,
   searchNotes,
   reactToNote,
   commentOnNote,
-  getCommentsForNote
+  getCommentsForNote,
+  updateNote,
+  deleteNote,
 };

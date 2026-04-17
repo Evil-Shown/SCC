@@ -104,7 +104,7 @@ export default function NotesTab() {
                 <td>
                   <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                     {note.tags?.slice(0, 2).map((tag, i) => (
-                      <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 3, background: "#4338ca33", color: "#a5b4fc", padding: "1px 7px", borderRadius: 99, fontSize: 11 }}>
+                      <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 3, background: "#16a34a30", color: "#22c55e", padding: "1px 7px", borderRadius: 99, fontSize: 11 }}>
                         <Tag size={9} /> {tag}
                       </span>
                     ))}

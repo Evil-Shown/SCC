@@ -154,8 +154,6 @@ const Kuppi = () => {
     post.subject?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const subjects = ["Mathematics", "Physics", "Chemistry", "Biology", "Computer Science", "Engineering", "Business", "Economics", "English", "History"];
-
   return (
     <div className="kuppi-container">
       {/* Background Effects */}
@@ -306,15 +304,12 @@ const Kuppi = () => {
               <div className="form-row">
                 <div className="form-field">
                   <label>Subject</label>
-                  <select
+                  <input
+                    type="text"
+                    placeholder="e.g. Data Structures"
                     value={formData.subject}
                     onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                  >
-                    <option value="">Select Subject</option>
-                    {subjects.map(s => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
+                  />
                 </div>
                 <div className="form-field">
                   <label>Date & Time *</label>

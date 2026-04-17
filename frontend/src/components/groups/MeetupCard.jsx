@@ -50,6 +50,7 @@ const MODE_ICON = {
 };
 
 // ── MeetupCard ─────────────────────────────────────────────────
+// This component shows the details for a single meeting
 function MeetupCard({ meetup, isAdmin, currentUserId, groupId }) {
     const dispatch = useDispatch();
     const [expanded, setExpanded] = useState(false);
@@ -103,6 +104,7 @@ function MeetupCard({ meetup, isAdmin, currentUserId, groupId }) {
                         <span className="mc-time">
                             <Clock size={11} /> {meetup.time}
                             {" · "}
+                            {/* Format the date so it is easy to read */}
                             {d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
                         </span>
                         {["Active", "Confirmed"].includes(meetup.status) && (

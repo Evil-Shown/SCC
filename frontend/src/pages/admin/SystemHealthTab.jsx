@@ -6,10 +6,10 @@ function HealthRow({ icon: Icon, label, value, color }) {
   return (
     <div className="health-row">
       <div className="health-row-left">
-        <Icon size={16} color={color || "#818cf8"} />
+        <Icon size={16} color={color || "var(--accent)"} />
         <span className="health-label">{label}</span>
       </div>
-      <span className="health-value" style={{ color: color || "#e2e8f0" }}>{value}</span>
+      <span className="health-value" style={{ color: color || "var(--text-primary)" }}>{value}</span>
     </div>
   );
 }
@@ -54,7 +54,7 @@ export default function SystemHealthTab() {
         {/* Server Status Card */}
         <div className="health-card">
           <div className="health-card-header">
-            <Server size={18} color="#818cf8" />
+            <Server size={18} color="var(--accent)" />
             <h3>Server Status</h3>
             <div className="health-pulse">
               <span className="health-pulse-dot" />
@@ -72,17 +72,17 @@ export default function SystemHealthTab() {
         {/* Timestamp Card */}
         <div className="health-card">
           <div className="health-card-header">
-            <Clock size={18} color="#60a5fa" />
+            <Clock size={18} color="var(--accent)" />
             <h3>Server Time</h3>
           </div>
           <div style={{ padding: "20px 0", textAlign: "center" }}>
-            <div style={{ fontSize: 28, fontWeight: 700, color: "#e2e8f0", letterSpacing: 2 }}>
+            <div style={{ fontSize: 28, fontWeight: 700, color: "var(--text-primary)", letterSpacing: 2 }}>
               {health?.timestamp ? new Date(health.timestamp).toLocaleTimeString() : "—"}
             </div>
-            <div style={{ color: "#6b7280", fontSize: 13, marginTop: 6 }}>
+            <div style={{ color: "var(--text-muted)", fontSize: 13, marginTop: 6 }}>
               {health?.timestamp ? new Date(health.timestamp).toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" }) : ""}
             </div>
-            <div style={{ marginTop: 16, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, color: "#4b5563", fontSize: 12 }}>
+            <div style={{ marginTop: 16, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, color: "var(--text-secondary)", fontSize: 12 }}>
               <RefreshCw size={12} />
               Last refreshed: {lastRefresh?.toLocaleTimeString() || "—"} (auto every 10s)
             </div>
@@ -93,7 +93,7 @@ export default function SystemHealthTab() {
       {/* Collections Card */}
       <div className="health-card" style={{ marginTop: 16 }}>
         <div className="health-card-header">
-          <Database size={18} color="#f472b6" />
+          <Database size={18} color="var(--accent)" />
           <h3>Database Collections</h3>
         </div>
         <div className="health-collections-grid">

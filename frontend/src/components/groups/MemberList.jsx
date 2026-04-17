@@ -29,6 +29,7 @@ function Avatar({ name = "?", size = 40 }) {
 }
 
 // ── MemberList ─────────────────────────────────────────────────
+// List of all students in this group
 function MemberList({ group, currentUser, groupId, isAdmin }) {
     const dispatch = useDispatch();
 
@@ -50,6 +51,7 @@ function MemberList({ group, currentUser, groupId, isAdmin }) {
         setInviteSearching(true);
         searchTimer.current = setTimeout(async () => {
             try {
+                // Call our service to search for people
                 const res = await groupService.searchUsers(q, groupId);
                 setInviteResults(res.data || []);
             } catch { setInviteResults([]); }

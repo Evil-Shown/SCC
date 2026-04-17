@@ -1,12 +1,24 @@
 import { verifyToken } from "../utils/jwt.js";
 import User from "../models/User.js";
 
+function parseBearerToken(authHeader) {
+  if (!authHeader || typeof authHeader !== "string") return null;
+  const m = authHeader.match(/^Bearer\s+(\S+)/i);
+  return m ? m[1].trim() : null;
+}
+
+function normalizeToken(t) {
+  if (t == null || t === "") return null;
+  const s = String(t).trim();
+  if (!s || s === "undefined" || s === "null") return null;
+  return s;
+}
+
 /**
  * Authenticate user using JWT token
  */
 export const authenticate = async (req, res, next) => {
   try {
-    // Get token from Authorization header (primary)
     const authHeader = req.headers.authorization;
 
     // Fallback for flows where header may be stripped by browser/proxy
@@ -14,10 +26,7 @@ export const authenticate = async (req, res, next) => {
     const queryToken =
       typeof req.query?.token === "string" ? req.query.token : null;
 
-    const token =
-      authHeader && authHeader.startsWith("Bearer ")
-        ? authHeader.split(" ")[1]
-        : queryToken;
+    const token = normalizeToken(parseBearerToken(authHeader) || queryToken);
 
     if (!token) {
       return res.status(401).json({ 
@@ -86,9 +95,9 @@ export const authorize = (...roles) => {
 export const optionalAuth = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-    
-    if (authHeader && authHeader.startsWith("Bearer ")) {
-      const token = authHeader.split(" ")[1];
+    const token = normalizeToken(parseBearerToken(authHeader));
+
+    if (token) {
       const decoded = verifyToken(token);
       const user = await User.findById(decoded.userId);
       

@@ -9,6 +9,7 @@ import {
  * (grp-card, hover-glow, card-shine from Groups.css/Dashboard.css)
  * plus new .gc-* classes from groups.extra.css.
  */
+// This card shows a summary of a group in the main list
 function GroupCard({ group, currentUserId, onJoin, onOpen, joining, nextMeetup }) {
   const [hovered, setHovered] = useState(false);
 

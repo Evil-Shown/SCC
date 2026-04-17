@@ -20,11 +20,17 @@ export const store = configureStore({
     notifications: notificationsReducer,
     exam: examReducer,
     meetups: meetupReducer,
+    polls: pollReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: false,
     }),
 });
+
+/** Lets `api.js` read the token without importing the store (avoids circular deps with authService → api). */
+if (typeof window !== "undefined") {
+  window.__SCC_STORE__ = store;
+}
 
 export default store;
