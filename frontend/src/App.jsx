@@ -1,10 +1,9 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { Provider, useDispatch, useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux"; // Provider ඉවත් කර ඇත
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { Toaster } from "react-hot-toast";
-import store from "./store/store";
 import { ThemeProvider } from "./context/ThemeContext";
 import ThemeToggle from "./components/ThemeToggle";
 import { fetchUserProfile, updateLastActivity, resetAuth } from "./features/auth/authSlice";
@@ -38,8 +37,6 @@ import AdminDashboard from "./pages/AdminDashboard";
 
 // Components
 import ProtectedRoute from "./components/ProtectedRoute";
-
-// අලුතින් හැදූ Exam Mode Components Import කරගැනීම
 import ExamLogin from './components/Exam/ExamLogin';
 
 // Styles
@@ -55,7 +52,7 @@ function AuthInitializer({ children }) {
     if (accessToken) {
       dispatch(fetchUserProfile());
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [accessToken, dispatch]); 
 
   useEffect(() => {
     if (accessToken && user?._id) {
@@ -230,15 +227,18 @@ function AppShell({ sessionEnded, handleSessionEndClose }) {
 }
 
 function App() {
-  // Session timeout logic
-  const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes in ms
+  // Session timeout logic (30 minutes)
+  const SESSION_TIMEOUT = 30 * 60 * 1000; 
   const [sessionEnded, setSessionEnded] = useState(false);
-  const dispatch = store.dispatch;
-  const lastActivity = store.getState().auth.lastActivity;
-  const isAuthenticated = store.getState().auth.isAuthenticated;
+  
+  // Redux hooks - Provider එක main.jsx හි ඇති බැවින් මෙහිදී ක්‍රියා කරයි
+  const dispatch = useDispatch();
+  const lastActivity = useSelector((state) => state.auth.lastActivity);
+  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
+  
   const timerRef = useRef();
 
-  // Reset timer on activity
+  // Reset timer on user activity
   useEffect(() => {
     if (!isAuthenticated) return;
     const handleActivity = () => {
@@ -254,30 +254,30 @@ function App() {
     };
   }, [isAuthenticated, dispatch]);
 
-  // Check for inactivity
+  // Check for inactivity periodically
   useEffect(() => {
     if (!isAuthenticated) return;
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
       const now = Date.now();
-      if (now - store.getState().auth.lastActivity > SESSION_TIMEOUT) {
+      // Redux state එකෙන් කෙලින්ම අගය පරීක්ෂා කිරීම
+      if (now - lastActivity > SESSION_TIMEOUT) {
         setSessionEnded(true);
         dispatch(resetAuth());
         clearInterval(timerRef.current);
       }
-    }, 10000); // check every 10s
+    }, 10000); 
     return () => clearInterval(timerRef.current);
-  }, [isAuthenticated, lastActivity, dispatch]);
+  }, [isAuthenticated, lastActivity, dispatch, SESSION_TIMEOUT]);
 
   const handleSessionEndClose = () => {
     setSessionEnded(false);
   };
 
   return (
-    <Provider store={store}>
-      <AuthInitializer>
-        <ThemeProvider>
-          <Router>
+    <AuthInitializer>
+      <ThemeProvider>
+        <Router>
             <div className="app">
               <Toaster
                 position="top-right"
@@ -457,7 +457,6 @@ function App() {
           </Router>
         </ThemeProvider>
       </AuthInitializer>
-    </Provider>
   );
 }
 

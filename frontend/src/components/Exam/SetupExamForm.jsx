@@ -6,7 +6,7 @@ import StudyPlanMindMap from './StudyPlanMindMap';
 const SetupExamForm = ({ onClose }) => {
     const dispatch = useDispatch();
     
-    // ✅ වෙනස 1: මෙහිදී 'currentPlan' ලබා ගැනීම
+    // Redux store එකෙන් loading, error සහ currentPlan ලබා ගැනීම
     const { loading, error, currentPlan } = useSelector((state) => state.exam);
 
     const [planCategory, setPlanCategory] = useState('Official'); 
@@ -41,14 +41,19 @@ const SetupExamForm = ({ onClose }) => {
         setModules(updatedModules);
     };
 
-    const handleSubmit = (e) => {
+    // ✅ යාවත්කාලීන කරන ලද Async handleSubmit කේතය
+    const handleSubmit = async (e) => {
         e.preventDefault();
         
+        // 1. FormData වස්තුවක් සාදා ගැනීම
         const formData = new FormData();
+        
+        // මෙහි '12345' වෙනුවට ඔබේ සැබෑ User ID එක ඇතුළත් කළ හැක
         formData.append('student_id', '12345'); 
         formData.append('planCategory', planCategory);
         formData.append('dailyHours', dailyHours);
         
+        // Module metadata සකසා stringify කර FormData වෙත එක් කිරීම
         formData.append('modulesData', JSON.stringify(modules.map(m => ({
             id: m.id,
             name: m.name,
@@ -59,17 +64,22 @@ const SetupExamForm = ({ onClose }) => {
             topics: m.topics.split(',').map(t => t.trim())
         }))));
 
+        // සියලුම PDF ගොනු (Files) FormData වෙත එක් කිරීම
         modules.forEach((mod) => {
             if (mod.file) {
                 formData.append('outlines', mod.file);
             }
         });
 
-        // මෙහිදී then() කොටස ඉවත් කර ඇත, මන්ද සාර්ථක වුවහොත් State එක වෙනස් වී Mindmap එක පෙන්වන බැවිනි.
-        dispatch(createExamPlan(formData)); 
+        try {
+            // 2. Dispatch එක await කිරීම - මෙහිදී UI එක freeze නොවී loading state එක පෙන්වයි
+            await dispatch(createExamPlan(formData)).unwrap();
+            // සාර්ථක වුවහොත් Redux state එකේ currentPlan update වන නිසා ඉබේම Mindmap එක දිස්වේ
+        } catch (err) {
+            console.error("Failed to generate exam plan:", err);
+        }
     };
 
-    // අලුතින් Plan එකක් සෑදීමට අවශ්‍ය වූ විට
     const handleCreateNew = () => {
         dispatch(clearCurrentPlan());
         setModules([{ id: '', name: '', file: null, examDate: '', examTime: '', examType: 'final', difficulty: 'Medium', topics: '' }]);
@@ -77,7 +87,6 @@ const SetupExamForm = ({ onClose }) => {
 
     return (
         <div className="modal-overlay">
-            {/* Modal එකේ පළල වෙනස් කිරීම - Mind Map එකක් නම් ලොකුවට පෙන්වීම */}
             <div className="modal-content" style={{ maxWidth: currentPlan ? '1000px' : '800px', width: '100%' }}>
                 <div className="modal-header">
                     <h2>{currentPlan ? "YOUR AI STUDY PLAN" : "SETUP YOUR STUDY PLANS"}</h2>
@@ -86,24 +95,18 @@ const SetupExamForm = ({ onClose }) => {
                     </button>
                 </div>
                 
-                {error && <div style={{color: 'red', marginBottom: '10px'}}>{error.error || error.message}</div>}
+                {error && <div style={{color: '#ef4444', marginBottom: '10px', fontWeight: 'bold'}}>{error.error || error.message}</div>}
 
-                {/* ✅ වෙනස 2: Conditional Rendering - දත්ත ඇත්නම් Mind Map එක, නැත්නම් Form එක පෙන්වීම */}
                 {currentPlan ? (
-                    
                     <div className="mindmap-container">
                         <StudyPlanMindMap aiPlanData={currentPlan} />
-                        
                         <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
                             <button className="btn-secondary" onClick={handleCreateNew}>Create New Plan</button>
                             <button className="btn-primary" onClick={onClose}>Done</button>
                         </div>
                     </div>
-
                 ) : (
-
                     <form onSubmit={handleSubmit} className="exam-form">
-                        
                         <div className="form-group" style={{ display: 'flex', gap: '20px' }}>
                             <label>
                                 <input type="radio" value="Official" checked={planCategory === 'Official'} onChange={(e) => setPlanCategory(e.target.value)} /> Official
@@ -114,13 +117,12 @@ const SetupExamForm = ({ onClose }) => {
                         </div>
 
                         {modules.map((mod, index) => (
-                            <div key={index} style={{ border: '1px solid #ccc', padding: '15px', marginBottom: '15px', borderRadius: '8px', position: 'relative' }}>
-                                
+                            <div key={index} style={{ border: '1px solid #334155', padding: '15px', marginBottom: '15px', borderRadius: '8px', position: 'relative' }}>
                                 {modules.length > 1 && (
                                     <button 
                                         type="button" 
                                         onClick={() => removeModule(index)} 
-                                        style={{ position: 'absolute', top: '10px', right: '10px', background: 'transparent', color: 'red', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
+                                        style={{ position: 'absolute', top: '10px', right: '10px', background: 'transparent', color: '#ef4444', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
                                     >
                                         - Remove
                                     </button>
@@ -168,14 +170,14 @@ const SetupExamForm = ({ onClose }) => {
                                         <select value={mod.difficulty} onChange={(e) => handleModuleChange(index, 'difficulty', e.target.value)}>
                                             <option value="Easy">Easy</option>
                                             <option value="Medium">Medium</option>
-                                            <option value="Noob">Noob</option>
+                                            <option value="Hard">Hard</option>
                                         </select>
                                     </div>
                                 </div>
 
                                 <div className="form-group">
-                                    <label>Cover Topics</label>
-                                    <textarea placeholder="Topics add textbox" value={mod.topics} onChange={(e) => handleModuleChange(index, 'topics', e.target.value)} rows="2" required />
+                                    <label>Cover Topics (Comma separated)</label>
+                                    <textarea placeholder="Ex: React Hooks, Redux Toolkit, Context API" value={mod.topics} onChange={(e) => handleModuleChange(index, 'topics', e.target.value)} rows="2" required />
                                 </div>
                             </div>
                         ))}
@@ -186,7 +188,7 @@ const SetupExamForm = ({ onClose }) => {
 
                         <div className="form-group">
                             <label>Daily Commitment Hours</label>
-                            <input type="number" min="1" value={dailyHours} onChange={(e) => setDailyHours(e.target.value)} required style={{ width: '100px' }}/>
+                            <input type="number" min="1" max="24" value={dailyHours} onChange={(e) => setDailyHours(e.target.value)} required style={{ width: '100px' }}/>
                         </div>
 
                         <div className="form-actions">
