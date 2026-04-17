@@ -1,6 +1,6 @@
 import express from 'express';
 import upload from '../middlewares/upload.js'; // import upload middlewar
-import { generatePilotMaterials } from '../controllers/studyPilotController.js';
+import { generatePilotMaterials } from '../controllers/examAiController.js';
 
 const router = express.Router();
 
