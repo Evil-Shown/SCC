@@ -89,11 +89,12 @@ function FilesTab({ groupId, currentUserId, isAdmin }) {
                     </p>
                 </div>
                 <button
-                    className="btn btn-primary btn-sm"
+                    type="button"
+                    className="grp-btn-primary grp-btn-sm"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploading}
                 >
-                    {uploading ? "Uploading…" : <><Upload size={15} /> Upload File</>}
+                    {uploading ? "Uploading…" : <><Upload size={16} /> Upload File</>}
                 </button>
                 <input ref={fileInputRef} type="file" style={{ display: "none" }} onChange={handleUpload} />
             </div>
@@ -110,7 +111,7 @@ function FilesTab({ groupId, currentUserId, isAdmin }) {
                     <p className="ft-empty-sub">
                         Upload documents, notes, and resources to share with your group
                     </p>
-                    <button className="btn btn-primary" onClick={() => fileInputRef.current?.click()}>
+                    <button type="button" className="grp-btn-primary" onClick={() => fileInputRef.current?.click()}>
                         <Upload size={16} /> Upload First File
                     </button>
                 </div>
@@ -134,7 +135,8 @@ function FilesTab({ groupId, currentUserId, isAdmin }) {
                                 </div>
                                 <div className="ft-row-actions">
                                     <button
-                                        className="btn btn-secondary btn-sm"
+                                        type="button"
+                                        className="grp-btn-secondary grp-btn-sm"
                                         onClick={() => handleDownload(file._id, name)}
                                         title="Download"
                                     >
@@ -142,7 +144,8 @@ function FilesTab({ groupId, currentUserId, isAdmin }) {
                                     </button>
                                     {canDelete && (
                                         <button
-                                            className="btn btn-danger btn-sm"
+                                            type="button"
+                                            className="grp-btn-danger grp-btn-sm"
                                             onClick={() => handleDelete(file._id)}
                                             disabled={deleting[file._id]}
                                             title="Delete"

@@ -44,32 +44,19 @@ export default function MyInvitesBanner() {
     const shown = expanded ? myInvites : myInvites.slice(0, 2);
 
     return (
-        <div style={{
-            margin: "0 0 16px",
-            background: "rgba(99,102,241,.08)",
-            border: "1px solid rgba(99,102,241,.25)",
-            borderRadius: 14,
-            padding: "14px 18px",
-        }}>
-            {/* Header */}
-            <div style={{
-                display: "flex", alignItems: "center", justifyContent: "space-between",
-                marginBottom: shown.length > 0 ? 12 : 0,
-            }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <Mail size={16} style={{ color: "#818cf8" }} />
-                    <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>
+        <div className="grp-invites-banner">
+            <div className={`grp-invites-head ${shown.length === 0 ? "grp-invites-head--compact" : ""}`}>
+                <div className="grp-invites-head__title">
+                    <Mail size={16} className="grp-invites-head__icon" strokeWidth={1.75} />
+                    <span>
                         You have {myInvites.length} pending group invite{myInvites.length !== 1 ? "s" : ""}
                     </span>
                 </div>
                 {myInvites.length > 2 && (
                     <button
+                        type="button"
+                        className="grp-invites-toggle"
                         onClick={() => setExpanded((e) => !e)}
-                        style={{
-                            background: "none", border: "none", cursor: "pointer",
-                            color: "#a5b4fc", display: "flex", alignItems: "center", gap: 4,
-                            fontSize: 12, fontWeight: 600,
-                        }}
                     >
                         {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                         {expanded ? "Show less" : `Show all ${myInvites.length}`}
@@ -77,19 +64,14 @@ export default function MyInvitesBanner() {
                 )}
             </div>
 
-            {/* Invite rows */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div className="grp-invites-list">
                 {shown.map((inv) => (
-                    <div key={inv._id} style={{
-                        display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
-                        background: "rgba(255,255,255,0.04)", borderRadius: 10,
-                        padding: "10px 14px", border: "1px solid rgba(99,102,241,.15)",
-                    }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>
+                    <div key={inv._id} className="grp-invites-row">
+                        <div className="grp-invites-row__main">
+                            <div className="grp-invites-row__name">
                                 {inv.group?.name || "Unnamed group"}
                             </div>
-                            <div style={{ fontSize: 11, color: "var(--text-dim)" }}>
+                            <div className="grp-invites-row__meta">
                                 Invited by {inv.invitedBy?.name} · expires {new Date(inv.expiresAt).toLocaleDateString()}
                             </div>
                         </div>

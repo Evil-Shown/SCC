@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { createPoll } from "../../features/polls/pollSlice";
 import { X, BarChart2, Plus, Trash2 } from "lucide-react";
+import "../../styles/Dashboard.css";
 
 // Popup to create a new poll in the group
 function CreatePollModal({ groupId, onClose }) {
@@ -62,12 +63,8 @@ function CreatePollModal({ groupId, onClose }) {
             <div className="modal-content scale-in" style={{ maxWidth: "560px", maxHeight: "90vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
                     <h2 style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <span style={{
-                            width: 36, height: 36, borderRadius: 8,
-                            background: "linear-gradient(135deg, #10b981, #059669)",
-                            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-                        }}>
-                            <BarChart2 size={18} color="#fff" />
+                        <span className="modal-icon-box">
+                            <BarChart2 size={18} strokeWidth={1.75} />
                         </span>
                         Create Poll
                     </h2>
@@ -83,7 +80,9 @@ function CreatePollModal({ groupId, onClose }) {
                         </div>
 
                         <div className="form-field" style={{ marginBottom: 0 }}>
-                            <label className="form-label">Description (optional)</label>
+                            <label className="form-label">
+                                Description <span className="form-label__opt">(optional)</span>
+                            </label>
                             <textarea className="form-textarea" value={form.message} onChange={e => setField("message", e.target.value)} placeholder="Add some context..." rows={2} style={{ resize: "vertical" }} />
                         </div>
 
@@ -96,14 +95,14 @@ function CreatePollModal({ groupId, onClose }) {
                                     <div key={i} style={{ display: "flex", gap: 8 }}>
                                         <input className="form-input" value={opt.text} onChange={e => handleOptionChange(i, e.target.value)} placeholder={`Option ${i + 1}`} required />
                                         {form.options.length > 2 && (
-                                            <button type="button" className="btn btn-secondary" style={{ padding: "0 12px" }} onClick={() => removeOption(i)}>
+                                            <button type="button" className="grp-btn-secondary grp-btn-sm" style={{ padding: "0 12px" }} onClick={() => removeOption(i)}>
                                                 <Trash2 size={16} />
                                             </button>
                                         )}
                                     </div>
                                 ))}
                             </div>
-                            <button type="button" className="btn btn-secondary btn-sm" style={{ marginTop: 8 }} onClick={addOption}>
+                            <button type="button" className="grp-btn-secondary grp-btn-sm" style={{ marginTop: 8 }} onClick={addOption}>
                                 <Plus size={14} /> Add Option
                             </button>
                         </div>
@@ -111,17 +110,17 @@ function CreatePollModal({ groupId, onClose }) {
                         <div className="form-field" style={{ marginBottom: 0 }}>
                             <label className="form-label">Settings</label>
                             <div style={{ display: "flex", flexDirection: "column", gap: 8, background: "var(--color-bg-secondary)", padding: 12, borderRadius: "var(--radius-md)" }}>
-                                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "14px", cursor: "pointer" }}>
+                                <label className="form-control-label">
                                     <input type="checkbox" checked={form.isMultipleChoice} onChange={e => setField("isMultipleChoice", e.target.checked)} />
                                     Allow multiple answers
                                 </label>
                                 {form.isMultipleChoice && (
                                     <div style={{ paddingLeft: 24 }}>
-                                        <label style={{ fontSize: "12px", color: "var(--text-dim)" }}>Max votes per user (0 for unlimited):</label>
+                                        <label className="form-aux-label">Max votes per user (0 for unlimited):</label>
                                         <input type="number" className="form-input" style={{ padding: "4px 8px", minHeight: "auto", width: 80, marginLeft: 8 }} value={form.maxVotesPerUser} onChange={e => setField("maxVotesPerUser", parseInt(e.target.value) || 0)} min={0} />
                                     </div>
                                 )}
-                                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "14px", cursor: "pointer" }}>
+                                <label className="form-control-label">
                                     <input type="checkbox" checked={form.isAnonymous} onChange={e => setField("isAnonymous", e.target.checked)} />
                                     Anonymous voting
                                 </label>
@@ -141,8 +140,8 @@ function CreatePollModal({ groupId, onClose }) {
                 </div>
 
                 <div className="modal-actions">
-                    <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-                    <button type="submit" form="poll-form" className="btn btn-primary" disabled={busy}>
+                    <button type="button" className="grp-btn-secondary" onClick={onClose}>Cancel</button>
+                    <button type="submit" form="poll-form" className="grp-btn-primary" disabled={busy}>
                         {busy ? "Saving…" : "Save Poll"}
                     </button>
                 </div>
