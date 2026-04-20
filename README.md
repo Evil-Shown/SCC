@@ -24,6 +24,7 @@ This repository is a JavaScript monorepo with a Vite + React frontend and an Exp
 - [Environment Variables](#environment-variables)
 - [Runtime Behavior](#runtime-behavior)
 - [API and Realtime Overview](#api-and-realtime-overview)
+- [API Testing with Swagger](#api-testing-with-swagger)
 - [Operational Troubleshooting](#operational-troubleshooting)
 - [Documentation Map](#documentation-map)
 - [Scripts Reference](#scripts-reference)
@@ -208,6 +209,30 @@ Socket.IO events include:
 - join-room (personal room by user id)
 - join-group (group scoped channel)
 - leave-group
+
+## API Testing with Swagger
+
+The backend now exposes OpenAPI docs and a Swagger UI so you can test endpoints in the browser.
+
+After starting the backend:
+
+- Swagger UI: http://localhost:5000/api/docs
+- OpenAPI JSON: http://localhost:5000/api/docs.json
+
+How to use it:
+
+1. Start backend (or full stack):
+   - From root: `npm run dev`
+   - Or backend only: `cd backend && npm run dev`
+2. Open Swagger UI in the browser.
+3. Expand an endpoint, click **Try it out**, fill parameters/body, then click **Execute**.
+4. For protected routes, click **Authorize** and paste your JWT as:
+   `Bearer <your_token>`
+
+Notes:
+
+- The docs include core system endpoints immediately.
+- You can enrich endpoint docs by adding OpenAPI JSDoc blocks inside route/controller files in `backend/src/routes` and `backend/src/controllers`.
 
 ## Operational Troubleshooting
 

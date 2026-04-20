@@ -94,7 +94,6 @@
 }
 
 .btn-primary:hover:not(:disabled) {
-  transform: translateY(-2px);
   box-shadow: 0 0 20px rgba(79, 70, 229, 0.4), 0 0 40px rgba(79, 70, 229, 0.15), var(--shadow-lg);
   background: linear-gradient(135deg, var(--color-primary-700), var(--color-primary-800));
 }
@@ -109,7 +108,6 @@
 .btn-secondary:hover:not(:disabled) {
   border-color: var(--color-primary-600);
   color: var(--color-primary-600);
-  transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
 
@@ -120,7 +118,6 @@
 
 .btn-success:hover:not(:disabled) {
   background: var(--color-success-dark);
-  transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
 }
 
@@ -131,7 +128,6 @@
 
 .btn-danger:hover:not(:disabled) {
   background: var(--color-error-dark);
-  transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
 }
 
@@ -143,7 +139,6 @@
 
 .btn-outline:hover:not(:disabled) {
   background: var(--color-primary-50);
-  transform: translateY(-2px);
 }
 
 .btn-ghost {
@@ -475,9 +470,32 @@ html[data-theme="dark"] .feedback-state__retry {
 .form-label {
   display: block;
   font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-primary);
+  font-weight: var(--font-weight-semibold);
+  color: var(--form-label-fg, var(--color-text-primary));
   margin-bottom: var(--spacing-sm);
+}
+
+.form-label__opt {
+  font-weight: var(--font-weight-medium);
+  color: var(--form-optional-fg, var(--form-hint-fg, var(--color-text-tertiary)));
+}
+
+/* Checkbox/radio row text — same contrast as field labels */
+.form-control-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  color: var(--form-label-fg, var(--color-text-primary));
+}
+
+.form-aux-label {
+  font-size: var(--font-size-xs);
+  color: var(--form-hint-fg, var(--color-text-tertiary));
+  display: block;
+  margin-bottom: 4px;
 }
 
 .form-input,
@@ -526,7 +544,19 @@ html[data-theme="dark"] .feedback-state__retry {
 .form-hint {
   margin-top: var(--spacing-xs);
   font-size: var(--font-size-sm);
-  color: var(--color-text-tertiary);
+  color: var(--form-hint-fg, var(--color-text-tertiary));
+}
+
+/* Dark surfaces: keep field row labels readable (never accent-green as primary label) */
+html[data-theme="dark"] .modal-content label.form-label,
+html[data-theme="dark"] .modal-content .form-control-label,
+html[data-theme="dark"] .grp-root .modal-content label.form-label,
+html[data-theme="dark"] .grp-root .modal-content .form-control-label {
+  color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .modal-content .form-label__opt {
+  color: #94a3b8 !important;
 }
 
 /* ===========================
@@ -1496,7 +1526,7 @@ html[data-theme="dark"] .groups-container::after {
   animation: groupsAuroraDrift 18s ease-in-out infinite alternate-reverse;
 }
 
-html[data-theme="dark"] .groups-container > :not(.modal-overlay) {
+html[data-theme="dark"] .groups-container> :not(.modal-overlay) {
   position: relative;
   z-index: 1;
 }
@@ -1545,9 +1575,11 @@ html[data-theme="dark"] .tag:hover {
   0% {
     transform: translate3d(-2%, -1.5%, 0) scale(1);
   }
+
   50% {
     transform: translate3d(1.5%, 1%, 0) scale(1.04);
   }
+
   100% {
     transform: translate3d(3%, -2%, 0) scale(1.02);
   }
@@ -2082,12 +2114,10 @@ html[data-theme="dark"] .tag:hover {
 
 /* Skeleton Loading */
 .skeleton {
-  background: linear-gradient(
-    90deg,
-    var(--color-gray-200) 0%,
-    var(--color-gray-100) 50%,
-    var(--color-gray-200) 100%
-  );
+  background: linear-gradient(90deg,
+      var(--color-gray-200) 0%,
+      var(--color-gray-100) 50%,
+      var(--color-gray-200) 100%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   border-radius: var(--radius-md);
@@ -2097,6 +2127,7 @@ html[data-theme="dark"] .tag:hover {
   0% {
     background-position: 200% 0;
   }
+
   100% {
     background-position: -200% 0;
   }
@@ -2391,7 +2422,7 @@ html[data-theme="dark"] .tag:hover {
 .form-select.desi-focus:focus,
 .form-textarea.desi-focus:focus {
   border-color: var(--desi-saffron);
-  box-shadow: 
+  box-shadow:
     0 0 0 3px rgba(255, 153, 51, 0.2),
     0 0 20px rgba(255, 153, 51, 0.15);
 }
@@ -2443,7 +2474,7 @@ html[data-theme="dark"] .tag:hover {
 .modal-content.desi-style {
   border: 2px solid transparent;
   background: linear-gradient(white, white) padding-box,
-              var(--desi-gradient-tiranga) border-box;
+    var(--desi-gradient-tiranga) border-box;
 }
 
 .modal-content.desi-style .modal-header h2 {
@@ -2455,12 +2486,10 @@ html[data-theme="dark"] .tag:hover {
 
 /* Desi skeleton shimmer */
 .skeleton.skeleton-desi {
-  background: linear-gradient(
-    90deg,
-    rgba(255, 153, 51, 0.1) 0%,
-    rgba(255, 170, 0, 0.2) 50%,
-    rgba(0, 128, 128, 0.1) 100%
-  );
+  background: linear-gradient(90deg,
+      rgba(255, 153, 51, 0.1) 0%,
+      rgba(255, 170, 0, 0.2) 50%,
+      rgba(0, 128, 128, 0.1) 100%);
   background-size: 200% 100%;
 }
 
@@ -2478,10 +2507,21 @@ html[data-theme="dark"] .tag:hover {
 }
 
 /* Desi group card accents */
-.group-card.desi-accent-1 { --accent: var(--desi-saffron); }
-.group-card.desi-accent-2 { --accent: var(--desi-peacock); }
-.group-card.desi-accent-3 { --accent: var(--desi-indigo); }
-.group-card.desi-accent-4 { --accent: var(--desi-fuchsia); }
+.group-card.desi-accent-1 {
+  --accent: var(--desi-saffron);
+}
+
+.group-card.desi-accent-2 {
+  --accent: var(--desi-peacock);
+}
+
+.group-card.desi-accent-3 {
+  --accent: var(--desi-indigo);
+}
+
+.group-card.desi-accent-4 {
+  --accent: var(--desi-fuchsia);
+}
 
 .group-card[class*="desi-accent"]::before {
   background: linear-gradient(90deg, var(--accent), var(--accent));

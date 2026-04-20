@@ -1,21 +1,19 @@
 // Dashboard.jsx - Advanced Edition
 import { useEffect, useState, useRef } from "react";
-import { useSelector, useDispatch } from "react-redux";
+import { useSelector } from "react-redux";
 import api from "../services/api";
-import { useNavigate, useLocation, Link } from "react-router-dom";
-import { logout } from "../features/auth/authSlice";
+import { useNavigate, Link } from "react-router-dom";
 import { useTheme } from "../context/ThemeContext";
 import {
   Brain, BookMarked, Users, Calendar, Share2,
-  LogOut, ArrowRight, Home as HomeIcon,
+  ArrowRight,
   Video, Target, TrendingUp, Plus,
-  ChevronRight, BookOpen, Clock, Award, Activity, LayoutDashboard,
+  ChevronRight, BookOpen, Clock, Award, Activity,
   Sparkles, Flame, BarChart3, CheckCircle2, Zap, MessageSquare,
   Mic, Coffee, Headphones, MapPin, CalendarDays,
   ListTodo, FileText, Globe, Github, Twitter, Linkedin, GraduationCap
 } from "lucide-react";
-import NotificationBell from "../components/NotificationBell";
-import { confirmAction } from "../utils/toast";
+import StudentDashboardShell from "../components/StudentDashboardShell";
 import "../styles/Dashboard.css";
 
 // Animated Counter Component
@@ -80,8 +78,6 @@ const StudyBarChart = () => {
 export default function Dashboard() {
   const { user, isAuthenticated } = useSelector((s) => s.auth);
   const { theme } = useTheme();
-  const dispatch = useDispatch();
-  const location = useLocation();
   const navigate = useNavigate();
 
   const [dayProgress, setDayProgress] = useState(0);
@@ -229,15 +225,6 @@ export default function Dashboard() {
     fetchDashboardData();
   }, []);
 
-  const handleLogout = async () => {
-    const confirmed = await confirmAction("Are you sure you want to log out?", {
-      confirmText: "Log out",
-    });
-    if (!confirmed) return;
-    dispatch(logout());
-    navigate("/");
-  };
-
   const getGreeting = () => {
     const h = new Date().getHours();
     return h < 12 ? "Good Morning" : h < 18 ? "Good Afternoon" : "Good Evening";
@@ -279,55 +266,8 @@ export default function Dashboard() {
     { icon: <Share2 size={16} />, label: "Share Notes", path: "/notes" },
   ];
 
-  const navLinks = [
-    { icon: <HomeIcon size={18} />, label: "Home", path: "/" },
-    { icon: <LayoutDashboard size={18} />, label: "Dashboard", path: "/dashboard" },
-    { icon: <GraduationCap size={18} />, label: "Exam Mode", path: "/exam-mode" },
-    { icon: <Brain size={18} />, label: "Timetable", path: "/timetable" },
-    { icon: <BookMarked size={18} />, label: "Notes", path: "/notes" },
-    { icon: <Video size={18} />, label: "Kuppi", path: "/kuppi" },
-    { icon: <Users size={18} />, label: "Groups", path: "/groups" },
-  ];
-
   return (
-    <div className={`dashboard ${focusMode ? 'focus-mode' : ''}`} data-theme={theme}>
-      <div className="dashboard-bg" aria-hidden="true">
-        <span className="bg-orb bg-orb--one"></span>
-        <span className="bg-orb bg-orb--two"></span>
-        <span className="bg-orb bg-orb--three"></span>
-        <span className="bg-grid"></span>
-      </div>
-
-      {/* Floating Navigation Bar */}
-      <header className="dashboard-header dashboard-header--visible">
-        <Link to="/dashboard" className="dashboard-logo">
-          <span className="dashboard-logo__text">User Dashboard</span>
-        </Link>
-        <nav className="dashboard-nav">
-          {navLinks.map((link) => (
-            <Link
-              key={link.path}
-              to={link.path}
-              className={`dashboard-nav__link ${location.pathname === link.path ? "active" : ""}`}
-            >
-              {link.icon}
-              <span>{link.label}</span>
-            </Link>
-          ))}
-        </nav>
-        <div className="dashboard-actions">
-          <NotificationBell />
-          <button className="dashboard-profile-btn" onClick={() => navigate("/profile")}>
-            <span className="dashboard-avatar">{user.name?.charAt(0) || "U"}</span>
-            <span className="dashboard-profile-name">{user.name?.split(" ")[0]}</span>
-          </button>
-          <button className="logout-btn" onClick={handleLogout} aria-label="Log Out">
-            <LogOut size={16} />
-          </button>
-        </div>
-      </header>
-
-      {/* Main Bento Grid */}
+    <StudentDashboardShell focusMode={focusMode}>
       <main className="bento-container">
         <div className="bento-grid">
 
@@ -614,6 +554,6 @@ export default function Dashboard() {
 
         </div>
       </main>
-    </div>
+    </StudentDashboardShell>
   );
 }

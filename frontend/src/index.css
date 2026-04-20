@@ -65,6 +65,12 @@
   --color-border: var(--color-gray-200);
   --color-border-focus: var(--color-primary-500);
 
+  /* Forms — semantic label/hint (overridden per theme) */
+  --form-label-fg: var(--color-text-primary);
+  --form-hint-fg: #64748b;
+  /* “Optional” / secondary field copy — slightly softer than main label */
+  --form-optional-fg: #64748b;
+
   /* Spacing Scale */
   --spacing-xs: 0.25rem;
   /* 4px */
@@ -181,6 +187,9 @@ html[data-theme="light"] {
   --toast-bg: #ffffff;
   --toast-text: #111827;
   --toast-border: rgba(148, 163, 184, 0.35);
+  --form-label-fg: #0f172a;
+  --form-hint-fg: #64748b;
+  --form-optional-fg: #64748b;
   color-scheme: light;
 }
 
@@ -198,6 +207,9 @@ html[data-theme="dark"] {
   --toast-bg: #475569;
   --toast-text: #f8fafc;
   --toast-border: rgba(148, 163, 184, 0.35);
+  --form-label-fg: #f8fafc;
+  --form-hint-fg: #94a3b8;
+  --form-optional-fg: #cbd5e1;
   color-scheme: dark;
 }
 
@@ -1295,7 +1307,7 @@ html[data-theme="light"] .modal-overlay {
 
 /* Form styling */
 .ui.form .field>label {
-  color: var(--color-text-secondary) !important;
+  color: var(--form-label-fg, var(--color-text-primary)) !important;
   font-weight: var(--font-weight-medium) !important;
   margin-bottom: 0.5rem !important;
   font-size: var(--font-size-sm) !important;
