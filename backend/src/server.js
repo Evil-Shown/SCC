@@ -6,7 +6,9 @@ import cors from "cors";
 import http from "http";
 import { Server } from "socket.io";
 import multer from "multer";
+import swaggerUi from "swagger-ui-express";
 import connectDB from "./config/db.js";
+import swaggerSpec from "./config/swagger.js";
 import User from "./models/User.js";
 import Module from "./models/Module.js";
 import KuppiPost from "./models/KuppiPost.js";
@@ -89,6 +91,13 @@ app.get("/api/health", (req, res) => {
     environment: process.env.NODE_ENV || "development",
   });
 });
+
+// API documentation for manual endpoint testing
+app.get("/api/docs.json", (req, res) => {
+  res.setHeader("Content-Type", "application/json");
+  res.send(swaggerSpec);
+});
+app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // API Routes (require DB)
 app.use("/api/auth", authRoutes);
