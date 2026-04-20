@@ -4,16 +4,15 @@ import { useNavigate } from "react-router-dom";
 import {
   fetchGroups, createGroup, joinGroup, setFilters, clearError,
 } from "../features/groups/groupSlice";
-import { logout } from "../features/auth/authSlice";
 import {
   Plus, Search, Users, Lock, Globe, Tag, X,
-  SlidersHorizontal, Waves, Shield,
-  Filter, TrendingUp, Hash, ArrowLeft,
+  Shield,
 } from "lucide-react";
 import LoadingSpinner from "../components/LoadingSpinner";
 import GroupCard from "../components/groups/GroupCard";
 import MyInvitesBanner from "../components/groups/MyInvitesBanner";
-import { confirmAction } from "../utils/toast";
+import StudentDashboardShell from "../components/StudentDashboardShell";
+import { useTheme } from "../context/ThemeContext";
 import "../styles/Dashboard.css";
 import "../styles/Groups.css";
 import "../styles/GroupsExtra.css";
@@ -68,12 +67,8 @@ function CreateGroupModal({ onClose }) {
       <div className="modal-content scale-in" style={{ maxWidth: "540px" }} onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2 style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <span style={{
-              width: 36, height: 36, borderRadius: 8,
-              background: "linear-gradient(135deg,#6366f1,#8b5cf6)",
-              display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-            }}>
-              <Users size={18} color="#fff" />
+            <span className="modal-icon-box">
+              <Users size={18} strokeWidth={1.75} />
             </span>
             Create Study Group
           </h2>
@@ -155,16 +150,10 @@ function CreateGroupModal({ onClose }) {
                     { val: false, label: "Private", Icon: Lock },
                   ].map(({ val, label, Icon }) => (
                     <button key={label} type="button"
+                      className={`grp-form-seg ${form.isPublic === val ? "grp-form-seg--active" : ""}`}
                       onClick={() => set("isPublic", val)}
-                      style={{
-                        flex: 1, padding: "8px 4px", borderRadius: "var(--radius-md)",
-                        cursor: "pointer", fontWeight: 600, fontSize: "12px",
-                        border: `2px solid ${form.isPublic === val ? "var(--color-primary-500)" : "var(--color-border)"}`,
-                        background: form.isPublic === val ? "rgba(99,102,241,.12)" : "var(--color-bg-primary)",
-                        color: form.isPublic === val ? "var(--color-primary-500)" : "var(--color-text-secondary)",
-                        display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
-                      }}>
-                      <Icon size={13} /> {label}
+                    >
+                      <Icon size={13} strokeWidth={1.75} /> {label}
                     </button>
                   ))}
                 </div>
@@ -177,7 +166,7 @@ function CreateGroupModal({ onClose }) {
                 <label className="form-label">Max Members ({form.maxMembers})</label>
                 <input type="range" min={2} max={200} value={form.maxMembers}
                   onChange={(e) => set("maxMembers", parseInt(e.target.value))}
-                  style={{ width: "100%", marginTop: 8, accentColor: "var(--color-primary-500)" }} />
+                  style={{ width: "100%", marginTop: 8, accentColor: "var(--ds-accent, #2ecc71)" }} />
                 <span className="form-hint">{form.maxMembers} students maximum</span>
               </div>
             </div>
@@ -187,8 +176,8 @@ function CreateGroupModal({ onClose }) {
         </div>
 
         <div className="modal-actions">
-          <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-          <button type="submit" form="create-group-form" className="btn btn-primary" disabled={busy}>
+          <button type="button" className="grp-btn-secondary" onClick={onClose}>Cancel</button>
+          <button type="submit" form="create-group-form" className="grp-btn-primary" disabled={busy}>
             {busy ? "Creating…" : <><Plus size={16} /> Create Group</>}
           </button>
         </div>
@@ -237,21 +226,7 @@ const Groups = () => {
     finally { setJoining((p) => ({ ...p, [groupId]: false })); }
   };
 
-  const handleLogout = async () => {
-    const confirmed = await confirmAction("Are you sure you want to log out?", { confirmText: "Log out" });
-    if (!confirmed) return;
-    dispatch(logout());
-    navigate("/");
-  };
-
-  const handleBack = () => {
-    if (window.history.length > 1) {
-      navigate(-1);
-      return;
-    }
-
-    navigate("/dashboard");
-  };
+  const { theme } = useTheme();
 
   // Computed stats
   const myGroupCount = groups.filter((g) => g.members?.some((m) => {
@@ -266,184 +241,184 @@ const Groups = () => {
     : groups;
 
   if (!user) return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: "#010810", color: "#2a9d8f", fontFamily: "Inter, sans-serif" }}>
-      Loading...
-    </div>
+    <StudentDashboardShell>
+      <div className="dashboard-loading" data-theme={theme}>
+        <div className="loading-spinner" />
+        <span>Loading…</span>
+      </div>
+    </StudentDashboardShell>
   );
 
   return (
-    <div className="db-root dashboard-page grp-root">
+    <StudentDashboardShell>
+      <div className="db-root dashboard-page grp-root">
+        <div className="grp-unified-layout fade-in">
 
-      <div className="grp-unified-layout fade-in">
-
-        <div style={{ padding: "1rem 1rem 0", maxWidth: 1480, width: "100%", margin: "0 auto" }}>
-          <button
-            type="button"
-            onClick={handleBack}
-            aria-label="Go back"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "0.7rem 1rem",
-              borderRadius: 999,
-              border: "1px solid var(--border)",
-              background: "var(--surface-1)",
-              color: "var(--text)",
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
-            <ArrowLeft size={16} />
-            Back
-          </button>
-        </div>
-
-        {/* ── HERO BANNER ── */}
-        <section className="grp-hero-banner">
-          <div className="grp-hero-content">
-            <div className="grp-hero-text-block">
-              <div className="grp-hero-badge">
-                <span className="grp-live-dot"></span> Collaborative Spaces
-              </div>
-              <h1 className="grp-hero-title">Study & Project Groups</h1>
-              <p className="grp-hero-sub">
-                Join forces with your peers. Manage group assignments, schedule hybrid meetups, and share resources easily.
-              </p>
-              <div className="grp-hero-stats">
-                <div className="grp-h-stat"><Users size={14} /> <span><b>{groups.length}</b> Groups</span></div>
-                <div className="grp-h-stat" style={{ color: "var(--cyan)" }}><Shield size={14} /> <span><b>{myGroupCount}</b> Joined</span></div>
-                <div className="grp-h-stat" style={{ color: "var(--color-success, #10b981)" }}><Globe size={14} /> <span><b>{publicCount}</b> Public</span></div>
-              </div>
-            </div>
-            <div className="grp-hero-right">
-              <button className="grp-hero-create-btn" onClick={() => setShowCreate(true)}>
-                <Plus size={18} />
-                <span>Start a Group</span>
-              </button>
-            </div>
-          </div>
-          {/* Background elements */}
-          <div className="grp-hero-shape-1"></div>
-          <div className="grp-hero-shape-2"></div>
-        </section>
-
-        {/* ── MAIN CONTENT ── */}
-        <main className="grp-unified-main">
-          <MyInvitesBanner />
-
-          {/* Elegant Filter Bar */}
-          <div className="grp-modern-filter-bar" style={{ animation: "riseIn .65s .15s ease both" }}>
-            <div className="grp-search-capsule">
-              <Search size={16} className="grp-search-icon-mod" />
-              <input
-                value={localSearch}
-                onChange={handleSearch}
-                placeholder="Search groups, subjects, or courses..."
-                className="grp-search-input-mod"
-              />
-            </div>
-
-            <div className="grp-filter-sep"></div>
-
-            <div className="grp-toggle-trio">
-              <button
-                className={`grp-trio-btn ${!filters.myGroups ? "active" : ""}`}
-                onClick={() => dispatch(setFilters({ myGroups: false }))}
-              >
-                <Globe size={15} /> Discover
-              </button>
-              <button
-                className={`grp-trio-btn ${filters.myGroups ? "active" : ""}`}
-                onClick={() => dispatch(setFilters({ myGroups: true }))}
-              >
-                <Shield size={15} /> My Groups
-              </button>
-            </div>
-
-            <div className="grp-filter-sep"></div>
-
-            <div className="grp-tags-scroll">
-              {PRESET_TAGS.map((tag) => (
-                <button key={tag}
-                  className={`grp-tag-pill-mod ${activeTag === tag ? "active" : ""}`}
-                  onClick={() => setActiveTag(activeTag === tag ? null : tag)}>
-                  #{tag}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Error banner */}
-          {error && (
-            <div className="alert alert-error" style={{ animation: "riseIn .3s ease both" }}>
-              <span>{error}</span>
-              <button className="btn btn-sm btn-ghost" onClick={() => dispatch(clearError())}>
-                <X size={15} />
-              </button>
-            </div>
-          )}
-
-          {/* Content */}
-          <div style={{ animation: "riseIn .65s .3s ease both" }}>
-            {isLoading && <LoadingSpinner text="Loading groups…" />}
-
-            {/* Empty state */}
-            {!isLoading && displayGroups.length === 0 && (
-              <div className="grp-empty">
-                <div className="grp-empty__icon"><Users size={52} strokeWidth={1} /></div>
-                <h3 className="grp-empty__title">
-                  {filters.myGroups ? "You haven't joined any groups yet" : "No groups found"}
-                </h3>
-                <p className="grp-empty__sub">
-                  {filters.myGroups
-                    ? "Create a group or browse public groups to join"
-                    : "Be the first — create a study group and start collaborating!"}
+          {/* ── HERO BANNER ── */}
+          <section className="grp-hero-banner">
+            <div className="grp-hero-content">
+              <div className="grp-hero-text-block">
+                <div className="grp-hero-kicker">
+                  <span className="grp-hero-kicker__icon" aria-hidden="true">
+                    <Users size={18} strokeWidth={1.75} />
+                  </span>
+                  <span className="grp-hero-kicker__tag">Team space</span>
+                </div>
+                <h1 className="grp-hero-title">Study Groups</h1>
+                <p className="grp-hero-sub">
+                  Collaborate & learn together — live collaboration, shared resources, and hybrid meetups.
                 </p>
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
-                  <button className="grp-create-btn" onClick={() => setShowCreate(true)}>
-                    <Plus size={16} /> Create Group
-                  </button>
-                  {filters.myGroups && (
-                    <button className="grp-toggle-btn" onClick={() => dispatch(setFilters({ myGroups: false }))}>
-                      <Users size={14} /> Browse All
-                    </button>
-                  )}
+                <div className="grp-hero-chips" aria-hidden="true">
+                  <span className="grp-hero-chip">Live collaboration</span>
+                  <span className="grp-hero-chip">Shared learning</span>
                 </div>
+                <div className="grp-summary-row" role="list">
+                  <div className="grp-summary-stat" role="listitem">
+                    <span className="grp-summary-stat__icon"><Users size={18} strokeWidth={1.75} /></span>
+                    <span className="grp-summary-stat__value">{groups.length}</span>
+                    <span className="grp-summary-stat__label">Groups</span>
+                  </div>
+                  <div className="grp-summary-stat" role="listitem">
+                    <span className="grp-summary-stat__icon"><Shield size={18} strokeWidth={1.75} /></span>
+                    <span className="grp-summary-stat__value">{myGroupCount}</span>
+                    <span className="grp-summary-stat__label">Joined</span>
+                  </div>
+                  <div className="grp-summary-stat" role="listitem">
+                    <span className="grp-summary-stat__icon"><Globe size={18} strokeWidth={1.75} /></span>
+                    <span className="grp-summary-stat__value">{publicCount}</span>
+                    <span className="grp-summary-stat__label">Public</span>
+                  </div>
+                </div>
+              </div>
+              <div className="grp-hero-right">
+                <button className="grp-hero-create-btn" onClick={() => setShowCreate(true)}>
+                  <Plus size={18} />
+                  <span>Start a Group</span>
+                </button>
+              </div>
+            </div>
+            {/* Background elements */}
+            <div className="grp-hero-shape-1"></div>
+            <div className="grp-hero-shape-2"></div>
+          </section>
+
+          {/* ── MAIN CONTENT ── */}
+          <main className="grp-unified-main">
+            <MyInvitesBanner />
+
+            {/* Elegant Filter Bar */}
+            <div className="grp-modern-filter-bar" style={{ animation: "riseIn .65s .15s ease both" }}>
+              <div className="grp-search-capsule">
+                <Search size={16} className="grp-search-icon-mod" />
+                <input
+                  value={localSearch}
+                  onChange={handleSearch}
+                  placeholder="Search groups, subjects, or courses..."
+                  className="grp-search-input-mod"
+                />
+              </div>
+
+              <div className="grp-filter-sep"></div>
+
+              <div className="grp-toggle-trio">
+                <button
+                  className={`grp-trio-btn ${!filters.myGroups ? "active" : ""}`}
+                  onClick={() => dispatch(setFilters({ myGroups: false }))}
+                >
+                  <Globe size={15} /> Discover
+                </button>
+                <button
+                  className={`grp-trio-btn ${filters.myGroups ? "active" : ""}`}
+                  onClick={() => dispatch(setFilters({ myGroups: true }))}
+                >
+                  <Shield size={15} /> My Groups
+                </button>
+              </div>
+
+              <div className="grp-filter-sep"></div>
+
+              <div className="grp-tags-scroll">
+                {PRESET_TAGS.map((tag) => (
+                  <button key={tag}
+                    className={`grp-tag-pill-mod ${activeTag === tag ? "active" : ""}`}
+                    onClick={() => setActiveTag(activeTag === tag ? null : tag)}>
+                    #{tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Error banner */}
+            {error && (
+              <div className="alert alert-error" style={{ animation: "riseIn .3s ease both" }}>
+                <span>{error}</span>
+                <button className="btn btn-sm btn-ghost" onClick={() => dispatch(clearError())}>
+                  <X size={15} />
+                </button>
               </div>
             )}
 
-            {/* Group cards grid */}
-            {!isLoading && displayGroups.length > 0 && (
-              <>
-                <div className="grp-section-head-row" style={{ marginBottom: 12 }}>
-                  <span className="grp-section-label">
-                    {filters.myGroups ? "My Groups" : activeTag ? `#${activeTag}` : "All Study Groups"}
-                  </span>
-                  <span className="grp-count-badge">
-                    {displayGroups.length} group{displayGroups.length !== 1 ? "s" : ""}
-                  </span>
+            {/* Content */}
+            <div style={{ animation: "riseIn .65s .3s ease both" }}>
+              {isLoading && <LoadingSpinner text="Loading groups…" />}
+
+              {/* Empty state */}
+              {!isLoading && displayGroups.length === 0 && (
+                <div className="grp-empty">
+                  <div className="grp-empty__icon"><Users size={52} strokeWidth={1} /></div>
+                  <h3 className="grp-empty__title">
+                    {filters.myGroups ? "You haven't joined any groups yet" : "No groups found"}
+                  </h3>
+                  <p className="grp-empty__sub">
+                    {filters.myGroups
+                      ? "Create a group or browse public groups to join"
+                      : "Be the first — create a study group and start collaborating!"}
+                  </p>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
+                    <button className="grp-create-btn" onClick={() => setShowCreate(true)}>
+                      <Plus size={16} /> Create Group
+                    </button>
+                    {filters.myGroups && (
+                      <button className="grp-toggle-btn" onClick={() => dispatch(setFilters({ myGroups: false }))}>
+                        <Users size={14} /> Browse All
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div className="grp-cards-grid">
-                  {displayGroups.map((group) => (
-                    <GroupCard
-                      key={group._id}
-                      group={group}
-                      currentUserId={user?._id}
-                      onJoin={handleJoin}
-                      onOpen={(id) => navigate(`/groups/${id}`)}
-                      joining={joining}
-                    />
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        </main>
+              )}
+
+              {/* Group cards grid */}
+              {!isLoading && displayGroups.length > 0 && (
+                <>
+                  <div className="grp-section-head-row" style={{ marginBottom: 12 }}>
+                    <span className="grp-section-label">
+                      {filters.myGroups ? "My Groups" : activeTag ? `#${activeTag}` : "All Study Groups"}
+                    </span>
+                    <span className="grp-count-badge">
+                      {displayGroups.length} group{displayGroups.length !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                  <div className="grp-cards-grid">
+                    {displayGroups.map((group) => (
+                      <GroupCard
+                        key={group._id}
+                        group={group}
+                        currentUserId={user?._id}
+                        onJoin={handleJoin}
+                        onOpen={(id) => navigate(`/groups/${id}`)}
+                        joining={joining}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </main>
+        </div>
       </div>
 
       {showCreate && <CreateGroupModal onClose={() => setShowCreate(false)} />}
-    </div>
+    </StudentDashboardShell>
   );
 };
 

@@ -30,7 +30,7 @@ function PollsTab({ groupId, isAdmin, currentUser }) {
                     <h3 className="mt-title">Smart Polls</h3>
                     <p className="mt-sub">Gather feedback from your group members in real-time · {groupPolls.items.length} polls total</p>
                 </div>
-                <button className="btn btn-primary btn-sm" onClick={() => setShowCreate(true)}>
+                <button type="button" className="grp-btn-primary grp-btn-sm" onClick={() => setShowCreate(true)}>
                     <Plus size={16} /> Create Poll
                 </button>
             </div>
@@ -42,7 +42,7 @@ function PollsTab({ groupId, isAdmin, currentUser }) {
                     <div className="ft-empty-icon"><BarChart2 size={48} strokeWidth={1} /></div>
                     <h4 className="ft-empty-title">No polls active</h4>
                     <p className="ft-empty-sub">Create the first poll to engage group members.</p>
-                    <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
+                    <button type="button" className="grp-btn-primary" onClick={() => setShowCreate(true)}>
                         <Plus size={16} /> Create First Poll
                     </button>
                 </div>

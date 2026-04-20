@@ -3,34 +3,38 @@
    Tokens mapped to SCC Website Global Identity
 ═══════════════════════════════════════════════════════ */
 
-/* Dark Mode Tokens (Default) */
+/* Dark Mode Tokens — aligned with Dashboard.css --ds-* */
 .groups-container,
 .grp-workspace,
 .group-detail-container,
 .grp-root {
-    --abyss: #0f172a;
-    --abyss-mid: #1e293b;
-    --surface-1: #1e293b;
-    --surface-2: #334155;
-    --surface-3: #475569;
-    --border: #334155;
-    --border-lit: #475569;
-    --border-hot: var(--color-primary-500, #6366f1);
-    --bio: var(--color-primary-500, #6366f1);
-    --bio-dim: rgba(99, 102, 241, 0.15);
-    --bio-glow: rgba(99, 102, 241, 0.2);
-    --bio-line: rgba(99, 102, 241, 0.35);
-    --cyan: var(--color-secondary-500, #a855f7);
-    --cyan-dim: rgba(168, 85, 247, 0.15);
-    --cyan-glow: rgba(168, 85, 247, 0.2);
-    --text: #f8fafc;
+    --abyss: var(--ds-page-bg, #0b0f13);
+    --abyss-mid: #121820;
+    --surface-1: var(--ds-surface, #161b22);
+    --surface-2: #1c2128;
+    --surface-3: #252b33;
+    --border: rgba(148, 163, 184, 0.14);
+    --border-lit: rgba(148, 163, 184, 0.22);
+    --border-hot: var(--ds-accent, #2ecc71);
+    --bio: var(--ds-accent, #2ecc71);
+    --bio-dim: rgba(46, 204, 113, 0.12);
+    --bio-glow: rgba(46, 204, 113, 0.22);
+    --bio-line: rgba(46, 204, 113, 0.38);
+    --cyan: #5eead4;
+    --cyan-dim: rgba(94, 234, 212, 0.1);
+    --cyan-glow: rgba(94, 234, 212, 0.15);
+    --text: #ffffff;
     --text-mid: #cbd5e1;
     --text-dim: #94a3b8;
-    --r-sm: 0.375rem;
-    --r-md: 0.5rem;
-    --r-lg: 0.75rem;
-    --r-xl: 1rem;
-    --font-display: var(--font-family-base, 'Inter', sans-serif);
+    /* Forms on dark group surfaces — avoid accent green for primary labels */
+    --form-label-fg: #f8fafc;
+    --form-hint-fg: #94a3b8;
+    --form-optional-fg: #cbd5e1;
+    --r-sm: 0.5rem;
+    --r-md: 0.75rem;
+    --r-lg: 1rem;
+    --r-xl: 1.125rem;
+    --font-display: var(--font-body, 'Inter', sans-serif);
 
     background: var(--abyss) !important;
     color: var(--text) !important;
@@ -49,17 +53,20 @@ html[data-theme="light"] .grp-root {
     --surface-3: #f1f5f9;
     --border: #e2e8f0;
     --border-lit: #cbd5e1;
-    --border-hot: var(--color-primary-600, #4f46e5);
-    --bio: var(--color-primary-600, #4f46e5);
-    --bio-dim: rgba(79, 70, 229, 0.1);
-    --bio-glow: rgba(79, 70, 229, 0.15);
-    --bio-line: rgba(79, 70, 229, 0.25);
-    --cyan: var(--color-secondary-600, #9333ea);
-    --cyan-dim: rgba(147, 51, 234, 0.1);
-    --cyan-glow: rgba(147, 51, 234, 0.15);
+    --border-hot: #15803d;
+    --bio: #15803d;
+    --bio-dim: rgba(21, 128, 61, 0.1);
+    --bio-glow: rgba(21, 128, 61, 0.15);
+    --bio-line: rgba(21, 128, 61, 0.28);
+    --cyan: #0d9488;
+    --cyan-dim: rgba(13, 148, 136, 0.1);
+    --cyan-glow: rgba(13, 148, 136, 0.15);
     --text: #0f172a;
     --text-mid: #334155;
     --text-dim: #64748b;
+    --form-label-fg: #0f172a;
+    --form-hint-fg: #64748b;
+    --form-optional-fg: #64748b;
 
     background: var(--abyss) !important;
     color: var(--text) !important;
