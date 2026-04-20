@@ -7,6 +7,7 @@ import kuppiReducer from "../features/kuppi/kuppiSlice";
 import notificationsReducer from "../features/notifications/notificationsSlice";
 import meetupReducer from "../features/meetups/meetupSlice";
 import examReducer from "../features/exam/examSlice"; //Mithun's exam mode features
+import pollReducer from "../features/polls/pollSlice";
 
 
 
