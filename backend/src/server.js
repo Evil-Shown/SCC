@@ -22,10 +22,7 @@ import notesRoutes from "./routes/notesRoutes.js";
 import kuppiRoutes from "./routes/kuppiRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import examRoutes from "./routes/examRoutes.js";
-
-
 import studyPilotRoutes from "./routes/studyPilotRoutes.js"; 
-
 import meetupRoutes from "./routes/meetupRoutes.js";
 import timetableRoutes from "./routes/timetableRoutes.js";
 import resourceRoutes from "./routes/resourceRoutes.js";
@@ -186,6 +183,9 @@ io.on("connection", (socket) => {
 
 app.set("io", io);
 
+// ==========================================
+// 💡 Background Jobs
+// ==========================================
 const startJobs = async () => {
   const archiveExpiredKuppiPostsJob = async () => {
     try {

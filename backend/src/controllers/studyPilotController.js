@@ -10,15 +10,14 @@ export const generatePilotMaterials = async (req, res) => {
         pythonFormData.append('actionType', actionType);
         pythonFormData.append('chatPrompt', chatPrompt);
 
-        // මේ පේළිය අලුතින් දාන්න 👇 (React එකෙන් ෆයිල් කීයක් ආවද කියලා Terminal එකේ බලාගන්න)
-        console.log("Received files in Node.js:", req.files ? req.files.length : 0);
+        console.log(`[StudyPilot] Action: ${actionType} | Received files:`, req.files ? req.files.length : 0);
 
-        // --- ආරක්‍ෂිත පියවර: ෆයිල් එක Node.js එකට ආවාදැයි බැලීම ---
+        // ආරක්‍ෂිත පියවර: ෆයිල් එක Node.js එකට ආවාදැයි බැලීම
         if (!req.files || req.files.length === 0) {
             console.error("No files received from React Frontend!");
             return res.status(400).json({ 
                 success: false, 
-                message: "No PDF files uploaded(Not received to .node.js.). Please upload at least one PDF file." 
+                message: "No PDF files uploaded. Please upload at least one PDF file." 
             });
         }
 
@@ -31,15 +30,16 @@ export const generatePilotMaterials = async (req, res) => {
             });
         });
 
+        // Python Server එකට Request එක යැවීම
         const pythonResponse = await axios.post('http://localhost:8000/api/study-pilot', pythonFormData, {
             headers: { ...pythonFormData.getHeaders() }
         });
 
-        // ගොඩක් වැදගත්: Python එකෙන් එන පණිවිඩය ඒ විදිහටම යවමු!
+        // Python එකෙන් එන පණිවිඩය (JSON) කෙලින්ම React වෙත යැවීම
         res.status(200).json(pythonResponse.data);
 
     } catch (error) {
         console.error("Python Service Error:", error.response?.data || error.message);
-        res.status(500).json({ success: false, message: "UNABLE to contact with AI Service" });
+        res.status(500).json({ success: false, message: "Unable to contact AI Service. Check if Python server is running." });
     }
 };

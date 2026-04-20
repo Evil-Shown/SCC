@@ -1,12 +1,23 @@
-import { Navigate, Outlet } from 'react-router-dom';
-import { getAccessToken } from '../utils/authStorage.js';
+import React from 'react';
+import { Navigate } from 'react-router-dom';
 
-const ExamProtectedRoute = () => {
-    const token = getAccessToken();
+/**
+ * This component protects Exam Mode routes.
+ * It checks for the 'accessToken' in localStorage.
+ * If the token exists, it renders the content (children).
+ * If not, it redirects the user to the Exam Login page.
+ */
+const ExamProtectedRoute = ({ children }) => {
+    // Check for the token in LocalStorage
+    const token = localStorage.getItem('accessToken');
 
-    // Token එක තිබේ නම් අදාළ Exam Component එක (Outlet) පෙන්වයි.
-    // නැතිනම් නැවත '/exam-login' පිටුවට යවයි.
-    return token ? <Outlet /> : <Navigate to="/exam-login" replace />;
+    // If token exists, render the actual component (children)
+    // If no token, redirect to /exam-login and replace the history entry
+    if (token) {
+        return children;
+    } else {
+        return <Navigate to="/exam-login" replace />;
+    }
 };
 
 export default ExamProtectedRoute;
