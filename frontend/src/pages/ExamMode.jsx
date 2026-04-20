@@ -21,7 +21,7 @@ const ExamMode = () => {
     // TAKE currentExam AND currentPlan from Redux store
     const { currentExam, currentPlan } = useSelector((state) => state.exam);
     const [showSetup, setShowSetup] = useState(false);
-    
+
     // New State to track active view (dashboard or study pilot)
     const [activeView, setActiveView] = useState('dashboard');
 
@@ -36,61 +36,56 @@ const ExamMode = () => {
 
     return (
         <div className="scc-exam-layout">
-    {/* --- SIDEBAR --- */}
-    <aside className={`scc-sidebar ${sidebarOpen ? 'open' : 'closed'}`}>
-        <div className="sidebar-brand" onClick={() => setSidebarOpen(!sidebarOpen)} style={{ cursor: 'pointer' }}>
-            <img src={schoolIcon} alt="school" className="custom-img-icon brand-icon" />
-            {sidebarOpen && <h2>SCC EXAM MODE</h2>}
-        </div>
+            {/* --- SIDEBAR --- */}
+            <aside className={`scc-sidebar ${sidebarOpen ? 'open' : 'closed'}`}>
+                <div className="sidebar-brand" onClick={() => setSidebarOpen(!sidebarOpen)} style={{ cursor: 'pointer' }}>
+                    <img src={schoolIcon} alt="school" className="custom-img-icon brand-icon" />
+                    {sidebarOpen && <h2>SCC EXAM MODE</h2>}
+                </div>
 
-        {/* මෙනුව (nav) සැමවිටම පෙන්වීමට condition එකෙන් ඉවත් කර ඇත */}
-        <nav className="sidebar-nav">
-            
-            {/* Dashboard Button */}
-            <a 
-                href="#" 
-                className={`nav-item ${activeView === 'dashboard' ? 'active' : ''}`}
-                onClick={(e) => { e.preventDefault(); setActiveView('dashboard'); }}
-            >
-                <img src={personIcon} alt="person" className="custom-img-icon" />
-                {/* Sidebar එක open නම් පමණක් අකුරු පෙන්වයි */}
-                {sidebarOpen && <span>Student Dashboard</span>}
-            </a>
-            
-            {/* Setup Study Plans Button */}
-            <a 
-                href="#" 
-                className="nav-item" 
-                onClick={(e) => { e.preventDefault(); setShowSetup(true); }}
-            >
-                <img src={assignmentIcon} alt="assignment" className="custom-img-icon" />
-                {sidebarOpen && <span>Setup Your Study Plans</span>}
-            </a>
-            
-            {/* Study Pilot Button */}
-            <a 
-                href="#" 
-                className={`nav-item ${activeView === 'studyPilot' ? 'active' : ''}`}
-                onClick={(e) => { e.preventDefault(); setActiveView('studyPilot'); }}
-            >
-                <img src={rocketIcon} alt="rocket_launch" className="custom-img-icon" />
-                {sidebarOpen && <span>Study Pilot</span>}
-            </a>
-            
-            {/* Chat Button */}
-            <a href="#" className="nav-item">
-                <img src={psychologyIcon} alt="psychology" className="custom-img-icon" />
-                {sidebarOpen && <span>Chat</span>}
-            </a>
-            
-        </nav>
-    </aside>
+                {/* මෙනුව (nav) සැමවිටම පෙන්වීමට condition එකෙන් ඉවත් කර ඇත */}
+                <nav className="sidebar-nav">
+
+                    {/* Dashboard Button */}
+                    <a
+                        href="#"
+                        className={`nav-item ${activeView === 'dashboard' ? 'active' : ''}`}
+                        onClick={(e) => { e.preventDefault(); setActiveView('dashboard'); }}
+                    >
+                        <img src={personIcon} alt="person" className="custom-img-icon" />
+                        {/* Sidebar එක open නම් පමණක් අකුරු පෙන්වයි */}
+                        {sidebarOpen && <span>Student Dashboard</span>}
+                    </a>
+
+                    {/* Setup Study Plans Button */}
+                    <a
+                        href="#"
+                        className="nav-item"
+                        onClick={(e) => { e.preventDefault(); setShowSetup(true); }}
+                    >
+                        <img src={assignmentIcon} alt="assignment" className="custom-img-icon" />
+                        {sidebarOpen && <span>Setup Your Study Plans</span>}
+                    </a>
+
+                    {/* Study Pilot Button */}
+                    <a
+                        href="#"
+                        className={`nav-item ${activeView === 'studyPilot' ? 'active' : ''}`}
+                        onClick={(e) => { e.preventDefault(); setActiveView('studyPilot'); }}
+                    >
+                        <img src={rocketIcon} alt="rocket_launch" className="custom-img-icon" />
+                        {sidebarOpen && <span>Study Pilot</span>}
+                    </a>
+
+
+                </nav>
+            </aside>
 
 
             {/* --- MAIN CONTENT --- */}
             <main className="scc-main-container">
                 <div className="scc-content-scroll">
-                    
+
                     {/*  UI change acco.tho the ACTIVE VIEW */}
                     {activeView === 'dashboard' ? (
                         <>
@@ -144,7 +139,7 @@ const ExamMode = () => {
 
                 </div>
             </main>
-            
+
             {showSetup && <SetupExamForm onClose={() => setShowSetup(false)} />}
         </div>
     );

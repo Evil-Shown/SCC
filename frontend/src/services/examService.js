@@ -65,7 +65,7 @@ export const generateStudyRoadmap = async (payload) => {
 };
 
 export const generateAiStudyAssistant = async (formData) => {
-  const response = await api.post("/api/exams/ai-assistant", formData, {
+  const response = await api.post("/api/study-pilot/generate", formData, {
     headers: {
       "Content-Type": "multipart/form-data"
     }
@@ -73,6 +73,21 @@ export const generateAiStudyAssistant = async (formData) => {
 
   if (!response.data?.success) {
     throw new Error(response.data?.message || "Failed to generate AI study content");
+  }
+
+  return response.data.data;
+};
+
+// Exam Plan setup request
+export const generateExamPlanData = async (formData) => {
+  const response = await api.post("/api/exams/setup", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data"
+    }
+  });
+
+  if (!response.data?.success) {
+    throw new Error(response.data?.message || "Failed to generate Exam Plan");
   }
 
   return response.data.data;
