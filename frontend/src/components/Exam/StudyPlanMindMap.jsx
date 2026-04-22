@@ -32,7 +32,7 @@ const StudyPlanMindMap = ({ aiPlanData }) => {
     }, [aiPlanData, setNodes, setEdges]);
 
     return (
-        <div style={{ width: '100%', height: '80vh', border: '1px solid #333', borderRadius: '10px' }}>
+        <div className="exam-mindmap-frame">
             <ReactFlow
                 nodes={nodes}
                 edges={edges}
