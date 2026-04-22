@@ -1,6 +1,6 @@
 import express from 'express';
 import multer from 'multer';
-import { generateExamPlan } from '../controllers/examAiController.js';
+import { generateExamPlan } from '../controllers/examPlanController.js';
 
 const router = express.Router();
 

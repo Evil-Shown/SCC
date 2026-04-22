@@ -1,115 +1,55 @@
-import { createRequire } from 'module';
-import { createWorker } from 'tesseract.js';
+import { Worker } from 'worker_threads';
 import path from 'path';
 import { fileURLToPath } from 'url';
-
-const require = createRequire(import.meta.url);
-
-// pdf-parse modules properly imported
-const { PDFParse } = require('pdf-parse');
-
-// pdfjs-dist modules properly imported
-const pdfjsLib = require('pdfjs-dist');
+import aiModelManager from './aiModelManager.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Set worker path for pdfjs-dist (older version)
-pdfjsLib.GlobalWorkerOptions.workerSrc = path.join(__dirname, '../../node_modules/pdfjs-dist/build/pdf.worker.min.mjs');
-
-// OCR function using tesseract.js - converts PDF pages to images first
-const extractTextUsingOCR = async (fileBuffer) => {
-  try {
-    console.log("✓ Trying OCR with tesseract.js...");
-    
-    // Load PDF using pdfjs-dist
-    const pdf = await pdfjsLib.getDocument({ data: fileBuffer }).promise;
-    const pageCount = pdf.numPages;
-    console.log(`✓ PDF has ${pageCount} pages, processing for OCR...`);
-    
-    let allText = "";
-    const worker = await createWorker('eng');
-    
-    // Process each page
-    for (let pageNum = 1; pageNum <= pageCount; pageNum++) {
-      console.log(`  - Processing page ${pageNum}/${pageCount}...`);
-      
-      // Get page
-      const page = await pdf.getPage(pageNum);
-      const viewport = page.getViewport({ scale: 2.0 });
-      
-      // Create canvas
-      const canvas = require('canvas');
-      const canvasElement = canvas.createCanvas(viewport.width, viewport.height);
-      const context = canvasElement.getContext('2d');
-      
-      // Render PDF page to canvas
-      await page.render({
-        canvasContext: context,
-        viewport: viewport
-      }).promise;
-      
-      // Convert canvas to buffer
-      const imageBuffer = canvasElement.toBuffer('image/png');
-      
-      // Run OCR on the image
-      const result = await worker.recognize(imageBuffer);
-      allText += result.data.text + "\n";
-    }
-    
-    await worker.terminate();
-    console.log(`✓ OCR completed, extracted ${allText.length} characters`);
-    return allText;
-  } catch (ocrError) {
-    console.error("✗ OCR Error:", ocrError.message);
-    return "";
-  }
-};
-
 export const extractTextFromPDF = async (fileBuffer) => {
-  let extractedContent = {
-    text: "",
-    imageDescriptions: []
-  };
+    try {
+        console.log("✓ Step 1: Extracting raw text from PDF using Google Vision API via Worker...");
 
-  try {
-    // Validate buffer
-    if (!fileBuffer || !Buffer.isBuffer(fileBuffer)) {
-      console.log("Error: File buffer is missing or invalid.");
-      return extractedContent;
-    }
+        // Pass the fileBuffer to the new pdfExtract worker
+        const rawText = await new Promise((resolve, reject) => {
+            const workerPath = path.resolve(__dirname, '../workers/pdfExtract.worker.js');
+            const worker = new Worker(workerPath);
 
-    // Step 1: Extract text using pdf-parse
-    console.log("✓ Step 1: Extracting text from PDF...");
-    const data = await new PDFParse(fileBuffer);
-    
-    extractedContent.text = data?.text || "";
-    console.log(`✓ Extracted text length: ${extractedContent.text.length} characters`);
+            worker.on('message', (message) => {
+                if (message.success) resolve(message.text);
+                else reject(new Error(message.error));
+            });
 
-    // Step 2: Get page count
-    const pageCount = data?.numpages || 1;
-    console.log(`✓ Total pages in PDF: ${pageCount}`);
+            worker.on('error', reject);
+            worker.on('exit', (code) => {
+                if (code !== 0) reject(new Error(`Worker stopped with exit code ${code}`));
+            });
 
-    // Step 3: If text is too short, try OCR
-    if (extractedContent.text.length < 50) {
-      console.log("✓ Step 2: Text too short, trying OCR...");
-      const ocrText = await extractTextUsingOCR(fileBuffer);
-      
-      if (ocrText && ocrText.length > 50) {
-        extractedContent.text = ocrText;
-        console.log(`✓ OCR extracted text length: ${extractedContent.text.length} characters`);
-      } else {
-        console.log("✓ Step 3: OCR also failed, marking as minimal text");
-        extractedContent.imageDescriptions.push({
-          page: "all",
-          description: "This PDF contains minimal extractable text. It may be an image file or have encoded content."
+            worker.postMessage(fileBuffer);
         });
-      }
-    }
 
-    return extractedContent;
-  } catch (error) {
-    console.error("✗ Error extracting PDF content:", error.message);
-    return extractedContent;
-  }
+        console.log("✓ Step 2: Cleaning AI extracted content via Worker...");
+        const cleanedText = await new Promise((resolve, reject) => {
+            const workerPath = path.resolve(__dirname, '../workers/pdfProcessor.worker.js');
+            const worker = new Worker(workerPath);
+
+            worker.on('message', (message) => {
+                if (message.success) resolve(message.text);
+                else reject(new Error(message.error));
+            });
+
+            worker.on('error', reject);
+            worker.on('exit', (code) => {
+                if (code !== 0) reject(new Error(`Worker stopped with exit code ${code}`));
+            });
+
+            worker.postMessage(rawText);
+        });
+
+        return cleanedText;
+
+    } catch (error) {
+        console.error("✗ Error in PDF Processing Service:", error.message);
+        throw new Error("Failed to process PDF file.");
+    }
 };
