@@ -10,11 +10,21 @@ const SetupExamForm = ({ onClose }) => {
     const { loading, error, currentPlan } = useSelector((state) => state.exam);
 
     const [planCategory, setPlanCategory] = useState('Official'); 
-    const [dailyHours, setDailyHours] = useState(4);
+
+    const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const [schedule, setSchedule] = useState(
+        DAYS.map(day => ({ day, isFree: false, hours: 2 }))
+    );
+
+    const handleScheduleChange = (index, field, value) => {
+        const updated = [...schedule];
+        updated[index][field] = value;
+        setSchedule(updated);
+    };
 
     const [modules, setModules] = useState([
         {
-            id: '', name: '', file: null, examDate: '', examTime: '', examType: 'final', difficulty: 'Medium', topics: ''
+            id: '', name: '', examDate: '', examTime: '', examType: 'FINAL', difficulty: 'Medium', instructions: ''
         }
     ]);
 
@@ -24,15 +34,9 @@ const SetupExamForm = ({ onClose }) => {
         setModules(updatedModules);
     };
 
-    const handleFileChange = (index, e) => {
-        const updatedModules = [...modules];
-        updatedModules[index].file = e.target.files[0];
-        setModules(updatedModules);
-    };
-
     const addModule = () => {
         setModules([...modules, {
-            id: '', name: '', file: null, examDate: '', examTime: '', examType: 'final', difficulty: 'Medium', topics: ''
+            id: '', name: '', examDate: '', examTime: '', examType: 'FINAL', difficulty: 'Medium', instructions: ''
         }]);
     };
 
@@ -41,40 +45,18 @@ const SetupExamForm = ({ onClose }) => {
         setModules(updatedModules);
     };
 
-    // ✅ යාවත්කාලීන කරන ලද Async handleSubmit කේතය
     const handleSubmit = async (e) => {
         e.preventDefault();
         
-        // 1. FormData වස්තුවක් සාදා ගැනීම
-        const formData = new FormData();
-        
-        // මෙහි '12345' වෙනුවට ඔබේ සැබෑ User ID එක ඇතුළත් කළ හැක
-        formData.append('student_id', '12345'); 
-        formData.append('planCategory', planCategory);
-        formData.append('dailyHours', dailyHours);
-        
-        // Module metadata සකසා stringify කර FormData වෙත එක් කිරීම
-        formData.append('modulesData', JSON.stringify(modules.map(m => ({
-            id: m.id,
-            name: m.name,
-            examDate: m.examDate,
-            examTime: m.examTime,
-            examType: m.examType,
-            difficulty: m.difficulty,
-            topics: m.topics.split(',').map(t => t.trim())
-        }))));
-
-        // සියලුම PDF ගොනු (Files) FormData වෙත එක් කිරීම
-        modules.forEach((mod) => {
-            if (mod.file) {
-                formData.append('outlines', mod.file);
-            }
-        });
+        const payload = {
+            student_id: '12345', 
+            planCategory,
+            modulesData: modules,
+            scheduleData: schedule
+        };
 
         try {
-            // 2. Dispatch එක await කිරීම - මෙහිදී UI එක freeze නොවී loading state එක පෙන්වයි
-            await dispatch(createExamPlan(formData)).unwrap();
-            // සාර්ථක වුවහොත් Redux state එකේ currentPlan update වන නිසා ඉබේම Mindmap එක දිස්වේ
+            await dispatch(createExamPlan(payload)).unwrap();
         } catch (err) {
             console.error("Failed to generate exam plan:", err);
         }
@@ -82,7 +64,7 @@ const SetupExamForm = ({ onClose }) => {
 
     const handleCreateNew = () => {
         dispatch(clearCurrentPlan());
-        setModules([{ id: '', name: '', file: null, examDate: '', examTime: '', examType: 'final', difficulty: 'Medium', topics: '' }]);
+        setModules([{ id: '', name: '', examDate: '', examTime: '', examType: 'FINAL', difficulty: 'Medium', instructions: '' }]);
     };
 
     return (
@@ -139,11 +121,6 @@ const SetupExamForm = ({ onClose }) => {
                                     </div>
                                 </div>
 
-                                <div className="form-group">
-                                    <label>Upload Module Outline (PDF)</label>
-                                    <input type="file" accept="application/pdf" onChange={(e) => handleFileChange(index, e)} />
-                                </div>
-
                                 <div className="form-group input-row">
                                     <div>
                                         <label>Exam Date & Time</label>
@@ -176,8 +153,8 @@ const SetupExamForm = ({ onClose }) => {
                                 </div>
 
                                 <div className="form-group">
-                                    <label>Cover Topics (Comma separated)</label>
-                                    <textarea placeholder="Ex: React Hooks, Redux Toolkit, Context API" value={mod.topics} onChange={(e) => handleModuleChange(index, 'topics', e.target.value)} rows="2" required />
+                                    <label>Exam instructions & User requests(text)</label>
+                                    <textarea placeholder="Ex: Focus more on practicals..." value={mod.instructions} onChange={(e) => handleModuleChange(index, 'instructions', e.target.value)} rows="2" />
                                 </div>
                             </div>
                         ))}
@@ -187,8 +164,33 @@ const SetupExamForm = ({ onClose }) => {
                         </button>
 
                         <div className="form-group">
-                            <label>Daily Commitment Hours</label>
-                            <input type="number" min="1" max="24" value={dailyHours} onChange={(e) => setDailyHours(e.target.value)} required style={{ width: '100px' }}/>
+                            <label style={{ fontWeight: 'bold', marginBottom: '10px', display: 'block' }}>Select free days for study</label>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                {schedule.map((dayItem, idx) => (
+                                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '5px', width: '120px' }}>
+                                            <input 
+                                                type="checkbox" 
+                                                checked={dayItem.isFree} 
+                                                onChange={(e) => handleScheduleChange(idx, 'isFree', e.target.checked)} 
+                                            /> 
+                                            {dayItem.day}
+                                        </label>
+                                        {dayItem.isFree && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                <input 
+                                                    type="number" 
+                                                    min="1" max="24" 
+                                                    value={dayItem.hours} 
+                                                    onChange={(e) => handleScheduleChange(idx, 'hours', e.target.value)} 
+                                                    style={{ width: '60px', padding: '5px' }}
+                                                />
+                                                <span>hrs for study</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
                         </div>
 
                         <div className="form-actions">

@@ -69,3 +69,9 @@ public/uploads/
 .netlify/
 .next/
 out/
+
+google-vision-key.json
+
+GEMINI_API_KEY=AIzaSyBMsIlhopLWJoalIoAYis811-BuJutIEJc
+NVIDIA_API_KEY=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
+OPENROUTER_API_KEY=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
