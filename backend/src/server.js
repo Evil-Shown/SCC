@@ -36,8 +36,14 @@ import { startMeetupCancellationJob } from "./jobs/meetupJobs.js";
 const app = express();
 const server = http.createServer(app);
 
+const backendPort = process.env.PORT || 5000;
+const backendOrigin = `http://localhost:${backendPort}`;
+const backendOrigin127 = `http://127.0.0.1:${backendPort}`;
+
 const allowedOrigins = [
   process.env.CLIENT_URL || "http://localhost:5173",
+  backendOrigin,
+  backendOrigin127,
   "http://localhost:5173",
   "http://localhost:5174",
   "http://localhost:5175",
@@ -47,7 +53,13 @@ const allowedOrigins = [
 ];
 
 const corsOriginHandler = (origin, callback) => {
-  if (!origin || allowedOrigins.includes(origin)) {
+  const isAllowedExplicit = !origin || allowedOrigins.includes(origin);
+  const isAllowedLocalDev =
+    process.env.NODE_ENV !== "production" &&
+    !!origin &&
+    /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin);
+
+  if (isAllowedExplicit || isAllowedLocalDev) {
     callback(null, true);
   } else {
     callback(new Error("Not allowed by CORS"));
