@@ -4,6 +4,26 @@ import Comment from "../models/Comment.js";
 import Notification from "../models/Notification.js";
 import { sendNoteCommentEmail } from "../utils/emailService.js";
 
+export const checkNotesEndpoint = async (req, res) => {
+  try {
+    const totalNotes = await Note.countDocuments();
+
+    res.status(200).json({
+      success: true,
+      message: "Notes endpoint is working",
+      data: {
+        totalNotes,
+      },
+    });
+  } catch (error) {
+    console.error("Error checking notes endpoint:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to check notes endpoint",
+    });
+  }
+};
+
 export const createNote = async (req, res) => {
   try {
     const { title, description, onedriveLink, tags, subject, year } = req.body;
@@ -496,6 +516,7 @@ export const deleteNote = async (req, res) => {
 };
 
 export default {
+  checkNotesEndpoint,
   createNote,
   getNotes,
   getMyNotes,

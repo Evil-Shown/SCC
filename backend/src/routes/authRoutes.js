@@ -101,17 +101,132 @@ const router = express.Router();
  *   post:
  *     tags: [Auth]
  *     summary: Register a new user account
+ *     operationId: registerUser
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/RegisterRequest'
+ *             type: object
+ *             required: [name, email, password]
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 minLength: 2
+ *                 example: John Doe
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: john@example.com
+ *               password:
+ *                 type: string
+ *                 minLength: 6
+ *                 example: secret123
+ *               role:
+ *                 type: string
+ *                 enum: [student, teacher, admin]
+ *                 example: student
+ *               studentId:
+ *                 type: string
+ *                 example: TG-2026-0012
+ *               department:
+ *                 type: string
+ *                 example: Information Technology
+ *               year:
+ *                 type: integer
+ *                 minimum: 1
+ *                 maximum: 4
+ *                 example: 2
+ *               phone:
+ *                 type: string
+ *                 example: '+94771234567'
+ *               bio:
+ *                 type: string
+ *                 example: Undergraduate focused on backend engineering.
+ *               location:
+ *                 type: string
+ *                 example: Colombo
+ *               website:
+ *                 type: string
+ *                 format: uri
+ *                 example: https://example.dev
+ *               github:
+ *                 type: string
+ *                 example: johndoe
+ *               twitter:
+ *                 type: string
+ *                 example: johndoe
+ *               linkedin:
+ *                 type: string
+ *                 example: john-doe
+ *           examples:
+ *             minimal:
+ *               summary: Required fields only
+ *               value:
+ *                 name: John Doe
+ *                 email: john.doe+new1@example.com
+ *                 password: secret123
+ *             student:
+ *               summary: Student registration payload
+ *               value:
+ *                 name: John Doe
+ *                 email: john.doe+new2@example.com
+ *                 password: secret123
+ *                 role: student
+ *                 studentId: TG-2026-0012
+ *                 department: Information Technology
+ *                 year: 2
+ *                 phone: '+94771234567'
+ *                 bio: Undergraduate focused on backend engineering.
+ *             teacher:
+ *               summary: Teacher registration payload
+ *               value:
+ *                 name: Jane Lecturer
+ *                 email: jane.lecturer+new1@example.com
+ *                 password: secret123
+ *                 role: teacher
+ *                 department: Software Engineering
+ *                 phone: '+94770000000'
  *     responses:
  *       201:
  *         description: User registered successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: User registered successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       $ref: '#/components/schemas/UserProfile'
+ *                     accessToken:
+ *                       type: string
+ *                     refreshToken:
+ *                       type: string
  *       400:
  *         description: Validation failed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: Validation failed
+ *                 errors:
+ *                   type: array
+ *                   items:
+ *                     type: string
  *
  * /api/auth/login:
  *   post:
