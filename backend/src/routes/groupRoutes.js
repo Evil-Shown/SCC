@@ -49,38 +49,75 @@ const router = express.Router();
  *           type: string
  *         moduleCode:
  *           type: string
- *         visibility:
+ *         subject:
  *           type: string
- *           enum: [public, private]
+ *         courseCode:
+ *           type: string
+ *         tags:
+ *           type: array
+ *           items:
+ *             type: string
+ *         isPublic:
+ *           type: boolean
  *     CreateGroupRequest:
  *       type: object
  *       required: [name]
  *       properties:
  *         name:
  *           type: string
+ *           minLength: 2
+ *           maxLength: 80
  *         description:
  *           type: string
- *         moduleCode:
+ *           maxLength: 500
+ *         subject:
  *           type: string
- *         visibility:
+ *         courseCode:
  *           type: string
- *           enum: [public, private]
+ *         tags:
+ *           type: array
+ *           items:
+ *             type: string
+ *         isPublic:
+ *           type: boolean
+ *         allowMemberInvites:
+ *           type: boolean
+ *         maxMembers:
+ *           type: integer
+ *           minimum: 2
+ *           maximum: 500
  *     UpdateGroupRequest:
  *       type: object
  *       properties:
  *         name:
  *           type: string
+ *           minLength: 2
+ *           maxLength: 80
  *         description:
  *           type: string
- *         moduleCode:
+ *           maxLength: 500
+ *         subject:
  *           type: string
- *         visibility:
+ *         courseCode:
  *           type: string
- *           enum: [public, private]
+ *         tags:
+ *           type: array
+ *           items:
+ *             type: string
+ *         isPublic:
+ *           type: boolean
+ *         allowMemberInvites:
+ *           type: boolean
+ *         maxMembers:
+ *           type: integer
+ *           minimum: 2
+ *           maximum: 500
  *     InviteRequest:
  *       type: object
- *       required: [email]
+ *       description: Provide either userId or email.
  *       properties:
+ *         userId:
+ *           type: string
  *         email:
  *           type: string
  *           format: email
@@ -180,6 +217,15 @@ const router = express.Router();
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/CreateGroupRequest'
+ *           example:
+ *             name: IT 2nd Year Study Group
+ *             description: Group for SCC semester collaboration
+ *             subject: Database Systems
+ *             courseCode: IT2020
+ *             tags: [database, assignments]
+ *             isPublic: true
+ *             allowMemberInvites: true
+ *             maxMembers: 100
  *     responses:
  *       201:
  *         description: Group created
@@ -218,6 +264,10 @@ const router = express.Router();
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/UpdateGroupRequest'
+ *           example:
+ *             description: Updated group details
+ *             tags: [database, project]
+ *             maxMembers: 120
  *     responses:
  *       200:
  *         description: Group updated
@@ -356,6 +406,15 @@ const router = express.Router();
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/InviteRequest'
+ *           examples:
+ *             byEmail:
+ *               value:
+ *                 email: teammate@example.com
+ *                 role: member
+ *             byUserId:
+ *               value:
+ *                 userId: 64f1abc1234567890def1234
+ *                 role: admin
  *     responses:
  *       201:
  *         description: Invite sent

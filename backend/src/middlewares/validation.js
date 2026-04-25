@@ -2,7 +2,7 @@
  * Validate registration input
  */
 export const validateRegister = (req, res, next) => {
-  const { name, email, password, role } = req.body;
+  const { name, email, password, role, studentId, faculty, department, year, phone } = req.body;
   const errors = [];
 
   // Name validation
@@ -24,6 +24,30 @@ export const validateRegister = (req, res, next) => {
   // Role validation
   if (role && !["student", "teacher", "admin"].includes(role)) {
     errors.push("Invalid role. Must be student, teacher, or admin");
+  }
+
+  // Registration form requires department and phone
+  if (!department || String(department).trim().length < 2) {
+    errors.push("Department is required");
+  }
+
+  if (!phone || !/^0\d{9}$/.test(String(phone).trim())) {
+    errors.push("Phone number must be exactly 10 digits and start with 0");
+  }
+
+  // Student-specific constraints used by frontend registration flow
+  const effectiveRole = role || "student";
+  if (effectiveRole === "student") {
+    if (!faculty || String(faculty).trim().length < 2) {
+      errors.push("Faculty is required for students");
+    }
+    if (!studentId || String(studentId).trim().length < 2) {
+      errors.push("Student ID is required for students");
+    }
+    const numericYear = Number(year);
+    if (!Number.isInteger(numericYear) || numericYear < 1 || numericYear > 4) {
+      errors.push("Year is required for students and must be between 1 and 4");
+    }
   }
 
   if (errors.length > 0) {

@@ -50,6 +50,10 @@ const userSchema = new mongoose.Schema({
     sparse: true, // Allows null/undefined but enforces uniqueness when present
     unique: true
   },
+  faculty: {
+    type: String,
+    trim: true
+  },
   department: {
     type: String,
     trim: true

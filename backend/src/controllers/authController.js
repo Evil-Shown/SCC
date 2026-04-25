@@ -16,6 +16,7 @@ export const register = async (req, res) => {
       password,
       role,
       studentId,
+      faculty,
       department,
       year,
       phone,
@@ -67,6 +68,7 @@ export const register = async (req, res) => {
       password,
       role: role || "student",
       studentId,
+      faculty,
       department,
       year
     };
@@ -451,6 +453,7 @@ export const updateProfile = async (req, res) => {
     const {
       name,
       department,
+      faculty,
       year,
       phone,
       bio,
@@ -468,6 +471,7 @@ export const updateProfile = async (req, res) => {
 
     if (hasField("name")) updateData.name = (name || "").trim();
     if (hasField("department")) updateData.department = (department || "").trim();
+    if (hasField("faculty")) updateData.faculty = (faculty || "").trim();
     if (hasField("year")) updateData.year = year;
     if (hasField("phone")) updateData.phone = (phone || "").trim();
     if (hasField("bio")) updateData.bio = (bio || "").trim();
