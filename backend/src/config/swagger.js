@@ -25,6 +25,7 @@ const options = {
       { name: "Auth", description: "Authentication endpoints" },
       { name: "Groups", description: "Study group endpoints" },
       { name: "Notes", description: "Note management endpoints" },
+      { name: "Kuppi", description: "Kuppi session endpoints" },
       { name: "Files", description: "File upload/download endpoints" },
       { name: "Messages", description: "Realtime/chat messaging endpoints" },
     ],

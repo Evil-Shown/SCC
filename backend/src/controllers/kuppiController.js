@@ -21,6 +21,27 @@ const archiveExpiredKuppiPosts = async () => {
   );
 };
 
+export const checkKuppiEndpoint = async (req, res) => {
+  try {
+    await archiveExpiredKuppiPosts();
+    const totalPosts = await KuppiPost.countDocuments();
+
+    res.status(200).json({
+      success: true,
+      message: "Kuppi endpoint is working",
+      data: {
+        totalPosts
+      }
+    });
+  } catch (error) {
+    console.error("Error checking kuppi endpoint:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to check kuppi endpoint"
+    });
+  }
+};
+
 export const createKuppiPost = async (req, res) => {
   try {
     const { title, description, subject, eventDate, meetingLink } = req.body;
@@ -522,6 +543,7 @@ export const deleteKuppiPost = async (req, res) => {
 };
 
 export default {
+  checkKuppiEndpoint,
   createKuppiPost,
   updateKuppiPost,
   addMeetingLink,
