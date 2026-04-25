@@ -135,7 +135,7 @@ const router = express.Router();
  *               year:
  *                 type: integer
  *                 minimum: 1
- *                 maximum: 6
+ *                 maximum: 4
  *                 example: 2
  *               phone:
  *                 type: string
@@ -164,13 +164,13 @@ const router = express.Router();
  *               summary: Required fields only
  *               value:
  *                 name: John Doe
- *                 email: john@example.com
+ *                 email: john.doe+new1@example.com
  *                 password: secret123
- *             full:
- *               summary: Full profile registration payload
+ *             student:
+ *               summary: Student registration payload
  *               value:
  *                 name: John Doe
- *                 email: john@example.com
+ *                 email: john.doe+new2@example.com
  *                 password: secret123
  *                 role: student
  *                 studentId: TG-2026-0012
@@ -178,11 +178,15 @@ const router = express.Router();
  *                 year: 2
  *                 phone: '+94771234567'
  *                 bio: Undergraduate focused on backend engineering.
- *                 location: Colombo
- *                 website: https://example.dev
- *                 github: johndoe
- *                 twitter: johndoe
- *                 linkedin: john-doe
+ *             teacher:
+ *               summary: Teacher registration payload
+ *               value:
+ *                 name: Jane Lecturer
+ *                 email: jane.lecturer+new1@example.com
+ *                 password: secret123
+ *                 role: teacher
+ *                 department: Software Engineering
+ *                 phone: '+94770000000'
  *     responses:
  *       201:
  *         description: User registered successfully
