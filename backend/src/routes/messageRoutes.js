@@ -21,10 +21,13 @@ const router = express.Router();
  *       properties:
  *         content:
  *           type: string
- *         attachments:
- *           type: array
- *           items:
- *             type: string
+ *         type:
+ *           type: string
+ *           enum: [text, image, file, system]
+ *           default: text
+ *         replyTo:
+ *           type: string
+ *           description: Existing message id to reply to
  *     EditMessagePayload:
  *       type: object
  *       required: [content]
@@ -56,6 +59,15 @@ const router = express.Router();
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/MessagePayload'
+ *           examples:
+ *             normal:
+ *               value:
+ *                 content: Anyone solved tutorial 3 question 2?
+ *                 type: text
+ *             reply:
+ *               value:
+ *                 content: Yes, I will share my approach.
+ *                 replyTo: 64f1abc1234567890def1234
  *     responses:
  *       201:
  *         description: Message sent

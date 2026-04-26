@@ -44,6 +44,14 @@ const router = express.Router();
  *           type: string
  *         role:
  *           type: string
+ *         faculty:
+ *           type: string
+ *         department:
+ *           type: string
+ *         year:
+ *           type: integer
+ *         phone:
+ *           type: string
  *     RegisterRequest:
  *       type: object
  *       required: [name, email, password]
@@ -56,6 +64,25 @@ const router = express.Router();
  *         password:
  *           type: string
  *           minLength: 6
+ *         role:
+ *           type: string
+ *           enum: [student, teacher, admin]
+ *           default: student
+ *         faculty:
+ *           type: string
+ *         department:
+ *           type: string
+ *         studentId:
+ *           type: string
+ *         year:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 4
+ *         phone:
+ *           type: string
+ *           pattern: '^0\\d{9}$'
+ *         bio:
+ *           type: string
  *     LoginRequest:
  *       type: object
  *       required: [email, password]
@@ -75,9 +102,32 @@ const router = express.Router();
  *       properties:
  *         name:
  *           type: string
- *         avatar:
+ *         department:
  *           type: string
- *           description: URL or identifier for avatar
+ *         faculty:
+ *           type: string
+ *         year:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 4
+ *         phone:
+ *           type: string
+ *         bio:
+ *           type: string
+ *         profilePicture:
+ *           type: string
+ *           description: URL for profile picture
+ *         location:
+ *           type: string
+ *         website:
+ *           type: string
+ *           format: uri
+ *         github:
+ *           type: string
+ *         twitter:
+ *           type: string
+ *         linkedin:
+ *           type: string
  *
  * /api/auth/google/start:
  *   get:
@@ -92,8 +142,8 @@ const router = express.Router();
  *     tags: [Auth]
  *     summary: Handle Google OAuth callback
  *     responses:
- *       200:
- *         description: Google login completed
+ *       302:
+ *         description: Redirects to frontend callback URL with auth hash payload
  *       400:
  *         description: Invalid callback payload
  *
@@ -108,7 +158,7 @@ const router = express.Router();
  *         application/json:
  *           schema:
  *             type: object
- *             required: [name, email, password]
+ *             required: [name, email, password, department, phone]
  *             properties:
  *               name:
  *                 type: string
@@ -126,6 +176,9 @@ const router = express.Router();
  *                 type: string
  *                 enum: [student, teacher, admin]
  *                 example: student
+ *               faculty:
+ *                 type: string
+ *                 example: Faculty of Computing
  *               studentId:
  *                 type: string
  *                 example: TG-2026-0012
@@ -161,32 +214,37 @@ const router = express.Router();
  *                 example: john-doe
  *           examples:
  *             minimal:
- *               summary: Required fields only
+ *               summary: Minimal valid teacher registration payload
  *               value:
  *                 name: John Doe
  *                 email: john.doe+new1@example.com
  *                 password: secret123
+ *                 role: teacher
+ *                 department: Software Engineering
+ *                 phone: '0771234567'
  *             student:
- *               summary: Student registration payload
+ *               summary: Student registration payload (matches current form)
  *               value:
  *                 name: John Doe
  *                 email: john.doe+new2@example.com
  *                 password: secret123
  *                 role: student
+ *                 faculty: Faculty of Computing
  *                 studentId: TG-2026-0012
  *                 department: Information Technology
  *                 year: 2
- *                 phone: '+94771234567'
+ *                 phone: '0771234567'
  *                 bio: Undergraduate focused on backend engineering.
  *             teacher:
- *               summary: Teacher registration payload
+ *               summary: Teacher registration payload (matches current form)
  *               value:
  *                 name: Jane Lecturer
  *                 email: jane.lecturer+new1@example.com
  *                 password: secret123
  *                 role: teacher
+ *                 faculty: Faculty of Computing
  *                 department: Software Engineering
- *                 phone: '+94770000000'
+ *                 phone: '0770000000'
  *     responses:
  *       201:
  *         description: User registered successfully
@@ -238,6 +296,11 @@ const router = express.Router();
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/LoginRequest'
+ *           examples:
+ *             default:
+ *               value:
+ *                 email: john.doe@example.com
+ *                 password: secret123
  *     responses:
  *       200:
  *         description: Login successful
@@ -249,11 +312,13 @@ const router = express.Router();
  *     tags: [Auth]
  *     summary: Refresh access token
  *     requestBody:
- *       required: false
+ *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/RefreshRequest'
+ *           example:
+ *             refreshToken: your_refresh_token_here
  *     responses:
  *       200:
  *         description: New access token issued
@@ -266,6 +331,17 @@ const router = express.Router();
  *     summary: Logout authenticated user
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               refreshToken:
+ *                 type: string
+ *           example:
+ *             refreshToken: your_refresh_token_here
  *     responses:
  *       200:
  *         description: Logout successful
@@ -296,6 +372,19 @@ const router = express.Router();
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/UpdateProfileRequest'
+ *           examples:
+ *             studentProfile:
+ *               value:
+ *                 name: John Doe
+ *                 department: Information Technology
+ *                 faculty: Faculty of Computing
+ *                 year: 2
+ *                 phone: '0771234567'
+ *                 bio: Enthusiastic SCC user
+ *                 profilePicture: https://example.com/john.jpg
+ *                 location: Colombo
+ *                 website: https://john.dev
+ *                 github: johndoe
  *     responses:
  *       200:
  *         description: Profile updated successfully

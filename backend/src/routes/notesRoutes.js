@@ -17,6 +17,70 @@ const router = express.Router();
 
 /**
  * @openapi
+ * components:
+ *   schemas:
+ *     NoteCreateRequest:
+ *       type: object
+ *       required: [title, description]
+ *       properties:
+ *         title:
+ *           type: string
+ *         description:
+ *           type: string
+ *         onedriveLink:
+ *           type: string
+ *         tags:
+ *           type: array
+ *           items:
+ *             type: string
+ *         subject:
+ *           type: string
+ *         year:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 4
+ *     NoteUpdateRequest:
+ *       type: object
+ *       properties:
+ *         title:
+ *           type: string
+ *         description:
+ *           type: string
+ *         onedriveLink:
+ *           type: string
+ *         tags:
+ *           oneOf:
+ *             - type: array
+ *               items:
+ *                 type: string
+ *             - type: string
+ *         subject:
+ *           type: string
+ *         year:
+ *           oneOf:
+ *             - type: integer
+ *             - type: string
+ *     NoteReactionRequest:
+ *       type: object
+ *       required: [noteId, type]
+ *       properties:
+ *         noteId:
+ *           type: string
+ *         type:
+ *           type: string
+ *           enum: [like, dislike]
+ *     NoteCommentRequest:
+ *       type: object
+ *       required: [noteId, commentText]
+ *       properties:
+ *         noteId:
+ *           type: string
+ *         commentText:
+ *           type: string
+ */
+
+/**
+ * @openapi
  * /api/notes/check:
  *   get:
  *     tags: [Notes]
@@ -37,6 +101,19 @@ router.get("/notes/check", protect, checkNotesEndpoint);
  *     summary: Create a note
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/NoteCreateRequest'
+ *           example:
+ *             title: DSA Past Paper Answers
+ *             description: Solved answers for 2024 past paper.
+ *             onedriveLink: https://1drv.ms/u/s!example
+ *             tags: [dsa, past-paper]
+ *             subject: Data Structures
+ *             year: 2
  *     responses:
  *       201:
  *         description: Note created successfully
@@ -51,6 +128,31 @@ router.post("/notes", protect, createNote);
  *     summary: Get notes list
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: tag
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: userId
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: subject
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: year
+ *         schema:
+ *           type: integer
  *     responses:
  *       200:
  *         description: Notes fetched successfully
@@ -65,6 +167,15 @@ router.get("/notes", protect, getNotes);
  *     summary: Get current user's notes
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
  *     responses:
  *       200:
  *         description: User notes fetched successfully
@@ -79,6 +190,28 @@ router.get("/notes/my", protect, getMyNotes);
  *     summary: Search notes
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: subject
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: year
+ *         schema:
+ *           type: integer
  *     responses:
  *       200:
  *         description: Search results returned
@@ -93,6 +226,15 @@ router.get("/notes/search", protect, searchNotes);
  *     summary: React to a note
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/NoteReactionRequest'
+ *           example:
+ *             noteId: 64f1abc1234567890def1234
+ *             type: like
  *     responses:
  *       200:
  *         description: Reaction updated or removed
@@ -109,6 +251,15 @@ router.post("/notes/react", protect, reactToNote);
  *     summary: Add a comment to a note
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/NoteCommentRequest'
+ *           example:
+ *             noteId: 64f1abc1234567890def1234
+ *             commentText: Thanks for sharing this.
  *     responses:
  *       201:
  *         description: Comment added
@@ -132,6 +283,16 @@ router.post("/notes/comment", protect, commentOnNote);
  *     responses:
  *       200:
  *         description: Note updated
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/NoteUpdateRequest'
+ *           example:
+ *             title: Updated DSA Notes
+ *             tags: [dsa, revision]
+ *             year: 2
  */
 router.put("/notes/:noteId", protect, updateNote);
 
@@ -169,6 +330,14 @@ router.delete("/notes/:noteId", protect, deleteNote);
  *         required: true
  *         schema:
  *           type: string
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
  *     responses:
  *       200:
  *         description: Comments fetched

@@ -17,6 +17,53 @@ const router = express.Router();
 
 /**
  * @openapi
+ * components:
+ *   schemas:
+ *     KuppiCreateRequest:
+ *       type: object
+ *       required: [title, description, eventDate]
+ *       properties:
+ *         title:
+ *           type: string
+ *         description:
+ *           type: string
+ *         subject:
+ *           type: string
+ *         eventDate:
+ *           type: string
+ *           format: date-time
+ *         meetingLink:
+ *           type: string
+ *     KuppiUpdateRequest:
+ *       type: object
+ *       properties:
+ *         title:
+ *           type: string
+ *         description:
+ *           type: string
+ *         subject:
+ *           type: string
+ *         eventDate:
+ *           type: string
+ *           format: date-time
+ *         meetingLink:
+ *           type: string
+ *     KuppiApplyRequest:
+ *       type: object
+ *       required: [postId]
+ *       properties:
+ *         postId:
+ *           type: string
+ *     KuppiMeetingLinkRequest:
+ *       type: object
+ *       required: [meetingLink]
+ *       properties:
+ *         meetingLink:
+ *           type: string
+ */
+
+/**
+ * @openapi
  * /api/kuppi/check:
  *   get:
  *     tags: [Kuppi]
@@ -37,6 +84,18 @@ router.get("/kuppi/check", protect, checkKuppiEndpoint);
  *     summary: Create a kuppi post
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/KuppiCreateRequest'
+ *           example:
+ *             title: DBMS Revision Session
+ *             description: Discussion on indexing and normalization
+ *             subject: Database Systems
+ *             eventDate: 2026-05-01T10:00:00.000Z
+ *             meetingLink: https://meet.google.com/abc-defg-hij
  *     responses:
  *       201:
  *         description: Kuppi post created successfully
@@ -60,6 +119,15 @@ router.post("/kuppi", protect, createKuppiPost);
  *     responses:
  *       200:
  *         description: Kuppi post updated
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/KuppiUpdateRequest'
+ *           example:
+ *             title: Updated DBMS Revision Session
+ *             description: Updated scope with ER diagrams
  */
 router.put("/kuppi/:postId", protect, updateKuppiPost);
 
@@ -71,6 +139,27 @@ router.put("/kuppi/:postId", protect, updateKuppiPost);
  *     summary: Get kuppi posts
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: ownerId
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: includeArchived
+ *         schema:
+ *           type: boolean
  *     responses:
  *       200:
  *         description: Kuppi posts fetched successfully
@@ -99,6 +188,14 @@ router.get("/kuppi/my/logs", protect, getMyKuppiLogs);
  *     summary: Apply to a kuppi post
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/KuppiApplyRequest'
+ *           example:
+ *             postId: 64f1abc1234567890def1234
  *     responses:
  *       201:
  *         description: Applied successfully
@@ -122,6 +219,14 @@ router.post("/kuppi/apply", protect, applyToKuppi);
  *     responses:
  *       200:
  *         description: Meeting link updated
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/KuppiMeetingLinkRequest'
+ *           example:
+ *             meetingLink: https://meet.google.com/new-link-room
  */
 router.patch("/kuppi/:postId/link", protect, addMeetingLink);
 
