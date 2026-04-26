@@ -4,6 +4,8 @@ dotenv.config();
 import express from "express";
 import cors from "cors";
 import http from "http";
+import path from "path";
+import { fileURLToPath } from "url";
 import { Server } from "socket.io";
 import multer from "multer";
 import swaggerUi from "swagger-ui-express";
@@ -35,6 +37,9 @@ import { startMeetupCancellationJob } from "./jobs/meetupJobs.js";
 
 const app = express();
 const server = http.createServer(app);
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const backendPort = process.env.PORT || 5000;
 const backendOrigin = `http://localhost:${backendPort}`;
@@ -130,12 +135,21 @@ app.use("/api/ai", aiRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api", pollRoutes);
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: "Route not found",
-  });
+// Serve frontend static files
+const frontendPath = path.resolve(__dirname, "../../frontend/dist");
+app.use(express.static(frontendPath));
+
+// Catch-all route for frontend (must be after API routes)
+app.get("*", (req, res) => {
+  // If it's an API route that wasn't found, return 404
+  if (req.path.startsWith("/api/")) {
+    return res.status(404).json({
+      success: false,
+      message: "API Route not found",
+    });
+  }
+  // Otherwise, serve the frontend index.html
+  res.sendFile(path.join(frontendPath, "index.html"));
 });
 
 // Error handling middleware
